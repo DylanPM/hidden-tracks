@@ -1,5 +1,5 @@
 export const CLIENT_ID = '5349aaa7973d4da793a3fb676aace3ba';
-export const REDIRECT_URI = 'https://hellodylanmckenzie.com/hidden-tracks';
+export const REDIRECT_URI = 'https://hidden-tracks.vercel.app/';
 export const SCOPES = 'user-top-read user-read-recently-played';
 
 export const CHALLENGES = [
