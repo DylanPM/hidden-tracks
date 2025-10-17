@@ -1,110 +1,172 @@
 import React from 'react';
 import { Music, Target, Trash2 } from 'lucide-react';
-import { PreviewPlayer } from '../ui/PreviewPlayer.jsx';
+import PreviewPlayer from '../ui/PreviewPlayer';
 
-export function DraftPhase({ 
-  seed, 
-  challenges, 
-  currentChoice, 
-  removeMode, 
-  onSelectCard, 
-  onRemoveSlot 
+function DraftPhase({
+  seed,
+  challenges,
+  currentChoice,
+  removeMode,
+  onSelectCard,
+  onRemoveSlot
 }) {
-  return (
-    <div className="min-h-screen bg-black p-8">
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-white mb-4 text-center">Draft Your Puzzle</h2>
-        
-        {removeMode && (
-          <div className="bg-red-500/20 backdrop-blur rounded-lg p-4 mb-6 text-center border border-red-500/50">
-            <p className="text-white font-semibold">Click a slot to remove it</p>
-          </div>
-        )}
+  const formatArtists = (artists) => {
+    if (typeof artists === 'string') return artists;
+    if (Array.isArray(artists)) return artists.join(', ');
+    return 'Unknown Artist';
+  };
 
-        <div className="bg-zinc-900 rounded-lg p-6 mb-8 border border-zinc-800">
-          <div className="grid grid-cols-4 gap-4">
-            <div 
-              onClick={() => removeMode && seed && onRemoveSlot('seed')}
-              className={`p-4 rounded-lg border-2 ${
-                removeMode && seed ? 'bg-red-500/20 border-red-500 cursor-pointer' : 
-                seed ? 'bg-green-500/20 border-green-500' : 'bg-zinc-800 border-zinc-700'
-              } min-h-[120px] flex items-center justify-center transition`}
-            >
+  const renderCard = (card, side) => {
+    if (!card) return null;
+
+    if (card.type === 'song') {
+      const song = card.data;
+      return (
+        <button
+          onClick={() => onSelectCard(card)}
+          className="relative group w-full bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-lg p-6 border-2 border-zinc-700 hover:border-green-500 transition cursor-pointer overflow-hidden"
+        >
+          {/* Prevent clicks on the button from bubbling */}
+          <div className="absolute top-3 right-3 z-20">
+            <PreviewPlayer song={song} compact={true} />
+          </div>
+
+          <div className="flex gap-4 items-start pr-16">
+            <Music className="text-green-500 flex-shrink-0 mt-1" size={24} />
+            <div className="text-left flex-grow min-w-0">
+              <p className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-1">
+                Seed Song
+              </p>
+              <p className="text-white font-bold truncate">{formatArtists(song.artists)}</p>
+              <p className="text-zinc-300 text-sm truncate">{song.track_name}</p>
+            </div>
+          </div>
+        </button>
+      );
+    }
+
+    if (card.type === 'challenge') {
+      const challenge = card.data;
+      return (
+        <button
+          onClick={() => onSelectCard(card)}
+          className="w-full bg-gradient-to-br from-amber-900/30 to-amber-950/30 rounded-lg p-6 border-2 border-amber-700/50 hover:border-amber-500 transition cursor-pointer"
+        >
+          <div className="flex gap-4 items-start">
+            <Target className="text-amber-500 flex-shrink-0 mt-1" size={24} />
+            <div className="text-left flex-grow">
+              <p className="text-sm font-semibold text-amber-400 uppercase tracking-wide mb-1">
+                Challenge
+              </p>
+              <p className="text-white font-bold">{challenge.name}</p>
+              <p className="text-zinc-300 text-sm">{challenge.description}</p>
+            </div>
+          </div>
+        </button>
+      );
+    }
+
+    if (card.type === 'remove') {
+      return (
+        <button
+          onClick={() => onSelectCard(card)}
+          className="w-full bg-gradient-to-br from-red-900/30 to-red-950/30 rounded-lg p-6 border-2 border-red-700/50 hover:border-red-500 transition cursor-pointer"
+        >
+          <div className="flex gap-4 items-center">
+            <Trash2 className="text-red-500 flex-shrink-0" size={24} />
+            <div className="text-left">
+              <p className="text-sm font-semibold text-red-400 uppercase tracking-wide">
+                Remove Slot
+              </p>
+              <p className="text-zinc-300 text-sm">Clear a selection</p>
+            </div>
+          </div>
+        </button>
+      );
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black p-6">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">Draft Your Puzzle</h1>
+          <p className="text-zinc-400">Pick a seed song and 3 challenges. The game will find 25 similar songs for you to guess from.</p>
+        </div>
+
+        {/* Selections Display */}
+        <div className="bg-zinc-950 rounded-lg p-6 mb-8 border border-zinc-800">
+          <h2 className="text-lg font-bold text-white mb-4">Your Selections</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Seed Slot */}
+            <div className="bg-green-500/10 rounded-lg p-4 border border-green-500/30 min-h-24 flex items-center justify-center">
               {seed ? (
-                <div className="text-center">
-                  <Music className="w-6 h-6 text-white mx-auto mb-2" />
-                  <p className="text-white text-sm font-semibold">{seed.artists}</p>
-                  <p className="text-zinc-400 text-xs">{seed.track_name}</p>
+                <div
+                  onClick={() => removeMode && onRemoveSlot('seed')}
+                  className={removeMode ? 'cursor-pointer opacity-75 hover:opacity-100' : ''}
+                >
+                  <p className="text-sm text-green-400 font-semibold mb-1">Seed:</p>
+                  <p className="text-white font-bold">{formatArtists(seed.artists)}</p>
+                  <p className="text-green-300 text-sm">{seed.track_name}</p>
                 </div>
               ) : (
-                <p className="text-zinc-500 text-sm">Seed</p>
+                <p className="text-zinc-500 text-sm italic">Pick a seed song</p>
               )}
             </div>
-            
-            {challenges.map((challenge, idx) => (
-              <div 
-                key={idx}
-                onClick={() => removeMode && challenge && onRemoveSlot('challenge', idx)}
-                className={`p-4 rounded-lg border-2 ${
-                  removeMode && challenge ? 'bg-red-500/20 border-red-500 cursor-pointer' :
-                  challenge ? 'bg-green-500/20 border-green-500' : 'bg-zinc-800 border-zinc-700'
-                } min-h-[120px] flex items-center justify-center transition`}
-              >
-                {challenge ? (
-                  <div className="text-center">
-                    <Target className="w-6 h-6 text-white mx-auto mb-2" />
-                    <p className="text-white text-sm font-semibold">{challenge.name}</p>
-                    <p className="text-zinc-400 text-xs mt-1">{challenge.description}</p>
-                  </div>
-                ) : (
-                  <p className="text-zinc-500 text-sm">Challenge {idx + 1}</p>
-                )}
-              </div>
-            ))}
+
+            {/* Challenge Slots */}
+            <div className="space-y-2">
+              {challenges.map((challenge, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => removeMode && onRemoveSlot(`challenge-${idx}`)}
+                  className={`bg-amber-500/10 rounded-lg p-3 border border-amber-500/30 min-h-16 flex items-center justify-center ${
+                    removeMode ? 'cursor-pointer opacity-75 hover:opacity-100' : ''
+                  }`}
+                >
+                  {challenge ? (
+                    <div>
+                      <p className="text-sm text-amber-400 font-semibold">Challenge:</p>
+                      <p className="text-white font-bold">{challenge.name}</p>
+                    </div>
+                  ) : (
+                    <p className="text-zinc-500 text-sm italic">Pick a challenge</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {currentChoice && (
-          <div className="grid grid-cols-2 gap-6">
-            {[currentChoice.optionA, currentChoice.optionB].map((option, idx) => (
-              <button
-                key={idx}
-                onClick={() => onSelectCard(option)}
-                className={`p-8 rounded-lg border-2 hover:scale-105 transition ${
-                  option.type === 'song' 
-                    ? 'bg-green-500/10 border-green-500 hover:bg-green-500/20' 
-                    : option.type === 'challenge'
-                    ? 'bg-blue-500/10 border-blue-500 hover:bg-blue-500/20'
-                    : 'bg-red-500/10 border-red-500 hover:bg-red-500/20'
-                }`}
-              >
-                {option.type === 'song' ? (
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                      <Music className="w-12 h-12 text-white" />
-                      <PreviewPlayer song={option.data} />
-                    </div>
-                    <p className="text-white text-xl font-bold mb-2">{option.data.artists}</p>
-                    <p className="text-zinc-300 text-lg">{option.data.track_name}</p>
-                  </div>
-                ) : option.type === 'challenge' ? (
-                  <div className="text-center">
-                    <Target className="w-12 h-12 text-white mx-auto mb-4" />
-                    <p className="text-white text-xl font-bold mb-2">{option.data.name}</p>
-                    <p className="text-zinc-300 text-sm">{option.data.description}</p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Trash2 className="w-12 h-12 text-white mx-auto mb-4" />
-                    <p className="text-white text-xl font-bold">Remove</p>
-                    <p className="text-zinc-300 text-sm">Clear a slot</p>
-                  </div>
-                )}
-              </button>
-            ))}
+        {/* Choice Cards */}
+        <div className="mb-8">
+          <h2 className="text-lg font-bold text-white mb-4">Choose one:</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {currentChoice && (
+              <>
+                {renderCard(currentChoice.optionA, 'A')}
+                {renderCard(currentChoice.optionB, 'B')}
+              </>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Control Buttons */}
+        <div className="flex gap-4">
+          <button
+            onClick={() => onRemoveSlot(null)}
+            className={`flex-1 py-3 rounded-lg font-bold transition ${
+              removeMode
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-zinc-800 text-white hover:bg-zinc-700'
+            }`}
+          >
+            {removeMode ? '✓ Remove Mode ON' : 'Remove Selection'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
+export default DraftPhase;

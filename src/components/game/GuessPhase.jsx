@@ -1,8 +1,8 @@
-import React from 'react';
-import { Shuffle, Lightbulb } from 'lucide-react';
-import { PreviewPlayer } from '../ui/PreviewPlayer.jsx';
+import React, { useState } from 'react';
+import { Lightbulb, Shuffle } from 'lucide-react';
+import PreviewPlayer from '../ui/PreviewPlayer';
 
-export function GuessPhase({
+function GuessPhase({
   seed,
   seedHints,
   revealedHints,
@@ -19,190 +19,198 @@ export function GuessPhase({
   onGuess,
   onRefreshCandidates,
   onTextInput,
+  onSeeScore
 }) {
+  const [showAnimation, setShowAnimation] = useState(null);
+
+  const formatArtists = (artists) => {
+    if (typeof artists === 'string') return artists;
+    if (Array.isArray(artists)) return artists.join(', ');
+    return 'Unknown Artist';
+  };
+
+  const handleGuessWithAnimation = (song) => {
+    setShowAnimation(song.track_id);
+    setTimeout(() => setShowAnimation(null), 1500);
+    onGuess(song);
+  };
+
   return (
     <div className="min-h-screen bg-black p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-zinc-900 rounded-lg p-5 mb-6 border border-zinc-800">
-          <h3 className="text-2xl font-bold text-white mb-3">Seed Track</h3>
-          <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/30 flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-white text-xl font-bold">{seed.artists}</p>
-              <p className="text-zinc-300 text-lg">{seed.track_name}</p>
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">Guess the Playlist</h1>
+          <p className="text-zinc-400">Which songs belong on a radio station built around this seed track?</p>
+        </div>
+
+        {/* Seed Track - Now with Preview */}
+        <div className="bg-gradient-to-r from-green-500/10 to-green-500/5 rounded-lg p-6 mb-8 border border-green-500/30">
+          <p className="text-sm text-green-400 font-semibold uppercase tracking-wide mb-2">
+            Seed Track
+          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-grow min-w-0">
+              <p className="text-white font-bold text-lg truncate">{formatArtists(seed.artists)}</p>
+              <p className="text-green-300 text-sm truncate">{seed.track_name}</p>
             </div>
-            <PreviewPlayer song={seed} />
+            <PreviewPlayer song={seed} compact={true} />
           </div>
 
-          <div className="mt-4 p-4 bg-green-500/10 rounded-lg border border-green-500/30">
-            <p className="text-white text-sm font-semibold mb-2">Seed Hints (click to reveal):</p>
-            <div className="space-y-2">
+          {/* Seed Hints */}
+          <div className="mt-6 space-y-2 pt-6 border-t border-green-500/20">
+            <p className="text-xs text-green-400 font-semibold uppercase">Hints (click to reveal):</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {seedHints.map((hint, idx) => (
                 <button
                   key={idx}
                   onClick={() => onRevealHint(idx)}
                   disabled={revealedHints[idx]}
-                  className={`w-full text-left px-3 py-2 rounded text-sm transition ${
+                  className={`text-left px-3 py-2 rounded text-sm transition ${
                     revealedHints[idx]
-                      ? 'bg-green-500/20 text-white cursor-default'
-                      : 'bg-green-500/30 text-white hover:bg-green-500/40 cursor-pointer'
+                      ? 'bg-green-500/20 text-green-100 cursor-default'
+                      : 'bg-green-500/10 text-green-300 hover:bg-green-500/20'
                   }`}
                 >
-                  {revealedHints[idx] ? hint : `Hint ${idx + 1} (click to reveal)`}
+                  {revealedHints[idx] ? hint : `Hint ${idx + 1}`}
                 </button>
               ))}
             </div>
           </div>
+        </div>
 
-          <h3 className="text-2xl font-bold text-white mt-5 mb-3">Challenges</h3>
-          <div className="grid grid-cols-3 gap-3">
-            {challenges.map((challenge, idx) => (
-              <div 
-                key={idx}
-                className="p-3 rounded-lg border-2 min-h-[100px] bg-blue-500/20 border-blue-500"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-white font-semibold text-sm">{challenge.name}</p>
-                  <button
-                    onClick={() => onGetHint(idx)}
-                    className="hover:scale-110 transition"
-                  >
-                    <Lightbulb className="w-4 h-4 text-yellow-400" />
-                  </button>
-                </div>
-                <p className="text-zinc-400 text-xs">{challenge.description}</p>
-                {challengePlacements[idx] && (
-                  <div className="mt-2 pt-2 border-t border-blue-500/30">
-                    <p className="text-green-400 text-xs font-semibold">
-                      {guesses.find(g => g.id === challengePlacements[idx])?.artist}
-                    </p>
+        {/* Multiple Choice Quiz */}
+        <div className="bg-zinc-900 rounded-lg p-6 mb-8 border border-zinc-800">
+          <h2 className="text-lg font-bold text-white mb-4">Pick one:</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {multipleChoiceOptions.map((song) => {
+              const isAnimating = showAnimation === song.track_id;
+              return (
+                <button
+                  key={song.track_id}
+                  onClick={() => handleGuessWithAnimation(song)}
+                  className={`relative group bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-lg p-4 border-2 transition transform ${
+                    isAnimating
+                      ? 'scale-105 border-green-500 bg-green-500/20 animate-pulse'
+                      : 'border-zinc-700 hover:border-green-500'
+                  }`}
+                >
+                  {/* Play button - positioned to not interfere with text */}
+                  <div className="absolute top-3 right-3 z-20">
+                    <PreviewPlayer song={song} compact={true} />
                   </div>
-                )}
+
+                  {/* Content with padding for play button */}
+                  <div className="text-left pr-14">
+                    <p className="text-white font-bold truncate">{formatArtists(song.artists)}</p>
+                    <p className="text-zinc-300 text-sm truncate">{song.track_name}</p>
+                  </div>
+
+                  {/* Success animation */}
+                  {isAnimating && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-green-500/30 pointer-events-none">
+                      <div className="text-4xl animate-bounce">✓</div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Text Input Search */}
+        <div className="bg-zinc-900 rounded-lg p-6 mb-8 border border-zinc-800">
+          <h3 className="text-lg font-bold text-white mb-4">Or search manually:</h3>
+          <input
+            type="text"
+            value={textInput}
+            onChange={(e) => onTextInput(e.target.value)}
+            placeholder="Artist or song name..."
+            className="w-full bg-zinc-800 text-white px-4 py-3 rounded-lg border border-zinc-700 focus:border-green-500 focus:outline-none transition mb-3"
+          />
+          {textMatchedSong && (
+            <button
+              onClick={() => handleGuessWithAnimation(textMatchedSong)}
+              className="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-2 rounded-lg transition"
+            >
+              Guess: {formatArtists(textMatchedSong.artists)} - {textMatchedSong.track_name}
+            </button>
+          )}
+          {errorMessage && (
+            <p className="text-red-400 text-sm mt-2">{errorMessage}</p>
+          )}
+        </div>
+
+        {/* Challenges */}
+        <div className="bg-amber-500/10 rounded-lg p-6 mb-8 border border-amber-500/20">
+          <h3 className="text-lg font-bold text-white mb-3">Challenges (bonus points)</h3>
+          <p className="text-zinc-400 text-sm mb-4">
+            Guess songs that match these criteria to earn extra points. Your guesses will automatically be matched if they qualify.
+          </p>
+          <div className="space-y-2">
+            {challenges.map((challenge, idx) => (
+              <div key={idx} className="flex items-start gap-3">
+                <Lightbulb className="text-amber-500 flex-shrink-0 mt-1" size={18} />
+                <div>
+                  <p className="text-white font-semibold">{challenge.name}</p>
+                  <p className="text-amber-300 text-sm">{challenge.description}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-zinc-900 rounded-lg p-5 mb-4 border border-zinc-800">
-          <p className="text-white text-center text-lg mb-3">What other songs would be on a radio station for this song?</p>
-          
-          {multipleChoiceOptions.length > 0 && (
-            <div className="mb-4">
-              <div className="grid grid-cols-2 gap-2">
-                {multipleChoiceOptions.map((option, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onGuess(option)}
-                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-green-500 text-left p-3 rounded-lg transition flex items-start justify-between gap-2"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold text-sm">{option.artists}</p>
-                      <p className="text-zinc-400 text-xs truncate">{option.track_name}</p>
-                    </div>
-                    <PreviewPlayer song={option} compact />
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={onRefreshCandidates}
-                className="w-full mt-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 rounded-lg text-sm transition flex items-center justify-center gap-2"
-              >
-                <Shuffle className="w-4 h-4" />
-                Refresh Candidates
-              </button>
-            </div>
-          )}
-
-          <div className="relative">
-            <input
-              type="text"
-              value={textInput}
-              onChange={onTextInput}
-              placeholder="Or type an artist or song name..."
-              className="w-full px-4 py-3 rounded-lg bg-zinc-800 text-white placeholder-zinc-500 border border-zinc-700 focus:border-green-500 focus:outline-none"
-            />
-            {textMatchedSong && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-800 border border-green-500 rounded-lg p-3 flex items-start justify-between gap-2 z-10">
-                <button
-                  onClick={() => onGuess(textMatchedSong)}
-                  className="flex-1 text-left"
-                >
-                  <p className="text-white font-semibold text-sm">{textMatchedSong.artists}</p>
-                  <p className="text-zinc-400 text-xs">{textMatchedSong.track_name}</p>
-                </button>
-                <PreviewPlayer song={textMatchedSong} compact />
-              </div>
-            )}
-          </div>
-
-          {errorMessage && (
-            <div className="mt-4 p-3 bg-red-500/20 border border-red-500 rounded-lg">
-              <p className="text-red-300 text-sm">{errorMessage}</p>
-            </div>
-          )}
-
-          <div className="mt-4 text-center">
-            <p className="text-zinc-400 text-sm">Guesses left: {guessesLeft}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 mb-6">
-          {[...guesses].reverse().map(guess => {
-            const placedChallenges = challengePlacements
-              .map((gId, cIdx) => gId === guess.id ? cIdx : null)
-              .filter(c => c !== null);
-            
-            return (
-              <div
-                key={guess.id}
-                className={`p-3 rounded-lg border transition ${
-                  guess.incorrect 
-                    ? 'bg-red-500/10 border-red-500' 
-                    : 'bg-zinc-900 border-zinc-800'
-                }`}
-              >
-                <p className={`font-semibold text-sm ${guess.incorrect ? 'text-red-300' : 'text-white'}`}>
-                  {guess.artist} - {guess.song}
-                </p>
-                {guess.incorrect ? (
-                  <div className="mt-2">
-                    <p className="text-red-300/90 text-xs font-semibold mb-1">Not on playlist. Why?</p>
-                    <ul className="text-red-300/70 text-xs space-y-1">
-                      {guess.feedback.map((fb, idx) => (
-                        <li key={idx}>• {fb}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-zinc-400 text-xs">Base: {guess.basePoints} pts</p>
-                    {placedChallenges.length > 0 && (
-                      <div className="mt-2 flex gap-2 flex-wrap">
-                        {placedChallenges.map(challengeIdx => (
-                          <div 
-                            key={challengeIdx}
-                            className="bg-green-500/30 border border-green-500 px-2 py-1 rounded text-xs text-white font-semibold"
-                          >
-                            {challenges[challengeIdx].name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
+        {/* Guesses History */}
         {guesses.length > 0 && (
+          <div className="bg-zinc-900 rounded-lg p-6 mb-8 border border-zinc-800">
+            <h3 className="text-lg font-bold text-white mb-4">Your Guesses ({guesses.length})</h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {guesses.map((guess, idx) => (
+                <div
+                  key={idx}
+                  className={`flex items-center justify-between p-3 rounded-lg text-sm ${
+                    guess.onPlaylist
+                      ? 'bg-green-500/20 border border-green-500/50 text-green-100'
+                      : 'bg-red-500/20 border border-red-500/50 text-red-100'
+                  }`}
+                >
+                  <div>
+                    <p className="font-semibold">{formatArtists(guess.artists)}</p>
+                    <p className="text-xs opacity-75">{guess.track_name}</p>
+                  </div>
+                  <span className="font-bold">
+                    {guess.onPlaylist ? '✓ On Playlist' : '✗ Wrong'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-4">
           <button
-            onClick={() => window.dispatchEvent(new Event('showScore'))}
-            className="w-full bg-green-500 text-black py-4 rounded-full font-bold text-lg hover:bg-green-400 transition"
+            onClick={onRefreshCandidates}
+            className="flex-1 flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 rounded-lg transition"
+          >
+            <Shuffle size={18} />
+            Refresh Choices (1 guess)
+          </button>
+          <button
+            onClick={onSeeScore}
+            className="flex-1 bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-lg transition"
           >
             See Your Score
           </button>
-        )}
+        </div>
+
+        {/* Guesses Left */}
+        <div className="text-center mt-6 text-zinc-400">
+          <p>Guesses left: <span className="font-bold text-white">{guessesLeft}</span></p>
+        </div>
       </div>
     </div>
   );
 }
+
+export default GuessPhase;

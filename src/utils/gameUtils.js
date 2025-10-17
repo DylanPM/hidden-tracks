@@ -1,4 +1,5 @@
 export const calculateSimilarity = (song1, song2) => {
+  //todo: remove genre match or make it more general (not binary)
   const genreMatch = song1.track_genre === song2.track_genre ? 1 : 0.6;
   const energyDiff = Math.abs(song1.energy - song2.energy);
   const danceabilityDiff = Math.abs(song1.danceability - song2.danceability);
@@ -17,6 +18,7 @@ export const fuzzyMatch = (input, target) => {
   return clean(target).includes(clean(input));
 };
 
+//todo: improve hint generation (more variety, use more of the seed song features)
 export const generateSeedHints = (seedSong) => {
   const hints = [];
   let vague = '';
@@ -63,6 +65,7 @@ export const loadSpotifyDataset = async () => {
         artists: values[2]?.trim() || 'Unknown',
         track_name: values[4]?.trim() || 'Untitled',
         popularity: parseInt(values[5]) || 50,
+        //update to pick more popular songs by default?
         duration_ms: parseInt(values[6]) || 200000,
         explicit: values[7] === 'True',
         danceability: parseFloat(values[8]) || 0.5,

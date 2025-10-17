@@ -9,6 +9,9 @@ import { ScorePhase } from './components/game/ScorePhase';
 import { calculateSimilarity, fuzzyMatch, generateSeedHints, loadSpotifyDataset } from './utils/gameUtils';
 import { buildSpotifyProfile } from './utils/trackUtils';
 import { CHALLENGES } from './constants/gameConfig';
+import DraftPhase from './components/game/DraftPhase';
+import GuessPhase from './components/game/GuessPhase';
+import ScorePhase from './components/game/ScorePhase';
 
 function RadioPuzzleGame() {
   const [phase, setPhase] = useState('auth-check');
@@ -35,6 +38,65 @@ function RadioPuzzleGame() {
   
   const gameState = useGameState();
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
+
+  const handleRevealHint = (index) => {
+  const newRevealed = [...revealedHints];
+  newRevealed[index] = true;
+  setRevealedHints(newRevealed);
+};
+
+const handleRefreshCandidates = () => {
+  setGuessesLeft(prev => Math.max(0, prev - 1));
+  generateMultipleChoice();
+};
+
+const handleSeeScore = () => {
+  setPhase('score');
+};
+
+const handleRemoveSlot = (slotId) => {
+  if (slotId === null) {
+    setRemoveMode(!removeMode);
+  } else if (slotId === 'seed') {
+    removeSeed();
+    setRemoveMode(false);
+  } else if (slotId?.startsWith('challenge')) {
+    const idx = parseInt(slotId.split('-')[1]);
+    removeChallenge(idx);
+    if (challenges.filter(c => c !== null).length === 0) setRemoveMode(false);
+  }
+};
+  
+  
+  //todo: hints are too simple now, get more variety pre-baked
+
+  // Seed Hints
+const generateSeedHints = (seedSong) => {
+  // Hint 1: Emotional descriptor based on valence
+  let mood = '';
+  if (seedSong.valence > 0.7) {
+    mood = 'upbeat, feel-good energy';
+  } else if (seedSong.valence > 0.4) {
+    mood = 'balanced emotional tone';
+  } else {
+    mood = 'introspective, moody atmosphere';
+  }
+  const hint1 = `Vibes: ${mood}`;
+
+  // Hint 2: Genre and energy mix
+  const intensity = seedSong.energy > 0.7 ? 'high-intensity' : seedSong.energy > 0.4 ? 'moderate' : 'laid-back';
+  const hint2 = `${seedSong.track_genre} - ${intensity}`;
+
+  // Hint 3: Descriptive mix
+  let descriptor = '';
+  if (seedSong.acousticness > 0.5) descriptor = 'organic, acoustic-leaning';
+  else if (seedSong.danceability > 0.7) descriptor = 'highly danceable rhythms';
+  else if (seedSong.instrumentalness > 0.3) descriptor = 'instrumental-focused';
+  else descriptor = 'vocal-driven production';
+  const hint3 = `Character: ${descriptor}`;
+
+  return [hint1, hint2, hint3];
+};
 
   // Check for Spotify auth on load
   useEffect(() => {
@@ -500,41 +562,42 @@ function RadioPuzzleGame() {
     );
   }
 
-  if (phase === 'draft') {
-    return (
-      <DraftPhase
-        seed={gameState.state.seed}
-        challenges={gameState.state.challenges}
-        currentChoice={currentChoice}
-        removeMode={removeMode}
-        onSelectCard={selectCard}
-        onRemoveSlot={removeSlot}
-      />
-    );
-  }
+if (phase === 'draft') {
+  return (
+    <DraftPhase
+      seed={seed}
+      challenges={challenges}
+      currentChoice={currentChoice}
+      removeMode={removeMode}
+      onSelectCard={selectCard}
+      onRemoveSlot={handleRemoveSlot}
+    />
+  );
+}
 
-  if (phase === 'guess') {
-    return (
-      <GuessPhase
-        seed={gameState.state.seed}
-        seedHints={gameState.state.seedHints}
-        revealedHints={gameState.state.revealedHints}
-        challenges={gameState.state.challenges}
-        challengePlacements={gameState.state.challengePlacements}
-        multipleChoiceOptions={gameState.state.multipleChoiceOptions}
-        textInput={textInput}
-        textMatchedSong={textMatchedSong}
-        errorMessage={errorMessage}
-        guesses={gameState.state.guesses}
-        guessesLeft={guessesLeft}
-        onRevealHint={(idx) => gameState.revealHint(idx)}
-        onGetHint={getHint}
-        onGuess={handleGuess}
-        onRefreshCandidates={generateMultipleChoice}
-        onTextInput={handleTextInput}
-      />
-    );
-  }
+if (phase === 'guess') {
+  return (
+    <GuessPhase
+      seed={seed}
+      seedHints={seedHints}
+      revealedHints={revealedHints}
+      challenges={challenges}
+      challengePlacements={challengePlacements}
+      multipleChoiceOptions={multipleChoiceOptions}
+      textInput={textInput}
+      textMatchedSong={textMatchedSong}
+      errorMessage={errorMessage}
+      guesses={guesses}
+      guessesLeft={guessesLeft}
+      onRevealHint={handleRevealHint}
+      onGetHint={handleGetHint}
+      onGuess={handleGuess}
+      onRefreshCandidates={handleRefreshCandidates}
+      onTextInput={handleTextInput}
+      onSeeScore={handleSeeScore}
+    />
+  );
+}
 
   if (phase === 'score') {
     return (
