@@ -91,3 +91,4 @@ const PreviewPlayer = ({ song, compact = false }) => {
 };
 
 export default PreviewPlayer;
+export { PreviewPlayer };
