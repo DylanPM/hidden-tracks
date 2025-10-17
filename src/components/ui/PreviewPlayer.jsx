@@ -1,95 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Pause } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, X } from 'lucide-react';
 
-export function PreviewPlayer({ song, compact = false }) {
-  const [playing, setPlaying] = useState(false);
-  const [audio, setAudio] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(song?.preview_url || null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (audio) {
-        audio.pause();
-        audio.remove();
-      }
-    };
-  }, [audio]);
-
-  const fetchPreview = async () => {
-    if (previewUrl || loading || error) return;
-    
-    setLoading(true);
-    try {
-      const query = `artist:${song.artists} track:${song.track_name}`;
-      const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=1`, {
-        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('spotify_token') || '') }
-      });
-      
-      if (!response.ok) throw new Error('Search failed');
-      
-      const data = await response.json();
-      const preview = data.tracks?.items?.[0]?.preview_url;
-      
-      if (preview) {
-        setPreviewUrl(preview);
-      } else {
-        setError(true);
-      }
-    } catch (err) {
-      console.error('Preview fetch error:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const togglePlay = async (e) => {
-    e.stopPropagation();
-    
-    if (!previewUrl && !loading && !error) {
-      await fetchPreview();
-      return;
-    }
-    
-    if (!previewUrl || error) return;
-    
-    if (!audio) {
-      const newAudio = new Audio(previewUrl);
-      newAudio.addEventListener('ended', () => setPlaying(false));
-      setAudio(newAudio);
-      newAudio.play();
-      setPlaying(true);
-    } else if (playing) {
-      audio.pause();
-      setPlaying(false);
-    } else {
-      audio.play();
-      setPlaying(true);
-    }
-  };
-
-  if (error) {
-    return compact ? null : (
-      <div className="p-2 text-zinc-500 text-xs">No preview</div>
-    );
+const PreviewPlayer = ({ song, compact = false }) => {
+  const [showEmbed, setShowEmbed] = useState(false);
+  
+  if (!song || !song.track_id) {
+    return null;
   }
 
+  // For compact mode (inline button)
+  if (compact) {
+    return (
+      <>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowEmbed(!showEmbed);
+          }}
+          className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all duration-200"
+          aria-label={showEmbed ? "Close preview" : "Play preview"}
+        >
+          {showEmbed ? <X size={16} /> : <Play size={16} />}
+        </button>
+        
+        {showEmbed && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <div className="relative bg-gray-900 rounded-lg p-4 max-w-md w-full">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowEmbed(false);
+                }}
+                className="absolute top-2 right-2 p-2 bg-gray-800 hover:bg-gray-700 rounded-full z-10"
+              >
+                <X size={20} className="text-white" />
+              </button>
+              
+              <iframe
+                src={`https://open.spotify.com/embed/track/${song.track_id}?utm_source=generator&theme=0`}
+                width="100%"
+                height="152"
+                frameBorder="0"
+                allowFullScreen=""
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                className="rounded-lg"
+              />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+  
+  // For regular mode (larger button with embed below)
   return (
-    <div
-      onClick={togglePlay}
-      style={{ pointerEvents: loading ? 'none' : 'auto' }}
-      className={`${compact ? 'p-1.5' : 'p-2'} bg-green-500 hover:bg-green-400 rounded-full transition disabled:opacity-50 disabled:cursor-wait`}
-      title={loading ? 'Loading preview...' : playing ? 'Pause' : 'Play preview'}
-    >
-      {loading ? (
-        <div className={`${compact ? 'w-3 h-3' : 'w-4 h-4'} border-2 border-black border-t-transparent rounded-full animate-spin`} />
-      ) : playing ? (
-        <Pause className={`${compact ? 'w-3 h-3' : 'w-4 h-4'} text-black`} />
-      ) : (
-        <Play className={`${compact ? 'w-3 h-3' : 'w-4 h-4'} text-black`} />
+    <div className="w-full">
+      <button
+        onClick={() => setShowEmbed(!showEmbed)}
+        className="w-full p-3 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center gap-2 transition-all duration-200"
+      >
+        {showEmbed ? (
+          <>
+            <X size={20} />
+            <span>Close Preview</span>
+          </>
+        ) : (
+          <>
+            <Play size={20} />
+            <span>Play Preview</span>
+          </>
+        )}
+      </button>
+      
+      {showEmbed && (
+        <div className="mt-3 rounded-lg overflow-hidden">
+          <iframe
+            src={`https://open.spotify.com/embed/track/${song.track_id}?utm_source=generator&theme=0`}
+            width="100%"
+            height="152"
+            frameBorder="0"
+            allowFullScreen=""
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+          />
+        </div>
       )}
     </div>
   );
-}
+};
+
+export default PreviewPlayer;
