@@ -34,36 +34,72 @@ function RadioPuzzleGame() {
   const [textMatchedSong, setTextMatchedSong] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   
-  const gameState = useGameState();
-  const guessesLeft = maxGuesses - gameState.state.guesses.length;
+const gameState = useGameState();
 
-  const handleRevealHint = (index) => {
-  const newRevealed = [...revealedHints];
-  newRevealed[index] = true;
-  setRevealedHints(newRevealed);
+// Destructure state once at the top
+const {
+  seed,
+  challenges,
+  radioPlaylist,
+  guesses,
+  multipleChoiceOptions,
+  seedHints,
+  revealedHints,
+  challengePlacements,
+} = gameState.state;
+
+const guessesLeft = maxGuesses - guesses.length;
+
+const handleRevealHint = (index) => {
+  gameState.revealHint(index);
 };
 
 const handleRefreshCandidates = () => {
-  setGuessesLeft(prev => Math.max(0, prev - 1));
   generateMultipleChoice();
-};
-
-const handleSeeScore = () => {
-  setPhase('score');
 };
 
 const handleRemoveSlot = (slotId) => {
   if (slotId === null) {
     setRemoveMode(!removeMode);
   } else if (slotId === 'seed') {
-    removeSeed();
+    gameState.removeSeed();
     setRemoveMode(false);
   } else if (slotId?.startsWith('challenge')) {
     const idx = parseInt(slotId.split('-')[1]);
-    removeChallenge(idx);
-    if (challenges.filter(c => c !== null).length === 0) setRemoveMode(false);
+    gameState.removeChallenge(idx);
+    if (gameState.state.challenges.filter(c => c !== null).length === 0) {
+      setRemoveMode(false);
+    }
   }
 };
+
+//   const handleRevealHint = (index) => {
+//   const newRevealed = [...revealedHints];
+//   newRevealed[index] = true;
+//   setRevealedHints(newRevealed);
+// };
+
+// const handleRefreshCandidates = () => {
+//   setGuessesLeft(prev => Math.max(0, prev - 1));
+//   generateMultipleChoice();
+// };
+
+const handleSeeScore = () => {
+  setPhase('score');
+};
+
+// const handleRemoveSlot = (slotId) => {
+//   if (slotId === null) {
+//     setRemoveMode(!removeMode);
+//   } else if (slotId === 'seed') {
+//     removeSeed();
+//     setRemoveMode(false);
+//   } else if (slotId?.startsWith('challenge')) {
+//     const idx = parseInt(slotId.split('-')[1]);
+//     removeChallenge(idx);
+//     if (challenges.filter(c => c !== null).length === 0) setRemoveMode(false);
+//   }
+// };
   
   
   //todo: hints are too simple now, get more variety pre-baked
@@ -274,13 +310,13 @@ const generateSeedHints = (seedSong) => {
     }
   };
 
-  const removeSlot = (slotType, index = null) => {
-    if (slotType === 'seed') gameState.removeSeed();
-    else if (slotType === 'challenge' && index !== null) {
-      gameState.removeChallenge(index);
-    }
-    setRemoveMode(false);
-  };
+  // const removeSlot = (slotType, index = null) => {
+  //   if (slotType === 'seed') gameState.removeSeed();
+  //   else if (slotType === 'challenge' && index !== null) {
+  //     gameState.removeChallenge(index);
+  //   }
+  //   setRemoveMode(false);
+  // };
 
   const generateMultipleChoice = () => {
     let correctCount;
@@ -575,39 +611,38 @@ if (phase === 'draft') {
 
 if (phase === 'guess') {
   return (
-    <GuessPhase
-      seed={seed}
-      seedHints={seedHints}
-      revealedHints={revealedHints}
-      challenges={challenges}
-      challengePlacements={challengePlacements}
-      multipleChoiceOptions={multipleChoiceOptions}
-      textInput={textInput}
-      textMatchedSong={textMatchedSong}
-      errorMessage={errorMessage}
-      guesses={guesses}
-      guessesLeft={guessesLeft}
-      onRevealHint={handleRevealHint}
-      onGetHint={handleGetHint}
-      onGuess={handleGuess}
-      onRefreshCandidates={handleRefreshCandidates}
-      onTextInput={handleTextInput}
-      onSeeScore={handleSeeScore}
-    />
+<GuessPhase
+  seed={seed}
+  seedHints={seedHints}
+  revealedHints={revealedHints}
+  challenges={challenges}
+  challengePlacements={challengePlacements}
+  multipleChoiceOptions={multipleChoiceOptions}
+  textInput={textInput}
+  textMatchedSong={textMatchedSong}
+  errorMessage={errorMessage}
+  guesses={guesses}
+  guessesLeft={guessesLeft}
+  onRevealHint={(idx) => gameState.revealHint(idx)}
+  onGuess={handleGuess}
+  onRefreshCandidates={handleRefreshCandidates}
+  onTextInput={handleTextInput}
+  onSeeScore={() => setPhase('score')}
+/>
   );
 }
 
   if (phase === 'score') {
     return (
       <ScorePhase
-        guesses={gameState.state.guesses}
-        challengePlacements={gameState.state.challengePlacements}
-        challenges={gameState.state.challenges}
-        onPlayAgain={() => {
+        guesses={guesses}
+        challengePlacements={challengePlacements}
+        challenges={challenges}
+       onPlayAgain={() => {
           gameState.resetGame();
-          setPhase('setup');
-        }}
-      />
+          setPhase('profile-select');
+  }}
+/>
     );
   }
 
