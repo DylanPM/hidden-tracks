@@ -7,9 +7,9 @@ import { ProfileSummary } from './components/profile/ProfileSummary';
 import { calculateSimilarity, fuzzyMatch, generateSeedHints, loadSpotifyDataset } from './utils/gameUtils';
 import { buildSpotifyProfile } from './utils/trackUtils';
 import { CHALLENGES } from './constants/gameConfig';
-import DraftPhase from './components/game/DraftPhase';
-import GuessPhase from './components/game/GuessPhase';
-import ScorePhase from './components/game/ScorePhase';
+import { DraftPhase } from './components/game/DraftPhase';
+import { GuessPhase }  from './components/game/GuessPhase';
+import { ScorePhase } from './components/game/ScorePhase';
 
 function RadioPuzzleGame() {
   const [phase, setPhase] = useState('auth-check');

@@ -169,4 +169,4 @@ function DraftPhase({
   );
 }
 
-export default DraftPhase;
+export { DraftPhase };

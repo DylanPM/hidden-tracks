@@ -213,4 +213,4 @@ function GuessPhase({
   );
 }
 
-export default GuessPhase;
+export { GuessPhase };
