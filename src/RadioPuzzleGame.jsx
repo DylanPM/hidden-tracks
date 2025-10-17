@@ -3,9 +3,7 @@ import { useGameState } from './hooks/useGameState';
 import { ProfileSelect } from './components/profile/ProfileSelect';
 import { TasteBuilder, buildProfileFromPath } from './components/profile/TasteBuilder';
 import { ProfileSummary } from './components/profile/ProfileSummary';
-import { DraftPhase } from './components/game/DraftPhase';
-import { GuessPhase } from './components/game/GuessPhase';
-import { ScorePhase } from './components/game/ScorePhase';
+//there used to be draft phase guess phase and scaore phase here with { } but moved when cluade added new handlers i tihnk
 import { calculateSimilarity, fuzzyMatch, generateSeedHints, loadSpotifyDataset } from './utils/gameUtils';
 import { buildSpotifyProfile } from './utils/trackUtils';
 import { CHALLENGES } from './constants/gameConfig';
