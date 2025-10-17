@@ -19,6 +19,7 @@ export function GuessPhase({
   onGuess,
   onRefreshCandidates,
   onTextInput,
+  onSeeScore,
 }) {
   return (
     <div className="min-h-screen bg-black p-6">
@@ -196,10 +197,10 @@ export function GuessPhase({
 
         {guesses.length > 0 && (
           <button
-            onClick={() => window.dispatchEvent(new Event('showScore'))}
-            className="w-full bg-green-500 text-black py-4 rounded-full font-bold text-lg hover:bg-green-400 transition"
-          >
-            See Your Score
+            onClick={onSeeScore}
+            className="w-full mt-4 bg-green-500 text-black py-3 rounded-lg font-bold text-lg hover:bg-green-400 transition"
+            >
+              See Your Score
           </button>
         )}
       </div>

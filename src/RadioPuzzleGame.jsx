@@ -10,6 +10,8 @@ import { calculateSimilarity, fuzzyMatch, generateSeedHints, loadSpotifyDataset 
 import { buildSpotifyProfile } from './utils/trackUtils';
 import { CHALLENGES } from './constants/gameConfig';
 
+const DEMO_MODE = true;
+
 function RadioPuzzleGame() {
   const [phase, setPhase] = useState('auth-check');
   const [spotifyToken, setSpotifyToken] = useState(null);
@@ -35,6 +37,26 @@ function RadioPuzzleGame() {
   
   const gameState = useGameState();
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
+  
+  useEffect(() => {
+  if (phase === 'guess' && guessesLeft <= 0) {
+    setPhase('score');
+  }
+}, [phase, guessesLeft]);
+
+
+  if (DEMO_MODE) {
+  setPhase('profile-select'); // skip auth-check entirely
+  return;
+}
+
+// Automatically go to score when no guesses remain
+useEffect(() => {
+  if (phase === 'guess' && guessesLeft <= 0) {
+    setPhase('score');
+  }
+}, [phase, guessesLeft]);
+
 
   // Check for Spotify auth on load
   useEffect(() => {
@@ -532,6 +554,7 @@ function RadioPuzzleGame() {
         onGuess={handleGuess}
         onRefreshCandidates={generateMultipleChoice}
         onTextInput={handleTextInput}
+        onSeeScore={() => setPhase('score')}
       />
     );
   }
@@ -556,5 +579,21 @@ function RadioPuzzleGame() {
     </div>
   );
 }
+
+// Resize iframe dynamically
+useEffect(() => {
+  const resize = () => {
+    const height = document.documentElement.scrollHeight;
+    window.parent?.postMessage({ type: 'resize', height }, '*');
+  };
+  resize();
+  window.addEventListener('resize', resize);
+  const observer = new MutationObserver(resize);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => {
+    window.removeEventListener('resize', resize);
+    observer.disconnect();
+  };
+}, [phase]);
 
 export default RadioPuzzleGame;

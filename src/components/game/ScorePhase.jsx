@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
+
+
 
 export function ScorePhase({ guesses, challengePlacements, challenges, onPlayAgain }) {
   const correctGuesses = guesses.filter(g => !g.incorrect);
@@ -13,6 +15,25 @@ export function ScorePhase({ guesses, challengePlacements, challenges, onPlayAga
       }
     });
   });
+
+  // Fire confetti once when the score screen mounts.
+// The ref prevents double-firing in React Strict Mode (dev only).
+const firedRef = useRef(false);
+
+useEffect(() => {
+  if (firedRef.current) return;
+  firedRef.current = true;
+
+  (async () => {
+    const { default: confetti } = await import('canvas-confetti');
+    // First burst
+    confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+    // Follow-up puff
+    setTimeout(() => {
+      confetti({ particleCount: 60, startVelocity: 45, scalar: 0.9, origin: { y: 0.6 } });
+    }, 300);
+  })();
+}, []);
 
   return (
     <div className="min-h-screen bg-black p-6">
