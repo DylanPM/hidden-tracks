@@ -38,18 +38,22 @@ function RadioPuzzleGame() {
   const gameState = useGameState();
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
   
-  useEffect(() => {
-  if (phase === 'guess' && guessesLeft <= 0) {
-    setPhase('score');
-  }
-}, [phase, guessesLeft]);
-
-
-  if (DEMO_MODE) {
-  setPhase('profile-select'); // skip auth-check entirely
-  return;
-}
-
+// Resize iframe dynamically
+useEffect(() => {
+  const resize = () => {
+    const height = document.documentElement.scrollHeight;
+    window.parent?.postMessage({ type: 'resize', height }, '*');
+  };
+  resize();
+  window.addEventListener('resize', resize);
+  const observer = new MutationObserver(resize);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => {
+    window.removeEventListener('resize', resize);
+    observer.disconnect();
+  };
+}, [phase]);
+  
 // Automatically go to score when no guesses remain
 useEffect(() => {
   if (phase === 'guess' && guessesLeft <= 0) {
@@ -57,23 +61,28 @@ useEffect(() => {
   }
 }, [phase, guessesLeft]);
 
+// Skip OAuth path entirely for demo builds, otherwise run normal auth check
+useEffect(() => {
+  if (DEMO_MODE) {
+    setPhase('profile-select');
+    return;
+  }
 
-  // Check for Spotify auth on load
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('spotify_token');
-      if (token) {
-        setSpotifyToken(token);
-        await fetchSpotifyProfile(token);
-      } else {
-        setPhase('profile-select');
-      }
-    };
-    
-    if (phase === 'auth-check') {
-      checkAuth();
+  const checkAuth = async () => {
+    const token = localStorage.getItem('spotify_token');
+    if (token) {
+      setSpotifyToken(token);
+      await fetchSpotifyProfile(token);
+    } else {
+      setPhase('profile-select');
     }
-  }, [phase]);
+  };
+
+  if (phase === 'auth-check') {
+    checkAuth();
+  }
+}, [phase]);
+
 
   const fetchSpotifyProfile = async (token) => {
     try {
@@ -580,20 +589,5 @@ useEffect(() => {
   );
 }
 
-// Resize iframe dynamically
-useEffect(() => {
-  const resize = () => {
-    const height = document.documentElement.scrollHeight;
-    window.parent?.postMessage({ type: 'resize', height }, '*');
-  };
-  resize();
-  window.addEventListener('resize', resize);
-  const observer = new MutationObserver(resize);
-  observer.observe(document.body, { childList: true, subtree: true });
-  return () => {
-    window.removeEventListener('resize', resize);
-    observer.disconnect();
-  };
-}, [phase]);
 
 export default RadioPuzzleGame;
