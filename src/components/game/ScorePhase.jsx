@@ -34,3 +34,4 @@ export function ScorePhase({ guesses, challengePlacements, challenges, onPlayAga
     </div>
   );
 } 
+export default ScorePhase;
