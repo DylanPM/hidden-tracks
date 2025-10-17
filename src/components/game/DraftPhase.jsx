@@ -1,4 +1,15 @@
+import React from 'react';
+import { Music, Target, Trash2 } from 'lucide-react';
+import PreviewPlayer from '../ui/PreviewPlayer';
 
+function DraftPhase({
+  seed,
+  challenges,
+  currentChoice,
+  removeMode,
+  onSelectCard,
+  onRemoveSlot
+}) {
   const formatArtists = (artists) => {
     if (typeof artists === 'string') return artists;
     if (Array.isArray(artists)) return artists.join(', ');
