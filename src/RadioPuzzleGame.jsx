@@ -13,7 +13,7 @@ import { CHALLENGES } from './constants/gameConfig';
 const DEMO_MODE = true;
 
 function RadioPuzzleGame() {
-  const [phase, setPhase] = useState('auth-check');
+  const [phase, setPhase] = useState(DEMO_MODE ? 'profile-select' : 'auth-check');
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [allSongs, setAllSongs] = useState([]);
   const [tasteProfile, setTasteProfile] = useState(null);
@@ -37,6 +37,7 @@ function RadioPuzzleGame() {
   
   const gameState = useGameState();
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
+  
   
 // Resize iframe dynamically
 useEffect(() => {
@@ -63,10 +64,7 @@ useEffect(() => {
 
 // Skip OAuth path entirely for demo builds, otherwise run normal auth check
 useEffect(() => {
-  if (DEMO_MODE) {
-    setPhase('profile-select');
-    return;
-  }
+  if (DEMO_MODE) return;
 
   const checkAuth = async () => {
     const token = localStorage.getItem('spotify_token');
