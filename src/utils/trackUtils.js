@@ -1,3 +1,5 @@
+import { mapRows } from './slimProfile';
+
 export const normalizeTrack = (track) => {
   if (!track) return null;
   
@@ -205,4 +207,43 @@ export const buildSpotifyProfile = (tracks, features) => {
     console.error('Error building Spotify profile:', error);
     return null;
   }
+};
+
+export const profileTracksToGameTracks = (decodedTracks) => {
+  return decodedTracks.map(track => ({
+    // Map profile format → game format
+    track_id: track.id,
+    artists: track.artist || 'Unknown',
+    track_name: track.name || 'Untitled',
+    popularity: track.popularity || 50,
+    year: track.year,
+    
+    // Audio features (already dequantized by slimProfile.js)
+    energy: track.energy ?? 0.5,
+    danceability: track.danceability ?? 0.5,
+    valence: track.valence ?? 0.5,
+    tempo: track.tempo ?? 120,
+    acousticness: track.acousticness ?? 0.5,
+    instrumentalness: track.instrumentalness ?? 0,
+    liveness: track.liveness ?? 0.1,
+    speechiness: track.speechiness ?? 0.05,
+    key: track.key ?? 0,
+    loudness: track.loudness_db ?? -10,
+    mode: track.mode ?? 1,
+    time_signature: track.time_signature ?? 4,
+    
+    // New metadata for enhanced gameplay
+    similarity: track.sim_overall ?? 0,
+    radio_fit: track.radio_fit ?? 0,
+    clarity: track.clarity ?? 0,
+    sim_components: track.sim_components || {},
+    era_distance: track.era_distance,
+    same_artist: track.same_artist,
+    
+    // Standard fields
+    duration_ms: track.duration_ms || 200000,
+    explicit: track.flags?.explicit || false,
+    preview_url: null,
+    track_genre: 'unknown',
+  }));
 };

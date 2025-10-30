@@ -3,22 +3,29 @@ import { useGameState } from './hooks/useGameState';
 import { ProfileSelect } from './components/profile/ProfileSelect';
 import { TasteBuilder, buildProfileFromPath } from './components/profile/TasteBuilder';
 import { ProfileSummary } from './components/profile/ProfileSummary';
+import { GenreConstellationSelect } from './components/game/GenreConstellationSelect';
 import { DraftPhase } from './components/game/DraftPhase';
 import { GuessPhase } from './components/game/GuessPhase';
 import { ScorePhase } from './components/game/ScorePhase';
 import { calculateSimilarity, fuzzyMatch, generateSeedHints, loadSpotifyDataset } from './utils/gameUtils';
 import { buildSpotifyProfile } from './utils/trackUtils';
 import { CHALLENGES } from './constants/gameConfig';
+import { mapRows } from './utils/slimProfile';
+import { profileTracksToGameTracks } from './utils/trackUtils';
 
 const DEMO_MODE = true;
 
 function RadioPuzzleGame() {
-  const [phase, setPhase] = useState(DEMO_MODE ? 'profile-select' : 'auth-check');
+  const [phase, setPhase] = useState('constellation'); // NEW: Start with constellation
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [allSongs, setAllSongs] = useState([]);
   const [tasteProfile, setTasteProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState(null);
+  
+  // NEW: Constellation selection state
+  const [selectedTracks, setSelectedTracks] = useState([]);
+  const [difficulty, setDifficulty] = useState('medium');
   
   // Taste builder state
   const [tasteBuilderRound, setTasteBuilderRound] = useState(1);
@@ -105,6 +112,8 @@ useEffect(() => {
       });
       
       const featuresData = await featuresResponse.json();
+
+      //building profile here
       const profile = buildSpotifyProfile(tracksData.items, featuresData.audio_features);
       
       if (!profile) {
@@ -122,15 +131,86 @@ useEffect(() => {
     }
   };
 
+  // // Load dataset when entering loading phase
+  // useEffect(() => {
+  //   if (phase === 'loading' && allSongs.length === 0) {
+  //     loadSpotifyDataset().then(songs => {
+  //       setAllSongs(songs);
+  //       setPhase('setup');
+  //     });
+  //   }
+  // }, [phase, allSongs.length]);
+
   // Load dataset when entering loading phase
-  useEffect(() => {
-    if (phase === 'loading' && allSongs.length === 0) {
-      loadSpotifyDataset().then(songs => {
-        setAllSongs(songs);
-        setPhase('setup');
-      });
+useEffect(() => {
+  if (phase === 'loading') {
+    // For now, hardcode loading Stevie Wonder profile
+    loadAndDecodeProfile('stevie-wonder');
+  }
+}, [phase]);
+
+  //new function to load and decode profile starts here
+
+  const loadAndDecodeProfile = async (profileFileName) => {
+  try {
+    setPhase('loading');
+    
+    // Fetch the profile JSON
+    const response = await fetch(`/profiles/${profileFileName}.json`);
+    if (!response.ok) {
+      throw new Error(`Failed to load profile: ${response.status}`);
     }
-  }, [phase, allSongs.length]);
+    
+    const slimProfile = await response.json();
+    
+    // Decode all rows using slimProfile.js helper
+    const decodedTracks = mapRows(slimProfile);
+    
+    // Convert to game format
+    const gameTracks = profileTracksToGameTracks(decodedTracks);
+    
+    // First track is always the seed
+    const seedSong = gameTracks[0];
+    
+    // Rest are the radio playlist (similar songs)
+    const radioPlaylist = gameTracks.slice(1);
+    
+    // Set game state
+    // setSeed(seedSong);
+    // setRadioPlaylist(radioPlaylist);
+    gameState.setSeed(seedSong);
+    gameState.setRadioPlaylist(radioPlaylist);
+    
+    // Store all tracks for potential text search
+    setAllSongs(gameTracks);
+    
+    console.log('Profile loaded:', {
+      seed: seedSong.track_name,
+      playlistSize: radioPlaylist.length,
+      sampleTrack: radioPlaylist[0]
+    });
+    
+    // Move to guess phase (skip draft since seed is pre-chosen)
+    setPhase('guess');
+    
+  } catch (error) {
+    console.error('Error loading profile:', error);
+    setPhase('setup'); // Fallback to setup if load fails
+  }
+};
+
+// NEW: Handle constellation launch
+const handleConstellationLaunch = (tracks, selectedDifficulty) => {
+  console.log('Constellation launch:', { tracks, selectedDifficulty });
+  setSelectedTracks(tracks);
+  setDifficulty(selectedDifficulty);
+  
+  // For now, just move to draft phase
+  // In Milestone 2, we'll load the profile here
+  setPhase('draft');
+};
+
+//new function to load and decode profile ends here
 
   // Generate choice when in draft phase
   useEffect(() => {
@@ -462,6 +542,10 @@ useEffect(() => {
   };
 
   // Phase rendering
+  if (phase === 'constellation') {
+    return <GenreConstellationSelect onLaunch={handleConstellationLaunch} />;
+  }
+
   if (phase === 'profile-select') {
     return (
       <ProfileSelect
