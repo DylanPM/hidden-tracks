@@ -157,7 +157,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       </div>
     );
   }
-  git 
+  
   const children = getChildren();
   const seeds = getSeeds();
   const currentGenre = navigationPath.length > 0 
