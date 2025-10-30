@@ -19,6 +19,52 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Selection state
   const [difficulty, setDifficulty] = useState('medium');
   const [selectedTrack, setSelectedTrack] = useState(null); // For leaf nodes only
+  const [launchAnimation, setLaunchAnimation] = useState(false); // For button animation
+  
+  /**
+   * Generate a brief description for a genre
+   */
+  const getGenreDescription = (genreName) => {
+    const descriptions = {
+      // Top level
+      'rock': 'High-energy anthems and guitar-driven classics',
+      'electronic': 'Synthesized beats and digital soundscapes',
+      'hip hop': 'Rhythmic vocals and urban storytelling',
+      'pop': 'Catchy melodies and mainstream appeal',
+      'jazz': 'Improvisational artistry and swing rhythms',
+      'country': 'Heartfelt stories with acoustic roots',
+      'r&b': 'Soulful vocals and smooth grooves',
+      'latin': 'Vibrant rhythms from Latin America',
+      'classical': 'Orchestral masterpieces and timeless compositions',
+      'indie': 'Independent spirit and alternative sounds',
+      'folk': 'Acoustic storytelling and traditional melodies',
+      'blues': 'Emotional depth and twelve-bar progressions',
+      
+      // Common subgenres
+      'metal': 'Heavy riffs and intense energy',
+      'punk': 'Raw power and rebellious attitude',
+      'alternative': 'Non-mainstream rock experimentation',
+      'house': 'Four-on-the-floor beats and club energy',
+      'techno': 'Hypnotic rhythms and futuristic sounds',
+      'trap': 'Hard-hitting 808s and hi-hats',
+      'funk': 'Groovy bass lines and rhythmic emphasis',
+      'soul': 'Emotional vocals and gospel influences',
+      'reggae': 'Laid-back rhythms from Jamaica',
+      'bossa nova': 'Smooth Brazilian jazz fusion',
+      'bluegrass': 'Fast-paced acoustic picking',
+      'indie rock': 'Guitar-driven independent music',
+      'singer-songwriter': 'Personal lyrics and intimate performances',
+    };
+    
+    // Return specific description or generate generic one
+    const lowerGenre = genreName.toLowerCase();
+    if (descriptions[lowerGenre]) {
+      return descriptions[lowerGenre];
+    }
+    
+    // Generic fallback
+    return `Explore the sounds of ${genreName}`;
+  };
   
   // Load manifest on mount
   useEffect(() => {
@@ -95,6 +141,12 @@ export function GenreConstellationSelect({ onLaunch }) {
   const handleGenreClick = (key) => {
     setNavigationPath([...navigationPath, key]);
     setSelectedTrack(null); // Clear track selection when navigating
+    
+    // Trigger launch animation if new node is launchable
+    setTimeout(() => {
+      setLaunchAnimation(true);
+      setTimeout(() => setLaunchAnimation(false), 600);
+    }, 100);
   };
   
   /**
@@ -102,6 +154,10 @@ export function GenreConstellationSelect({ onLaunch }) {
    */
   const handleTrackClick = (track) => {
     setSelectedTrack(track);
+    
+    // Trigger launch animation
+    setLaunchAnimation(true);
+    setTimeout(() => setLaunchAnimation(false), 600);
   };
   
   /**
@@ -166,8 +222,12 @@ export function GenreConstellationSelect({ onLaunch }) {
   
   // Calculate circle positions to avoid overlap
   const numCircles = children.length > 0 ? children.length : seeds.length;
-  const baseRadius = Math.min(200, 150 + numCircles * 5); // Expand radius with more items
-  const circleRadius = Math.max(40, 80 - numCircles * 2); // Shrink circles with more items
+  const baseRadius = Math.min(220, 160 + numCircles * 5); // Expand radius with more items
+  
+  // Make circles bigger for tracks (need room for artist + song)
+  const circleRadius = children.length > 0 
+    ? Math.max(45, 85 - numCircles * 2)  // Genre circles
+    : Math.max(55, 95 - numCircles * 2); // Track circles (bigger)
   
   return (
     <div className="min-h-screen bg-zinc-950 text-white relative">
@@ -175,13 +235,13 @@ export function GenreConstellationSelect({ onLaunch }) {
       {navigationPath.length > 0 && (
         <button
           onClick={handleBack}
-          className="fixed left-0 top-0 h-full w-24 bg-gradient-to-r from-zinc-900 to-transparent 
-                     flex items-center justify-start pl-4 hover:from-zinc-800 transition-all z-10
+          className="fixed left-0 top-0 h-full w-32 bg-gradient-to-r from-green-900/40 to-transparent 
+                     flex items-center justify-start pl-6 hover:from-green-800/60 transition-all z-10
                      group"
         >
-          <div className="flex flex-col items-center gap-2">
-            <ChevronLeft size={48} className="text-zinc-600 group-hover:text-white transition-colors" />
-            <span className="text-zinc-600 group-hover:text-white text-xs font-medium rotate-[-90deg] whitespace-nowrap">
+          <div className="flex flex-col items-center gap-3">
+            <ChevronLeft size={64} className="text-green-500 group-hover:text-green-400 transition-colors" />
+            <span className="text-green-500 group-hover:text-green-400 text-sm font-bold rotate-[-90deg] whitespace-nowrap">
               BACK
             </span>
           </div>
@@ -194,7 +254,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         <div className="relative w-full max-w-4xl">
           <svg width="100%" height="600" viewBox="0 0 800 600" className="overflow-visible">
             {/* Center launch button */}
-            <g>
+            <g className={launchAnimation ? 'animate-bounce-subtle' : ''}>
               <circle
                 cx="400"
                 cy="300"
@@ -202,8 +262,13 @@ export function GenreConstellationSelect({ onLaunch }) {
                 fill={canLaunch() ? "#22c55e" : "#27272a"}
                 stroke={canLaunch() ? "#16a34a" : "#3f3f46"}
                 strokeWidth="4"
-                className={canLaunch() ? "cursor-pointer" : "cursor-not-allowed"}
+                className={canLaunch() ? "cursor-pointer transition-all" : "cursor-not-allowed transition-all"}
                 onClick={canLaunch() ? handleLaunch : undefined}
+                style={{
+                  transform: launchAnimation ? 'scale(1.1)' : 'scale(1)',
+                  transformOrigin: '400px 300px',
+                  transition: 'transform 0.3s ease-out'
+                }}
               />
               <text
                 x="400"
@@ -293,6 +358,16 @@ export function GenreConstellationSelect({ onLaunch }) {
                 const cy = 300 + Math.sin(angle) * baseRadius;
                 const isSelected = selectedTrack?.uri === track.uri;
                 
+                // Smarter text truncation
+                const maxArtistLen = 16;
+                const maxSongLen = 18;
+                const artistText = track.artist.length > maxArtistLen 
+                  ? track.artist.substring(0, maxArtistLen) + '...' 
+                  : track.artist;
+                const songText = track.name.length > maxSongLen 
+                  ? track.name.substring(0, maxSongLen) + '...' 
+                  : track.name;
+                
                 return (
                   <g
                     key={track.uri}
@@ -310,26 +385,26 @@ export function GenreConstellationSelect({ onLaunch }) {
                     />
                     <text
                       x={cx}
-                      y={cy - 12}
+                      y={cy - 14}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="white"
-                      fontSize="12"
+                      fontSize="13"
                       fontWeight="600"
                       className="pointer-events-none"
                     >
-                      {track.artist.length > 18 ? track.artist.substring(0, 18) + '...' : track.artist}
+                      {artistText}
                     </text>
                     <text
                       x={cx}
-                      y={cy + 8}
+                      y={cy + 10}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#a1a1aa"
-                      fontSize="10"
+                      fontSize="11"
                       className="pointer-events-none"
                     >
-                      {track.name.length > 20 ? track.name.substring(0, 20) + '...' : track.name}
+                      {songText}
                     </text>
                   </g>
                 );
@@ -343,6 +418,9 @@ export function GenreConstellationSelect({ onLaunch }) {
           <div className="mt-8 text-center animate-fade-in">
             <div className="text-2xl font-bold mb-2">
               Launch {currentGenre.charAt(0).toUpperCase() + currentGenre.slice(1)} Puzzle
+            </div>
+            <div className="text-zinc-300 text-lg mb-3 italic">
+              {getGenreDescription(currentGenre)}
             </div>
             <div className="text-zinc-400 mb-6">
               {seeds.length} track{seeds.length !== 1 ? 's' : ''} available

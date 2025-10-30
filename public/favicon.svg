@@ -1,0 +1,16 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark background circle -->
+  <circle cx="16" cy="16" r="16" fill="#09090b"/>
+  
+  <!-- Radio waves (hidden/fading effect) -->
+  <path d="M 8 16 Q 8 12, 10 10" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.3" fill="none" stroke-linecap="round"/>
+  <path d="M 24 16 Q 24 12, 22 10" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.3" fill="none" stroke-linecap="round"/>
+  
+  <!-- Musical note (eighth note) -->
+  <circle cx="14" cy="22" r="3" fill="#22c55e"/>
+  <rect x="16.5" y="9" width="2" height="13" fill="#22c55e" rx="1"/>
+  <path d="M 18.5 9 L 23 11 L 23 14 L 18.5 12 Z" fill="#22c55e"/>
+  
+  <!-- Subtle "hidden" element - partially transparent overlay -->
+  <path d="M 11 16 L 13 18 L 11 20 L 9 18 Z" fill="#22c55e" opacity="0.4"/>
+</svg>
