@@ -157,73 +157,130 @@ export function GenreConstellationSelect({ onLaunch }) {
       </div>
     );
   }
-  
+  git 
   const children = getChildren();
   const seeds = getSeeds();
-  const currentPath = navigationPath.join(' → ') || 'Select a Genre';
+  const currentGenre = navigationPath.length > 0 
+    ? navigationPath[navigationPath.length - 1] 
+    : 'a genre';
+  
+  // Calculate circle positions to avoid overlap
+  const numCircles = children.length > 0 ? children.length : seeds.length;
+  const baseRadius = Math.min(200, 150 + numCircles * 5); // Expand radius with more items
+  const circleRadius = Math.max(40, 80 - numCircles * 2); // Shrink circles with more items
   
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-8">
-      {/* Header with back button */}
-      <div className="max-w-6xl mx-auto mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            {navigationPath.length > 0 && (
-              <button
-                onClick={handleBack}
-                className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-2"
-              >
-                <ChevronLeft size={20} />
-                Back
-              </button>
-            )}
-            <h1 className="text-3xl font-bold">{currentPath}</h1>
+    <div className="min-h-screen bg-zinc-950 text-white relative">
+      {/* Giant back button - left half of screen */}
+      {navigationPath.length > 0 && (
+        <button
+          onClick={handleBack}
+          className="fixed left-0 top-0 h-full w-24 bg-gradient-to-r from-zinc-900 to-transparent 
+                     flex items-center justify-start pl-4 hover:from-zinc-800 transition-all z-10
+                     group"
+        >
+          <div className="flex flex-col items-center gap-2">
+            <ChevronLeft size={48} className="text-zinc-600 group-hover:text-white transition-colors" />
+            <span className="text-zinc-600 group-hover:text-white text-xs font-medium rotate-[-90deg] whitespace-nowrap">
+              BACK
+            </span>
           </div>
-          
-          <Music className="text-green-500" size={32} />
-        </div>
-      </div>
+        </button>
+      )}
       
-      {/* Main content area */}
-      <div className="max-w-6xl mx-auto">
-        {/* SVG Canvas for circles */}
-        <div className="bg-zinc-900 rounded-lg p-8 mb-8 min-h-[500px] flex items-center justify-center">
-          <svg width="100%" height="500" viewBox="0 0 800 500">
-            {/* Render children as circles */}
+      {/* Main content */}
+      <div className="flex flex-col items-center justify-center min-h-screen p-8">
+        {/* SVG Canvas */}
+        <div className="relative w-full max-w-4xl">
+          <svg width="100%" height="600" viewBox="0 0 800 600" className="overflow-visible">
+            {/* Center launch button */}
+            <g>
+              <circle
+                cx="400"
+                cy="300"
+                r="100"
+                fill={canLaunch() ? "#22c55e" : "#27272a"}
+                stroke={canLaunch() ? "#16a34a" : "#3f3f46"}
+                strokeWidth="4"
+                className={canLaunch() ? "cursor-pointer" : "cursor-not-allowed"}
+                onClick={canLaunch() ? handleLaunch : undefined}
+              />
+              <text
+                x="400"
+                y="290"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={canLaunch() ? "white" : "#52525b"}
+                fontSize="24"
+                fontWeight="bold"
+                className="pointer-events-none uppercase"
+              >
+                Launch
+              </text>
+              <text
+                x="400"
+                y="315"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={canLaunch() ? "white" : "#52525b"}
+                fontSize="16"
+                className="pointer-events-none capitalize"
+              >
+                {currentGenre}
+              </text>
+            </g>
+            
+            {/* Render genre children as circles orbiting center */}
             {children.map((child, index) => {
-              const angle = (index / children.length) * 2 * Math.PI;
-              const radius = 150;
-              const cx = 400 + Math.cos(angle) * radius;
-              const cy = 250 + Math.sin(angle) * radius;
-              const circleRadius = 60;
+              const angle = (index / children.length) * 2 * Math.PI - Math.PI / 2;
+              const cx = 400 + Math.cos(angle) * baseRadius;
+              const cy = 300 + Math.sin(angle) * baseRadius;
+              
+              // Word wrap for long genre names
+              const words = child.key.split(' ');
+              const lines = [];
+              let currentLine = '';
+              
+              words.forEach(word => {
+                if ((currentLine + ' ' + word).length > 12) {
+                  if (currentLine) lines.push(currentLine);
+                  currentLine = word;
+                } else {
+                  currentLine = currentLine ? currentLine + ' ' + word : word;
+                }
+              });
+              if (currentLine) lines.push(currentLine);
               
               return (
                 <g
                   key={child.key}
                   onClick={() => handleGenreClick(child.key)}
-                  className="cursor-pointer"
-                  style={{ transition: 'all 0.2s' }}
+                  className="cursor-pointer transition-all"
                 >
                   <circle
                     cx={cx}
                     cy={cy}
                     r={circleRadius}
-                    fill="#27272a"
+                    fill="#18181b"
                     stroke="#22c55e"
-                    strokeWidth="2"
-                    className="hover:fill-zinc-800"
+                    strokeWidth="3"
+                    className="hover:fill-zinc-800 hover:stroke-green-400 transition-all"
                   />
-                  <text
-                    x={cx}
-                    y={cy}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="white"
-                    fontSize="14"
-                    className="pointer-events-none"
-                  >
-                    {child.key}
-                  </text>
+                  {lines.map((line, i) => (
+                    <text
+                      key={i}
+                      x={cx}
+                      y={cy - (lines.length - 1) * 7 + i * 14}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="white"
+                      fontSize="13"
+                      fontWeight="500"
+                      className="pointer-events-none"
+                    >
+                      {line}
+                    </text>
+                  ))}
                 </g>
               );
             })}
@@ -231,11 +288,9 @@ export function GenreConstellationSelect({ onLaunch }) {
             {/* Render tracks if at leaf node */}
             {seeds.length > 0 && children.length === 0 && (
               seeds.map((track, index) => {
-                const angle = (index / seeds.length) * 2 * Math.PI;
-                const radius = 150;
-                const cx = 400 + Math.cos(angle) * radius;
-                const cy = 250 + Math.sin(angle) * radius;
-                const circleRadius = 50;
+                const angle = (index / seeds.length) * 2 * Math.PI - Math.PI / 2;
+                const cx = 400 + Math.cos(angle) * baseRadius;
+                const cy = 300 + Math.sin(angle) * baseRadius;
                 const isSelected = selectedTrack?.uri === track.uri;
                 
                 return (
@@ -248,25 +303,26 @@ export function GenreConstellationSelect({ onLaunch }) {
                       cx={cx}
                       cy={cy}
                       r={circleRadius}
-                      fill={isSelected ? "#22c55e" : "#27272a"}
+                      fill={isSelected ? "#22c55e" : "#18181b"}
                       stroke="#22c55e"
-                      strokeWidth={isSelected ? "3" : "2"}
-                      className="hover:fill-zinc-800"
+                      strokeWidth={isSelected ? "4" : "3"}
+                      className="hover:fill-zinc-800 transition-all"
                     />
                     <text
                       x={cx}
-                      y={cy - 10}
+                      y={cy - 12}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="white"
                       fontSize="12"
+                      fontWeight="600"
                       className="pointer-events-none"
                     >
-                      {track.artist}
+                      {track.artist.length > 18 ? track.artist.substring(0, 18) + '...' : track.artist}
                     </text>
                     <text
                       x={cx}
-                      y={cy + 10}
+                      y={cy + 8}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#a1a1aa"
@@ -282,44 +338,33 @@ export function GenreConstellationSelect({ onLaunch }) {
           </svg>
         </div>
         
-        {/* Difficulty selector */}
-        <div className="flex items-center justify-center gap-4 mb-6">
-          <span className="text-zinc-400">Difficulty:</span>
-          {['easy', 'medium', 'hard'].map(level => (
-            <button
-              key={level}
-              onClick={() => setDifficulty(level)}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                difficulty === level
-                  ? 'bg-green-500 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-              }`}
-            >
-              {level.charAt(0).toUpperCase() + level.slice(1)}
-            </button>
-          ))}
-        </div>
-        
-        {/* Launch button */}
-        <div className="flex justify-center">
-          <button
-            onClick={handleLaunch}
-            disabled={!canLaunch()}
-            className={`px-12 py-4 rounded-lg text-xl font-bold transition-all ${
-              canLaunch()
-                ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/50'
-                : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-            }`}
-          >
-            Launch Puzzle
-          </button>
-        </div>
-        
-        {/* Debug info */}
-        {seeds.length > 0 && (
-          <div className="mt-6 text-center text-sm text-zinc-500">
-            {seeds.length} track{seeds.length !== 1 ? 's' : ''} available
-            {selectedTrack && ` • Selected: ${selectedTrack.name}`}
+        {/* Info below canvas */}
+        {canLaunch() && (
+          <div className="mt-8 text-center animate-fade-in">
+            <div className="text-2xl font-bold mb-2">
+              Launch {currentGenre.charAt(0).toUpperCase() + currentGenre.slice(1)} Puzzle
+            </div>
+            <div className="text-zinc-400 mb-6">
+              {seeds.length} track{seeds.length !== 1 ? 's' : ''} available
+              {selectedTrack && ` • ${selectedTrack.name} selected`}
+            </div>
+            
+            {/* Difficulty selector */}
+            <div className="flex items-center justify-center gap-3">
+              {['easy', 'medium', 'hard'].map(level => (
+                <button
+                  key={level}
+                  onClick={() => setDifficulty(level)}
+                  className={`px-8 py-3 rounded-lg font-bold transition-all ${
+                    difficulty === level
+                      ? 'bg-green-500 text-black scale-110'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:scale-105'
+                  }`}
+                >
+                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
