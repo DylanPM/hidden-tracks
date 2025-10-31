@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useGameState } from './hooks/useGameState';
-import { ProfileSelect } from './components/profile/ProfileSelect';
-import { TasteBuilder, buildProfileFromPath } from './components/profile/TasteBuilder';
-import { ProfileSummary } from './components/profile/ProfileSummary';
 import { GenreConstellationSelect } from './components/game/GenreConstellationSelect';
 import { DraftPhase } from './components/game/DraftPhase';
 import { GuessPhase } from './components/game/GuessPhase';
@@ -14,32 +11,20 @@ const DEMO_MODE = true;
 const DEBUG_MODE = true; // Set to false to disable debug view
 
 function RadioPuzzleGame() {
-  const [phase, setPhase] = useState('constellation'); // NEW: Start with constellation
-  const [spotifyToken, setSpotifyToken] = useState(null);
-  const [allSongs, setAllSongs] = useState([]);
-  const [tasteProfile, setTasteProfile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [authError, setAuthError] = useState(null);
-  
-  // NEW: Constellation selection state
+  const [phase, setPhase] = useState('constellation');
+
+  // Constellation/Draft state
   const [selectedTracks, setSelectedTracks] = useState([]);
   const [difficulty, setDifficulty] = useState('medium');
   const [loadedProfile, setLoadedProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
-  
-  // Taste builder state
-  const [tasteBuilderRound, setTasteBuilderRound] = useState(1);
-  const [tasteBuilderPath, setTasteBuilderPath] = useState([]);
-  
+
   // Game settings
   const [maxGuesses, setMaxGuesses] = useState(6);
-  const [difficultyLevel, setDifficultyLevel] = useState(5);
-  
+
   // UI state
   const [currentChoice, setCurrentChoice] = useState(null);
   const [removeMode, setRemoveMode] = useState(false);
-  const [textInput, setTextInput] = useState('');
-  const [textMatchedSong, setTextMatchedSong] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [profileLoadError, setProfileLoadError] = useState(null);
   
@@ -70,81 +55,6 @@ useEffect(() => {
   }
 }, [phase, guessesLeft]);
 
-// Skip OAuth path entirely for demo builds, otherwise run normal auth check
-// OLD: Not used in DEMO_MODE
-// useEffect(() => {
-//   if (DEMO_MODE) return;
-//
-//   const checkAuth = async () => {
-//     const token = localStorage.getItem('spotify_token');
-//     if (token) {
-//       setSpotifyToken(token);
-//       await fetchSpotifyProfile(token);
-//     } else {
-//       setPhase('profile-select');
-//     }
-//   };
-//
-//   if (phase === 'auth-check') {
-//     checkAuth();
-//   }
-// }, [phase]);
-
-
-  // OLD: Spotify OAuth flow - not used in DEMO_MODE
-  // const fetchSpotifyProfile = async (token) => {
-  //   try {
-  //     setLoading(true);
-  //
-  //     const tracksResponse = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=50', {
-  //       headers: { 'Authorization': 'Bearer ' + token }
-  //     });
-  //
-  //     if (!tracksResponse.ok) throw new Error('Failed to fetch tracks');
-  //
-  //     const tracksData = await tracksResponse.json();
-  //
-  //     if (!tracksData.items || tracksData.items.length === 0) {
-  //       throw new Error('No tracks found');
-  //     }
-  //
-  //     const trackIds = tracksData.items.map(t => t.id).join(',');
-  //
-  //     const featuresResponse = await fetch(`https://api.spotify.com/v1/audio-features?ids=${trackIds}`, {
-  //       headers: { 'Authorization': 'Bearer ' + token }
-  //     });
-  //
-  //     const featuresData = await featuresResponse.json();
-  //
-  //     //building profile here
-  //     const profile = buildSpotifyProfile(tracksData.items, featuresData.audio_features);
-  //
-  //     if (!profile) {
-  //       throw new Error('Failed to build profile');
-  //     }
-  //
-  //     setTasteProfile(profile);
-  //     setPhase('profile-summary');
-  //   } catch (error) {
-  //     console.error('Spotify profile fetch error:', error);
-  //     setAuthError('Failed to load your Spotify data. You can still play with a preset profile.');
-  //     setPhase('profile-select');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // // Load dataset when entering loading phase
-  // useEffect(() => {
-  //   if (phase === 'loading' && allSongs.length === 0) {
-  //     loadSpotifyDataset().then(songs => {
-  //       setAllSongs(songs);
-  //       setPhase('setup');
-  //     });
-  //   }
-  // }, [phase, allSongs.length]);
-
-  // OLD loading code removed - now using loadProfileForSeed() instead
 
 // NEW: Handle constellation launch
 const handleConstellationLaunch = (tracks, selectedDifficulty) => {
@@ -212,36 +122,28 @@ const loadProfileForSeed = async (seed) => {
       throw new Error('Profile missing tracks data');
     }
     
-    // Build pools from tracks by filtering on their pools array
-    console.log('Building difficulty pools from tracks...');
-    
+    // Profile already contains ALL candidate tracks for this seed
+    // Each track has a 'correct' flag - no need to filter by pools or calculate anything
+
     const allTracks = profile.tracks;
-    
-    // Filter tracks by which pools they belong to
-    const easyPool = allTracks.filter(t => t.pools?.includes('easy'));
-    const mediumPool = allTracks.filter(t => t.pools?.includes('medium'));
-    const hardPool = allTracks.filter(t => t.pools?.includes('hard'));
-    
-    console.log('Pool sizes:', {
-      easy: easyPool.length,
-      medium: mediumPool.length,
-      hard: hardPool.length
+    const correctTracks = allTracks.filter(t => t.correct === true);
+    const incorrectTracks = allTracks.filter(t => t.correct === false);
+
+    console.log('✅ Profile loaded:', {
+      totalTracks: allTracks.length,
+      correct: correctTracks.length,
+      incorrect: incorrectTracks.length
     });
-    
-    // Store pools in profile object for easy access
-    profile.pools = {
-      easy: easyPool,
-      medium: mediumPool,
-      hard: hardPool
-    };
-    
-    // Validate we have enough tracks in selected difficulty
-    const selectedPool = profile.pools[difficulty] || profile.pools.medium;
-    if (!selectedPool || selectedPool.length === 0) {
-      throw new Error(`No tracks in ${difficulty} pool`);
+
+    // VALIDATION: Check we have enough tracks
+    if (correctTracks.length < 10) {
+      throw new Error(`Not enough correct tracks (found ${correctTracks.length}, need 10+)`);
     }
-    
-    // Store the profile
+    if (incorrectTracks.length < 10) {
+      throw new Error(`Not enough incorrect tracks (found ${incorrectTracks.length}, need 10+)`);
+    }
+
+    // Store the profile - generateMultipleChoice will use profile.tracks directly
     setLoadedProfile(profile);
 
     // Use the profile's seed data (has full audio features) - use as-is
@@ -258,21 +160,7 @@ const loadProfileForSeed = async (seed) => {
     const hints = generateSeedHints(fullSeed);
     gameState.setSeedHints(hints);
 
-    // VALIDATION: Check we have enough correct tracks in the pool
-    const pool = profile.pools[difficulty] || profile.pools.medium || [];
-    const correctTracks = pool.filter(t => t.correct === true);
-
-    if (correctTracks.length < 10) {
-      throw new Error(`Not enough correct tracks in ${difficulty} pool (found ${correctTracks.length}, need 10+)`);
-    }
-
-    console.log(`✅ Profile loaded. ${difficulty} pool:`, {
-      total: pool.length,
-      correct: correctTracks.length,
-      incorrect: pool.filter(t => t.correct === false).length
-    });
-
-    // NOTE: We don't need radioPlaylist anymore - generateMultipleChoice uses profile.pools directly
+    // NOTE: We don't need radioPlaylist anymore - generateMultipleChoice uses profile.tracks directly
     gameState.setRadioPlaylist([]); // Keep for backwards compatibility but unused
     
     // Move to guess phase
@@ -308,22 +196,6 @@ const loadProfileForSeed = async (seed) => {
     }
   }, [phase, currentChoice, removeMode, gameState.state.radioPlaylist.length, gameState.state.multipleChoiceOptions.length, selectedTracks]);
 
-  // OLD: Not used anymore - profiles provide the radio playlist
-  // const generateRadioPlaylist = (seedSong) => {
-  //   if (!seedSong) return [];
-  //
-  //   const songsToUse = allSongs.filter(s =>
-  //     s && s.artists && typeof s.artists === 'string' && s.track_name && typeof s.track_name === 'string'
-  //   );
-  //
-  //   const similarities = songsToUse
-  //     .filter(song => song.track_id !== seedSong.track_id)
-  //     .map(song => ({ song, similarity: calculateSimilarity(seedSong, song) }))
-  //     .sort((a, b) => b.similarity - a.similarity)
-  //     .slice(0, 25);
-  //
-  //   return similarities.map(s => s.song);
-  // };
 
   const generateChoice = () => {
     const needsSeed = !gameState.state.seed;
@@ -431,7 +303,7 @@ const loadProfileForSeed = async (seed) => {
   };
 
   const generateMultipleChoice = () => {
-    if (!loadedProfile) {
+    if (!loadedProfile || !loadedProfile.tracks) {
       console.error('No profile loaded');
       return;
     }
@@ -442,20 +314,21 @@ const loadProfileForSeed = async (seed) => {
       return `${artistStr}-${name}`;
     };
 
-    // Get the pool for current difficulty - profiles already have correct/incorrect flags
-    const pool = loadedProfile.pools[difficulty] || loadedProfile.pools.medium || [];
+    // Use ALL tracks from profile - they're already curated for this seed
+    const allTracks = loadedProfile.tracks;
 
     // Filter out already guessed tracks and the seed
-    const availableTracks = pool.filter(t =>
+    const availableTracks = allTracks.filter(t =>
       t.id !== gameState.state.seed.track_id &&
       !gameState.state.guessedTracks.has(makeTrackKey(t.artists, t.name))
     );
 
-    // Split into correct and incorrect
+    // Split into correct and incorrect based on profile's pre-computed flags
     const correctTracks = availableTracks.filter(t => t.correct === true);
     const incorrectTracks = availableTracks.filter(t => t.correct === false);
 
-    console.log('🔍 Available:', {
+    console.log('🔍 Generating options from profile tracks:', {
+      totalAvailable: availableTracks.length,
       correct: correctTracks.length,
       incorrect: incorrectTracks.length
     });
@@ -496,13 +369,6 @@ const loadProfileForSeed = async (seed) => {
     gameState.setMultipleChoice(options.sort(() => Math.random() - 0.5));
   };
 
-  const handleTextInput = (e) => {
-    // TEXT SEARCH DISABLED - needs to be updated to use loadedProfile.pools instead of allSongs
-    // const value = e.target.value;
-    // setTextInput(value);
-    // ... rest of search logic
-    return;
-  };
 
   const generateFeedback = (song, seed) => {
     // Use the profile's pre-computed similarity scores for rich feedback
@@ -597,8 +463,6 @@ const loadProfileForSeed = async (seed) => {
       autoAssignChallenges([...gameState.state.guesses, newGuess]);
     }
 
-    setTextInput('');
-    setTextMatchedSong(null);
     generateMultipleChoice();
   };
 
@@ -631,38 +495,30 @@ const loadProfileForSeed = async (seed) => {
 
   const getHint = (challengeIndex) => {
     const challenge = gameState.state.challenges[challengeIndex];
-    if (!challenge || !gameState.state.seed) return;
+    if (!challenge || !gameState.state.seed || !loadedProfile) return;
 
-    const matches = gameState.state.radioPlaylist
+    // Use correct tracks from profile to find examples
+    const correctTracks = loadedProfile.tracks.filter(t => t.correct === true);
+    const matches = correctTracks
       .filter(song => challenge.check(song, gameState.state.seed))
       .slice(0, 3);
-    
+
     if (matches.length === 0) {
-      alert(`No examples found in the playlist for "${challenge.name}"`);
+      alert(`No examples found for "${challenge.name}"`);
       return;
     }
 
     const hint = matches.map(s => {
       const artistStr = Array.isArray(s.artists) ? s.artists.join(', ') : s.artists;
-      return `${artistStr} - ${s.track_name}`;
+      return `${artistStr} - ${s.name || s.track_name}`;
     }).join('\n');
     alert(`Examples for "${challenge.name}":\n\n${hint}`);
-    
+
     gameState.useHint(challengeIndex);
   };
 
-  const handleTasteBuilderPick = (genre) => {
-    const newPath = [...tasteBuilderPath, genre];
-    setTasteBuilderPath(newPath);
-    
-    if (tasteBuilderRound >= 5) {
-      const profile = buildProfileFromPath(newPath);
-      setTasteProfile(profile);
-      setPhase('profile-summary');
-    } else {
-      setTasteBuilderRound(tasteBuilderRound + 1);
-    }
-  };
+  // OLD: TasteBuilder not used in DEMO_MODE
+  // const handleTasteBuilderPick = (genre) => { ... }
 
   // Phase rendering
   if (phase === 'constellation') {
@@ -693,38 +549,10 @@ const loadProfileForSeed = async (seed) => {
     );
   }
 
-  if (phase === 'profile-select') {
-    return (
-      <ProfileSelect
-        onSelectProfile={(profile) => {
-          setTasteProfile(profile);
-          setPhase('loading');
-        }}
-        onStartTasteBuilder={() => setPhase('taste-builder')}
-        authError={authError}
-        spotifyToken={spotifyToken}
-      />
-    );
-  }
-
-  if (phase === 'taste-builder') {
-    return (
-      <TasteBuilder
-        round={tasteBuilderRound}
-        path={tasteBuilderPath}
-        onPick={handleTasteBuilderPick}
-      />
-    );
-  }
-
-  if (phase === 'profile-summary') {
-    return (
-      <ProfileSummary
-        profile={tasteProfile}
-        onStart={() => setPhase('loading')}
-      />
-    );
-  }
+  // OLD: Profile select/TasteBuilder phases not used in DEMO_MODE
+  // if (phase === 'profile-select') { ... }
+  // if (phase === 'taste-builder') { ... }
+  // if (phase === 'profile-summary') { ... }
 
   if (phase === 'loading') {
     const seedName = gameState.state.seed?.track_name || 'profile';
@@ -742,28 +570,8 @@ const loadProfileForSeed = async (seed) => {
     );
   }
 
-  if (phase === 'setup') {
-    return (
-      <div className="min-h-screen bg-black p-8">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-4xl font-bold text-white mb-4 text-center">Radio Puzzle</h1>
-          {tasteProfile?.descriptor && (
-            <div className="bg-green-500/20 border border-green-500 rounded-lg p-4 mb-6">
-              <p className="text-green-300 text-sm text-center">
-                ✓ Playing as: {tasteProfile.descriptor}
-              </p>
-            </div>
-          )}
-          <button
-            onClick={() => setPhase('draft')}
-            className="w-full bg-green-500 text-black py-4 rounded-full font-bold text-lg hover:bg-green-400 transition mb-6"
-          >
-            Start New Puzzle
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // OLD: Setup phase not used in DEMO_MODE
+  // if (phase === 'setup') { ... }
 
   if (phase === 'draft') {
     const seedIsLocked = localStorage.getItem('seedIsLocked') === 'true';
