@@ -10,8 +10,6 @@ import { ScorePhase } from './components/game/ScorePhase';
 import { calculateSimilarity, fuzzyMatch, generateSeedHints, loadSpotifyDataset } from './utils/gameUtils';
 import { buildSpotifyProfile } from './utils/trackUtils';
 import { CHALLENGES } from './constants/gameConfig';
-import { mapRows } from './utils/slimProfile';
-import { profileTracksToGameTracks } from './utils/trackUtils';
 
 const DEMO_MODE = true;
 
@@ -27,6 +25,7 @@ function RadioPuzzleGame() {
   const [selectedTracks, setSelectedTracks] = useState([]);
   const [difficulty, setDifficulty] = useState('medium');
   const [loadedProfile, setLoadedProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   
   // Taste builder state
   const [tasteBuilderRound, setTasteBuilderRound] = useState(1);
@@ -42,6 +41,7 @@ function RadioPuzzleGame() {
   const [textInput, setTextInput] = useState('');
   const [textMatchedSong, setTextMatchedSong] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [profileLoadError, setProfileLoadError] = useState(null);
   
   const gameState = useGameState();
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
@@ -142,63 +142,7 @@ useEffect(() => {
   //   }
   // }, [phase, allSongs.length]);
 
-  // Load dataset when entering loading phase
-useEffect(() => {
-  if (phase === 'loading') {
-    // For now, hardcode loading Stevie Wonder profile
-    loadAndDecodeProfile('stevie-wonder');
-  }
-}, [phase]);
-
-  //new function to load and decode profile starts here
-
-  const loadAndDecodeProfile = async (profileFileName) => {
-  try {
-    setPhase('loading');
-    
-    // Fetch the profile JSON
-    const response = await fetch(`/profiles/${profileFileName}.json`);
-    if (!response.ok) {
-      throw new Error(`Failed to load profile: ${response.status}`);
-    }
-    
-    const slimProfile = await response.json();
-    
-    // Decode all rows using slimProfile.js helper
-    const decodedTracks = mapRows(slimProfile);
-    
-    // Convert to game format
-    const gameTracks = profileTracksToGameTracks(decodedTracks);
-    
-    // First track is always the seed
-    const seedSong = gameTracks[0];
-    
-    // Rest are the radio playlist (similar songs)
-    const radioPlaylist = gameTracks.slice(1);
-    
-    // Set game state
-    // setSeed(seedSong);
-    // setRadioPlaylist(radioPlaylist);
-    gameState.setSeed(seedSong);
-    gameState.setRadioPlaylist(radioPlaylist);
-    
-    // Store all tracks for potential text search
-    setAllSongs(gameTracks);
-    
-    console.log('Profile loaded:', {
-      seed: seedSong.track_name,
-      playlistSize: radioPlaylist.length,
-      sampleTrack: radioPlaylist[0]
-    });
-    
-    // Move to guess phase (skip draft since seed is pre-chosen)
-    setPhase('guess');
-    
-  } catch (error) {
-    console.error('Error loading profile:', error);
-    setPhase('setup'); // Fallback to setup if load fails
-  }
-};
+  // OLD loading code removed - now using loadProfileForSeed() instead
 
 // NEW: Handle constellation launch
 const handleConstellationLaunch = (tracks, selectedDifficulty) => {
@@ -217,7 +161,13 @@ const loadProfileForSeed = async (seed) => {
     return;
   }
   
+  if (profileLoading) {
+    console.log('Profile already loading, ignoring duplicate request');
+    return;
+  }
+  
   try {
+    setProfileLoading(true);
     setPhase('loading');
     console.log('Loading profile:', seed.filename);
     
@@ -228,6 +178,17 @@ const loadProfileForSeed = async (seed) => {
     
     const profile = await response.json();
     console.log('Profile loaded:', profile);
+    
+    // VALIDATION: Check profile has required data
+    if (!profile?.seed) {
+      throw new Error('Profile missing seed data');
+    }
+    if (!profile?.pools) {
+      throw new Error('Profile missing pools data');
+    }
+    if (!profile.pools[difficulty] && !profile.pools.medium) {
+      throw new Error('Profile missing difficulty pools');
+    }
     
     // Store the profile
     setLoadedProfile(profile);
@@ -250,6 +211,11 @@ const loadProfileForSeed = async (seed) => {
     const pool = profile.pools[difficulty] || profile.pools.medium || [];
     const correctTracks = pool.filter(t => t.correct === true);
     
+    // VALIDATION: Check we have enough tracks
+    if (correctTracks.length < 10) {
+      throw new Error(`Not enough correct tracks in ${difficulty} pool (found ${correctTracks.length}, need 10+)`);
+    }
+    
     console.log(`Using ${difficulty} pool:`, correctTracks.length, 'correct tracks');
     
     // Convert to game format
@@ -263,12 +229,14 @@ const loadProfileForSeed = async (seed) => {
     gameState.setRadioPlaylist(radioPlaylist);
     
     // Move to guess phase
+    setProfileLoading(false);
     setPhase('guess');
     
   } catch (error) {
     console.error('Error loading profile:', error);
-    alert('Failed to load profile. Please try again.');
-    setPhase('draft');
+    setProfileLoading(false);
+    setProfileLoadError(error.message || 'Failed to load profile');
+    setPhase('error');
   }
 };
 
@@ -454,24 +422,11 @@ const loadProfileForSeed = async (seed) => {
   };
 
   const handleTextInput = (e) => {
-    const value = e.target.value;
-    setTextInput(value);
-    
-    if (value.length < 3) {
-      setTextMatchedSong(null);
-      return;
-    }
-    
-    const songsToUse = allSongs.filter(s => 
-      s && s.artists && typeof s.artists === 'string' && 
-      s.track_name && typeof s.track_name === 'string'
-    );
-    
-    const matched = songsToUse.find(s => 
-      fuzzyMatch(value, s.artists) || fuzzyMatch(value, s.track_name)
-    );
-    
-    setTextMatchedSong(matched || null);
+    // TEXT SEARCH DISABLED - needs to be updated to use loadedProfile.pools instead of allSongs
+    // const value = e.target.value;
+    // setTextInput(value);
+    // ... rest of search logic
+    return;
   };
 
   const handleGuess = (song) => {
@@ -607,6 +562,30 @@ const loadProfileForSeed = async (seed) => {
     return <GenreConstellationSelect onLaunch={handleConstellationLaunch} />;
   }
 
+  if (phase === 'error') {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
+        <div className="max-w-md text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-white mb-4">Oops! Something Went Wrong</h1>
+          <p className="text-zinc-400 mb-2">{profileLoadError}</p>
+          <p className="text-zinc-500 text-sm mb-8">
+            This profile might be corrupted or missing required data.
+          </p>
+          <button
+            onClick={() => {
+              setProfileLoadError(null);
+              setPhase('constellation');
+            }}
+            className="px-8 py-3 bg-green-500 text-black font-bold rounded-lg hover:bg-green-400 transition"
+          >
+            Back to Genre Select
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 'profile-select') {
     return (
       <ProfileSelect
@@ -641,11 +620,15 @@ const loadProfileForSeed = async (seed) => {
   }
 
   if (phase === 'loading') {
+    const seedName = gameState.state.seed?.track_name || 'profile';
+    const seedArtist = gameState.state.seed?.artists || '';
+    
     return (
-      <div className="min-h-screen bg-black p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <p className="text-white text-xl font-bold">Loading music library...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500 mx-auto mb-6"></div>
+          <p className="text-white text-xl font-bold mb-2">Loading {seedName}</p>
+          {seedArtist && <p className="text-zinc-400">by {seedArtist}</p>}
         </div>
       </div>
     );
@@ -696,8 +679,8 @@ const loadProfileForSeed = async (seed) => {
         challenges={gameState.state.challenges}
         challengePlacements={gameState.state.challengePlacements}
         multipleChoiceOptions={gameState.state.multipleChoiceOptions}
-        textInput={textInput}
-        textMatchedSong={textMatchedSong}
+        textInput=""
+        textMatchedSong={null}
         errorMessage={errorMessage}
         guesses={gameState.state.guesses}
         guessesLeft={guessesLeft}
@@ -705,7 +688,7 @@ const loadProfileForSeed = async (seed) => {
         onGetHint={getHint}
         onGuess={handleGuess}
         onRefreshCandidates={generateMultipleChoice}
-        onTextInput={handleTextInput}
+        onTextInput={() => {}} // TEXT SEARCH DISABLED
         onSeeScore={() => setPhase('score')}
       />
     );
@@ -719,7 +702,10 @@ const loadProfileForSeed = async (seed) => {
         challenges={gameState.state.challenges}
         onPlayAgain={() => {
           gameState.resetGame();
-          setPhase('setup');
+          setSelectedTracks([]);
+          setLoadedProfile(null);
+          setDifficulty('medium');
+          setPhase('constellation');
         }}
       />
     );
