@@ -243,7 +243,7 @@ const loadProfileForSeed = async (seed) => {
     
     // Store the profile
     setLoadedProfile(profile);
-    
+
     // Use the profile's seed data (has full audio features) - use as-is
     const fullSeed = {
       track_id: profile.seed.id,
@@ -258,26 +258,22 @@ const loadProfileForSeed = async (seed) => {
     const hints = generateSeedHints(fullSeed);
     gameState.setSeedHints(hints);
 
-    // Set radio playlist from profile's correct tracks in the selected difficulty pool
+    // VALIDATION: Check we have enough correct tracks in the pool
     const pool = profile.pools[difficulty] || profile.pools.medium || [];
     const correctTracks = pool.filter(t => t.correct === true);
 
-    // VALIDATION: Check we have enough tracks
     if (correctTracks.length < 10) {
       throw new Error(`Not enough correct tracks in ${difficulty} pool (found ${correctTracks.length}, need 10+)`);
     }
 
-    console.log(`Using ${difficulty} pool:`, correctTracks.length, 'correct tracks');
+    console.log(`✅ Profile loaded. ${difficulty} pool:`, {
+      total: pool.length,
+      correct: correctTracks.length,
+      incorrect: pool.filter(t => t.correct === false).length
+    });
 
-    // Use profile tracks directly - already in correct format
-    const radioPlaylist = correctTracks.map(t => ({
-      track_id: t.id,
-      artists: t.artists, // Already clean from profile
-      track_name: t.name,
-      ...t // includes all audio features and correct flag
-    }));
-
-    gameState.setRadioPlaylist(radioPlaylist);
+    // NOTE: We don't need radioPlaylist anymore - generateMultipleChoice uses profile.pools directly
+    gameState.setRadioPlaylist([]); // Keep for backwards compatibility but unused
     
     // Move to guess phase
     setProfileLoading(false);
@@ -435,11 +431,38 @@ const loadProfileForSeed = async (seed) => {
   };
 
   const generateMultipleChoice = () => {
-    // Use difficulty setting to determine mix
+    if (!loadedProfile) {
+      console.error('No profile loaded');
+      return;
+    }
+
+    // Helper to create track key from artists array
+    const makeTrackKey = (artists, name) => {
+      const artistStr = Array.isArray(artists) ? artists.join(', ') : artists;
+      return `${artistStr}-${name}`;
+    };
+
+    // Get the pool for current difficulty - profiles already have correct/incorrect flags
+    const pool = loadedProfile.pools[difficulty] || loadedProfile.pools.medium || [];
+
+    // Filter out already guessed tracks and the seed
+    const availableTracks = pool.filter(t =>
+      t.id !== gameState.state.seed.track_id &&
+      !gameState.state.guessedTracks.has(makeTrackKey(t.artists, t.name))
+    );
+
+    // Split into correct and incorrect
+    const correctTracks = availableTracks.filter(t => t.correct === true);
+    const incorrectTracks = availableTracks.filter(t => t.correct === false);
+
+    console.log('🔍 Available:', {
+      correct: correctTracks.length,
+      incorrect: incorrectTracks.length
+    });
+
+    // Determine mix based on difficulty
     let correctCount;
     const roll = Math.random() * 100;
-
-    // Simplified difficulty: easy = more correct, hard = fewer correct
     if (difficulty === 'easy') {
       correctCount = roll < 75 ? 3 : 2;
     } else if (difficulty === 'medium') {
@@ -448,53 +471,28 @@ const loadProfileForSeed = async (seed) => {
       correctCount = roll < 60 ? 1 : 2;
     }
 
-    const options = [];
-    const usedSongs = new Set();
+    const incorrectCount = 4 - correctCount;
 
-    // Helper to create track key from artists array
-    const makeTrackKey = (artists, name) => {
-      const artistStr = Array.isArray(artists) ? artists.join(', ') : artists;
-      return `${artistStr}-${name}`;
-    };
+    // Shuffle and pick
+    const shuffledCorrect = [...correctTracks].sort(() => Math.random() - 0.5);
+    const shuffledIncorrect = [...incorrectTracks].sort(() => Math.random() - 0.5);
 
-    // Get correct answers from radioPlaylist (pre-filtered from profile)
-    const availableCorrect = gameState.state.radioPlaylist.filter(s =>
-      !gameState.state.guessedTracks.has(makeTrackKey(s.artists, s.track_name)) &&
-      s.track_id !== gameState.state.seed.track_id
-    );
-    const shuffledCorrect = [...availableCorrect].sort(() => Math.random() - 0.5);
+    const options = [
+      ...shuffledCorrect.slice(0, correctCount).map(t => ({
+        track_id: t.id,
+        track_name: t.name,
+        artists: t.artists,
+        ...t // Includes correct flag and all audio features
+      })),
+      ...shuffledIncorrect.slice(0, incorrectCount).map(t => ({
+        track_id: t.id,
+        track_name: t.name,
+        artists: t.artists,
+        ...t // Includes correct flag and all audio features
+      }))
+    ];
 
-    for (let i = 0; i < Math.min(correctCount, shuffledCorrect.length); i++) {
-      const track = shuffledCorrect[i];
-      options.push({ ...track, isCorrect: true });
-      usedSongs.add(track.track_id);
-    }
-
-    // Get wrong answers from profile pool
-    const wrongCount = 4 - options.length;
-    if (wrongCount > 0 && loadedProfile) {
-      const pool = loadedProfile.pools[difficulty] || loadedProfile.pools.medium || [];
-      const wrongTracks = pool.filter(t =>
-        t.correct === false &&
-        !usedSongs.has(t.id) &&
-        t.id !== gameState.state.seed.track_id &&
-        !gameState.state.guessedTracks.has(makeTrackKey(t.artists, t.name))
-      );
-
-      const shuffledWrong = wrongTracks.sort(() => Math.random() - 0.5);
-
-      for (let i = 0; i < Math.min(wrongCount, shuffledWrong.length); i++) {
-        const track = shuffledWrong[i];
-        options.push({
-          track_id: track.id,
-          artists: track.artists, // Already clean from profile
-          track_name: track.name,
-          ...track,
-          isCorrect: false
-        });
-      }
-    }
-
+    // Final shuffle so correct/incorrect aren't grouped
     gameState.setMultipleChoice(options.sort(() => Math.random() - 0.5));
   };
 
