@@ -147,7 +147,18 @@ useEffect(() => {
 // NEW: Handle constellation launch
 const handleConstellationLaunch = (tracks, selectedDifficulty) => {
   console.log('Constellation launch:', { tracks, selectedDifficulty });
-  setSelectedTracks(tracks);
+  
+  // Convert constellation format to game format immediately
+  const convertedTracks = tracks.map(track => ({
+    track_id: track.uri,
+    track_name: track.name,
+    artists: track.artist,
+    filename: track.filename,
+    // Store original for reference
+    _constellation: track
+  }));
+  
+  setSelectedTracks(convertedTracks);
   setDifficulty(selectedDifficulty);
   
   // Go to draft phase - user will pick seed + challenges
@@ -245,16 +256,12 @@ const loadProfileForSeed = async (seed) => {
   // Generate choice when in draft phase
   useEffect(() => {
     if (phase === 'draft') {
-      // If only 1 track selected, auto-set as seed
+      // If only 1 track selected, auto-set as seed and skip straight to challenges
       if (selectedTracks.length === 1 && !gameState.state.seed) {
         const track = selectedTracks[0];
-        gameState.setSeed({
-          track_id: track.uri, // Use URI as temporary ID
-          artists: track.artist,
-          track_name: track.name,
-          filename: track.filename,
-          ...track
-        });
+        // Track is already in game format from handleConstellationLaunch
+        gameState.setSeed(track);
+        // Don't generate choice yet - will trigger after seed is set
       }
       
       if (!currentChoice && !removeMode) {
@@ -292,9 +299,24 @@ const loadProfileForSeed = async (seed) => {
     }
 
     const cardTypes = [];
-    if (needsSeed) cardTypes.push('song', 'song');
-    if (needsChallenges) cardTypes.push('challenge', 'challenge');
-    if (gameState.state.seed || gameState.state.challenges.some(c => c !== null)) cardTypes.push('remove');
+    
+    // CRITICAL: If we only have 1 track and it's the seed, DON'T offer song cards
+    const canOfferSongCards = selectedTracks.length > 1 || !gameState.state.seed;
+    
+    if (needsSeed && canOfferSongCards) {
+      cardTypes.push('song', 'song');
+    }
+    if (needsChallenges) {
+      cardTypes.push('challenge', 'challenge');
+    }
+    if (gameState.state.seed || gameState.state.challenges.some(c => c !== null)) {
+      cardTypes.push('remove');
+    }
+    
+    // If no valid card types (shouldn't happen), default to challenges
+    if (cardTypes.length === 0) {
+      cardTypes.push('challenge', 'challenge');
+    }
 
     const typeA = cardTypes[Math.floor(Math.random() * cardTypes.length)];
     let typeB = cardTypes[Math.floor(Math.random() * cardTypes.length)];
@@ -306,23 +328,20 @@ const loadProfileForSeed = async (seed) => {
     const availableChallenges = CHALLENGES.filter(c => !usedChallengeIds.includes(c.id));
 
     const createCard = (type) => {
-      // Use selectedTracks for song cards if available
-      const songsToUse = selectedTracks.length > 0 
-        ? selectedTracks 
-        : allSongs.filter(s => 
-            s && s.artists && typeof s.artists === 'string' && s.artists.trim() &&
-            s.track_name && typeof s.track_name === 'string' && s.track_name.trim()
-          );
-      
-      if (songsToUse.length === 0) {
-        return { type: 'remove', data: null };
-      }
-      
-      // For constellation mode, no filtering - just use the selected tracks
-      const filteredSongs = songsToUse;
-      
       if (type === 'song') {
-        const song = filteredSongs[Math.floor(Math.random() * filteredSongs.length)];
+        // Use selectedTracks for song cards
+        const songsToUse = selectedTracks.filter(s => 
+          s && s.artists && s.track_name &&
+          // Don't offer the seed as a card option
+          s.track_id !== gameState.state.seed?.track_id
+        );
+        
+        if (songsToUse.length === 0) {
+          // Fallback to remove card if no valid songs
+          return { type: 'remove', data: null };
+        }
+        
+        const song = songsToUse[Math.floor(Math.random() * songsToUse.length)];
         return { type: 'song', data: song };
       } else if (type === 'challenge') {
         if (availableChallenges.length === 0) return { type: 'remove', data: null };
@@ -336,17 +355,22 @@ const loadProfileForSeed = async (seed) => {
   };
 
   const selectCard = (option) => {
+    console.log('selectCard called with:', option);
+    
     if (option.type === 'song' && !gameState.state.seed) {
       if (!option.data || !option.data.artists || !option.data.track_name) {
         console.error('Invalid song data in option:', option);
         setCurrentChoice(null);
         return;
       }
+      
+      console.log('Setting seed:', option.data);
       gameState.setSeed(option.data);
       setCurrentChoice(null);
     } else if (option.type === 'challenge') {
       const emptySlot = gameState.state.challenges.findIndex(c => c === null);
       if (emptySlot !== -1) {
+        console.log('Setting challenge in slot', emptySlot, ':', option.data.name);
         gameState.setChallenge(emptySlot, option.data);
         setCurrentChoice(null);
       }
