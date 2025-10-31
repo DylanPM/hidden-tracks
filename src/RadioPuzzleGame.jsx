@@ -107,11 +107,14 @@ const loadProfileForSeed = async (seed) => {
     }
     
     const profile = await response.json();
-    console.log('Profile loaded:', profile);
-    console.log('Profile keys:', Object.keys(profile));
-    console.log('Has seed?', !!profile?.seed);
-    console.log('Has tracks?', !!profile?.tracks);
-    console.log('Track count:', profile?.tracks?.length);
+    console.log('✅ Profile loaded from:', seed.filename);
+    console.log('✅ Profile seed:', profile.seed?.name, 'by', profile.seed?.artists);
+    console.log('✅ Profile tracks:', profile.tracks?.length);
+    console.log('✅ First track:', profile.tracks?.[0] ? {
+      name: profile.tracks[0].name,
+      artists: profile.tracks[0].artists,
+      correct: profile.tracks[0].correct
+    } : 'none');
     
     // VALIDATION: Check profile has required data
     if (!profile?.seed) {
@@ -191,10 +194,10 @@ const loadProfileForSeed = async (seed) => {
       if (!currentChoice && !removeMode) {
         generateChoice();
       }
-    } else if (phase === 'guess' && gameState.state.multipleChoiceOptions.length === 0 && gameState.state.radioPlaylist.length > 0) {
+    } else if (phase === 'guess' && gameState.state.multipleChoiceOptions.length === 0 && loadedProfile) {
       generateMultipleChoice();
     }
-  }, [phase, currentChoice, removeMode, gameState.state.radioPlaylist.length, gameState.state.multipleChoiceOptions.length, selectedTracks]);
+  }, [phase, currentChoice, removeMode, loadedProfile, gameState.state.multipleChoiceOptions.length, selectedTracks]);
 
 
   const generateChoice = () => {
@@ -304,9 +307,14 @@ const loadProfileForSeed = async (seed) => {
 
   const generateMultipleChoice = () => {
     if (!loadedProfile || !loadedProfile.tracks) {
-      console.error('No profile loaded');
+      console.error('❌ No profile loaded!');
       return;
     }
+
+    console.log('🎯 generateMultipleChoice called');
+    console.log('📦 loadedProfile.seed:', loadedProfile.seed?.name, 'by', loadedProfile.seed?.artists);
+    console.log('📦 loadedProfile.tracks.length:', loadedProfile.tracks.length);
+    console.log('📦 gameState.seed:', gameState.state.seed?.track_name, 'by', gameState.state.seed?.artists);
 
     // Helper to create track key from artists array
     const makeTrackKey = (artists, name) => {
@@ -314,8 +322,9 @@ const loadProfileForSeed = async (seed) => {
       return `${artistStr}-${name}`;
     };
 
-    // Use ALL tracks from profile - they're already curated for this seed
+    // ONLY use tracks from the loaded profile JSON - no other source!
     const allTracks = loadedProfile.tracks;
+    console.log('📦 Using tracks from loadedProfile.tracks:', allTracks.length);
 
     // Filter out already guessed tracks and the seed
     const availableTracks = allTracks.filter(t =>
@@ -327,11 +336,23 @@ const loadProfileForSeed = async (seed) => {
     const correctTracks = availableTracks.filter(t => t.correct === true);
     const incorrectTracks = availableTracks.filter(t => t.correct === false);
 
-    console.log('🔍 Generating options from profile tracks:', {
+    console.log('🔍 Available tracks after filtering:', {
       totalAvailable: availableTracks.length,
       correct: correctTracks.length,
       incorrect: incorrectTracks.length
     });
+    console.log('🔍 Sample correct track:', correctTracks[0] ? {
+      name: correctTracks[0].name,
+      artists: correctTracks[0].artists,
+      correct: correctTracks[0].correct,
+      id: correctTracks[0].id
+    } : 'none');
+    console.log('🔍 Sample incorrect track:', incorrectTracks[0] ? {
+      name: incorrectTracks[0].name,
+      artists: incorrectTracks[0].artists,
+      correct: incorrectTracks[0].correct,
+      id: incorrectTracks[0].id
+    } : 'none');
 
     // Determine mix based on difficulty
     let correctCount;
@@ -364,6 +385,13 @@ const loadProfileForSeed = async (seed) => {
         ...t // Includes correct flag and all audio features
       }))
     ];
+
+    console.log('✅ Generated options:', options.map(o => ({
+      name: o.track_name,
+      artists: o.artists,
+      correct: o.correct,
+      id: o.track_id
+    })));
 
     // Final shuffle so correct/incorrect aren't grouped
     gameState.setMultipleChoice(options.sort(() => Math.random() - 0.5));
