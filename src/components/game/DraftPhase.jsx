@@ -82,7 +82,13 @@ export function DraftPhase({
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-3 mb-4">
                       <Music className="w-12 h-12 text-white" />
-                      <PreviewPlayer song={option.data} />
+                      {/* Prevent preview clicks from selecting the card */}
+                      <div 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="relative z-10"
+                      >
+                        <PreviewPlayer song={option.data} />
+                      </div>
                     </div>
                     <p className="text-white text-xl font-bold mb-2">{option.data.artists}</p>
                     <p className="text-zinc-300 text-lg">{option.data.track_name}</p>
