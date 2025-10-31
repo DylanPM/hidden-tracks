@@ -115,7 +115,7 @@ useEffect(() => {
       const featuresData = await featuresResponse.json();
 
       //building profile here
-      const profile = buildSpotifyProfile(tracksData.items, featuresData.audio_features);
+      // const profile = buildSpotifyProfile(tracksData.items, featuresData.audio_features);
       
       if (!profile) {
         throw new Error('Failed to build profile');
