@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState';
 import { GenreConstellationSelect } from './components/game/GenreConstellationSelect';
 import { DraftPhase } from './components/game/DraftPhase';
@@ -8,16 +8,94 @@ import { generateSeedHints } from './utils/gameUtils';
 import { CHALLENGES } from './constants/gameConfig';
 
 const DEMO_MODE = true;
-const DEBUG_MODE = true; // Set to false to disable debug view
+const DEBUG_MODE = false;
+
+// ============================================================================
+// HELPER FUNCTIONS - Single source of truth for track handling
+// ============================================================================
+
+const makeTrackKey = (track) => {
+  if (!track) return '';
+  const artistStr = Array.isArray(track.artists)
+    ? track.artists.join(', ')
+    : track.artists || 'Unknown';
+  const name = track.name || 'Unknown';
+  return `${artistStr}-${name}`;
+};
+
+const getArtistString = (track) => {
+  if (!track || !track.artists) return 'Unknown Artist';
+  return Array.isArray(track.artists)
+    ? track.artists.join(', ')
+    : track.artists;
+};
+
+const transformSeed = (profileSeed) => ({
+  id: profileSeed.id,
+  name: profileSeed.name,
+  artists: profileSeed.artists,
+  year: profileSeed.year,
+  popularity: profileSeed.popularity,
+  genres: profileSeed.genres || [],
+  danceability: profileSeed.danceability,
+  energy: profileSeed.energy,
+  valence: profileSeed.valence,
+  acousticness: profileSeed.acousticness,
+  instrumentalness: profileSeed.instrumentalness,
+  liveness: profileSeed.liveness,
+  speechiness: profileSeed.speechiness,
+  tempo: profileSeed.tempo,
+  loudness: profileSeed.loudness,
+  mode: profileSeed.mode,
+  key: profileSeed.key,
+  time_signature: profileSeed.time_signature
+});
+
+const transformTrack = (profileTrack) => ({
+  id: profileTrack.id,
+  name: profileTrack.name,
+  artists: profileTrack.artists,
+  correct: profileTrack.correct === true,
+  year: profileTrack.year,
+  popularity: profileTrack.popularity,
+  genres: profileTrack.genres || [],
+  danceability: profileTrack.danceability,
+  energy: profileTrack.energy,
+  valence: profileTrack.valence,
+  acousticness: profileTrack.acousticness,
+  instrumentalness: profileTrack.instrumentalness,
+  liveness: profileTrack.liveness,
+  speechiness: profileTrack.speechiness,
+  tempo: profileTrack.tempo,
+  loudness: profileTrack.loudness,
+  mode: profileTrack.mode,
+  key: profileTrack.key,
+  time_signature: profileTrack.time_signature,
+  audio_sim: profileTrack.audio_sim,
+  genre_sim: profileTrack.genre_sim,
+  era_dist: profileTrack.era_dist,
+  era_sim: profileTrack.era_sim,
+  pop_dist: profileTrack.pop_dist,
+  pop_sim: profileTrack.pop_sim,
+  genre_factor: profileTrack.genre_factor,
+  composite_raw: profileTrack.composite_raw,
+  radio_fit: profileTrack.radio_fit,
+  tier: profileTrack.tier
+});
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 function RadioPuzzleGame() {
   const [phase, setPhase] = useState('constellation');
+  //const [phase, setPhase] = useState('loading');
 
   // Constellation/Draft state
   const [selectedTracks, setSelectedTracks] = useState([]);
   const [difficulty, setDifficulty] = useState('medium');
   const [loadedProfile, setLoadedProfile] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const profileLoadingRef = useRef(false);
 
   // Game settings
   const [maxGuesses, setMaxGuesses] = useState(6);
@@ -30,192 +108,171 @@ function RadioPuzzleGame() {
   
   const gameState = useGameState();
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
-  
-  
-// Resize iframe dynamically
-useEffect(() => {
-  const resize = () => {
-    const height = document.documentElement.scrollHeight;
-    window.parent?.postMessage({ type: 'resize', height }, '*');
-  };
-  resize();
-  window.addEventListener('resize', resize);
-  const observer = new MutationObserver(resize);
-  observer.observe(document.body, { childList: true, subtree: true });
-  return () => {
-    window.removeEventListener('resize', resize);
-    observer.disconnect();
-  };
-}, [phase]);
-  
-// Automatically go to score when no guesses remain
-useEffect(() => {
-  if (phase === 'guess' && guessesLeft <= 0) {
-    setPhase('score');
-  }
-}, [phase, guessesLeft]);
 
-
-// NEW: Handle constellation launch
-const handleConstellationLaunch = (tracks, selectedDifficulty) => {
-  console.log('Constellation launch:', { tracks, selectedDifficulty });
-
-  // Convert constellation format to game format - profiles are source of truth
-  const convertedTracks = tracks.map(track => ({
-    track_id: track.uri,
-    track_name: track.name,
-    artists: track.artist, // Use as-is from constellation
-    filename: track.filename,
-    // Store original for reference
-    _constellation: track
-  }));
-
-  setSelectedTracks(convertedTracks);
-  setDifficulty(selectedDifficulty);
-
-  // Mark if this is a single-track launch (seed is locked)
-  if (tracks.length === 1) {
-    localStorage.setItem('seedIsLocked', 'true');
-  } else {
-    localStorage.removeItem('seedIsLocked');
-  }
-
-  // Go to draft phase - user will pick seed + challenges
-  setPhase('draft');
-};
-
-// NEW: Load profile when draft is complete
-const loadProfileForSeed = async (seed) => {
-  if (!seed || !seed.filename) {
-    console.error('No filename on seed:', seed);
-    return;
-  }
-  
-  if (profileLoading) {
-    console.log('Profile already loading, ignoring duplicate request');
-    return;
-  }
-  
-  try {
-    setProfileLoading(true);
-    setPhase('loading');
-    console.log('Loading profile:', seed.filename);
-    
-    const response = await fetch(`/profiles/${seed.filename}`);
-    if (!response.ok) {
-      throw new Error(`Failed to load profile: ${response.status}`);
-    }
-    
-    const profile = await response.json();
-    console.log('✅ Profile loaded from:', seed.filename);
-    console.log('✅ Profile seed:', profile.seed?.name, 'by', profile.seed?.artists);
-    console.log('✅ Profile tracks:', profile.tracks?.length);
-    console.log('✅ First track:', profile.tracks?.[0] ? {
-      name: profile.tracks[0].name,
-      artists: profile.tracks[0].artists,
-      correct: profile.tracks[0].correct
-    } : 'none');
-    
-    // VALIDATION: Check profile has required data
-    if (!profile?.seed) {
-      throw new Error('Profile missing seed data');
-    }
-    
-    if (!profile?.tracks || profile.tracks.length === 0) {
-      throw new Error('Profile missing tracks data');
-    }
-    
-    // Profile already contains ALL candidate tracks for this seed
-    // Each track has a 'correct' flag - no need to filter by pools or calculate anything
-
-    const allTracks = profile.tracks;
-    const correctTracks = allTracks.filter(t => t.correct === true);
-    const incorrectTracks = allTracks.filter(t => t.correct === false);
-
-    console.log('✅ Profile loaded:', {
-      totalTracks: allTracks.length,
-      correct: correctTracks.length,
-      incorrect: incorrectTracks.length
-    });
-
-    // VALIDATION: Check we have enough tracks
-    if (correctTracks.length < 10) {
-      throw new Error(`Not enough correct tracks (found ${correctTracks.length}, need 10+)`);
-    }
-    if (incorrectTracks.length < 10) {
-      throw new Error(`Not enough incorrect tracks (found ${incorrectTracks.length}, need 10+)`);
-    }
-
-    // Store the profile - generateMultipleChoice will use profile.tracks directly
-    setLoadedProfile(profile);
-
-    // Use the profile's seed data (has full audio features) - use as-is
-    const fullSeed = {
-      track_id: profile.seed.id,
-      artists: profile.seed.artists, // Already clean from profile
-      track_name: profile.seed.name,
-      ...profile.seed // includes all audio features
+  // Resize iframe dynamically
+  useEffect(() => {
+    const resize = () => {
+      const height = document.documentElement.scrollHeight;
+      window.parent?.postMessage({ type: 'resize', height }, '*');
     };
+    resize();
+    window.addEventListener('resize', resize);
+    const observer = new MutationObserver(resize);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      window.removeEventListener('resize', resize);
+      observer.disconnect();
+    };
+  }, [phase]);
+  
+  // Automatically go to score when no guesses remain
+  useEffect(() => {
+    if (phase === 'guess' && guessesLeft <= 0) {
+      setPhase('score');
+    }
+  }, [phase, guessesLeft]);
 
-    gameState.setSeed(fullSeed);
-
-    // Generate seed hints
-    const hints = generateSeedHints(fullSeed);
-    gameState.setSeedHints(hints);
-
-    // NOTE: We don't need radioPlaylist anymore - generateMultipleChoice uses profile.tracks directly
-    gameState.setRadioPlaylist([]); // Keep for backwards compatibility but unused
-    
-    // Move to guess phase
-    setProfileLoading(false);
-    setPhase('guess');
-    
-  } catch (error) {
-    console.error('Error loading profile:', error);
-    setProfileLoading(false);
-    setProfileLoadError(error.message || 'Failed to load profile');
-    setPhase('error');
-  }
-};
-
-//new function to load and decode profile ends here
-
-  // Generate choice when in draft phase
+  // Generate choices during draft, generate options during guess
   useEffect(() => {
     if (phase === 'draft') {
-      // If only 1 track selected, auto-set as seed and skip straight to challenges
       if (selectedTracks.length === 1 && !gameState.state.seed) {
         const track = selectedTracks[0];
-        // Track is already in game format from handleConstellationLaunch
         gameState.setSeed(track);
-        // Don't generate choice yet - will trigger after seed is set
       }
       
       if (!currentChoice && !removeMode) {
         generateChoice();
       }
-    } else if (phase === 'guess' && gameState.state.multipleChoiceOptions.length === 0 && loadedProfile) {
+    }
+    
+    if (phase === 'guess' && 
+        gameState.state.multipleChoiceOptions.length === 0 && 
+        loadedProfile) {
       generateMultipleChoice();
     }
-  }, [phase, currentChoice, removeMode, loadedProfile, gameState.state.multipleChoiceOptions.length, selectedTracks]);
+  }, [phase, currentChoice, removeMode, selectedTracks.length]);
 
+  // ============================================================================
+  // CONSTELLATION PHASE
+  // ============================================================================
+
+  const handleConstellationLaunch = (tracks, selectedDifficulty) => {
+    console.log('🎨 Constellation launch');
+    console.log('🔍 Tracks received:', tracks); // ADD THIS
+    console.log('🔍 First track filename:', tracks[0]?.filename); // ADD THIS
+
+    const convertedTracks = tracks.map(track => ({
+      id: track.uri,
+      name: track.name,
+      artists: Array.isArray(track.artist) ? track.artist : [track.artist],
+      filename: track.filename
+    }));
+
+    setSelectedTracks(convertedTracks);
+    setDifficulty(selectedDifficulty);
+
+    if (tracks.length === 1) {
+      localStorage.setItem('seedIsLocked', 'true');
+    } else {
+      localStorage.removeItem('seedIsLocked');
+    }
+
+    setPhase('draft');
+  };
+
+  // ============================================================================
+  // PROFILE LOADING
+  // ============================================================================
+
+  const loadProfileForSeed = async (seed) => {
+    if (!seed || !seed.filename) {
+  console.log('🔍 SEED OBJECT PASSED TO LOAD:', seed);  // ADD THIS
+  console.log('🔍 SEED HAS FILENAME?:', seed?.filename); // ADD THIS
+  
+  if (!seed || !seed.filename) {
+    console.error('❌ No filename on seed:', seed);
+    return;
+  }
+      return;
+    }
+    
+    if (profileLoadingRef.current) {
+      console.log('⏭️ Profile already loading, ignoring duplicate request');
+      return;
+    }
+    
+    try {
+      profileLoadingRef.current = true;
+      setPhase('loading');
+      
+      console.log('📂 Loading profile:', seed.filename);
+      
+      const response = await fetch(`profiles/${seed.filename}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const rawProfile = await response.json();
+      console.log('✅ Profile JSON loaded');
+      
+      if (!rawProfile?.seed || !rawProfile?.tracks?.length) {
+        throw new Error('Invalid profile structure');
+      }
+
+      // Transform once into game format
+      const gameSeed = transformSeed(rawProfile.seed);
+      const gameTracks = rawProfile.tracks.map(transformTrack);
+
+      const correctCount = gameTracks.filter(t => t.correct).length;
+      const incorrectCount = gameTracks.filter(t => !t.correct).length;
+
+      console.log('🎯 Profile ready:', {
+        seed: `${gameSeed.name} by ${gameSeed.artists.join(', ')}`,
+        tracks: gameTracks.length,
+        correct: correctCount,
+        incorrect: incorrectCount
+      });
+
+      if (correctCount < 10 || incorrectCount < 10) {
+        throw new Error('Not enough tracks in profile');
+      }
+
+      setLoadedProfile({
+        seed: gameSeed,
+        tracks: gameTracks
+      });
+      
+      gameState.setSeed(gameSeed);
+
+      const hints = generateSeedHints(gameSeed);
+      gameState.setSeedHints(hints);
+
+      profileLoadingRef.current = false;
+      setPhase('guess');
+      
+    } catch (error) {
+      console.error('❌ Error loading profile:', error);
+      profileLoadingRef.current = false;
+      setProfileLoadError(error.message);
+      setPhase('error');
+    }
+  };
+
+  // ============================================================================
+  // DRAFT PHASE
+  // ============================================================================
 
   const generateChoice = () => {
     const needsSeed = !gameState.state.seed;
     const needsChallenges = gameState.state.challenges.filter(c => c !== null).length < 3;
 
     if (!needsSeed && !needsChallenges) {
-      // Draft complete! Load the profile for the selected seed
       loadProfileForSeed(gameState.state.seed);
       return;
     }
 
     const cardTypes = [];
-    
-    // CRITICAL: If we only have 1 track and it's the seed, DON'T offer song cards
     const canOfferSongCards = selectedTracks.length > 1 || !gameState.state.seed;
-    
-    // CRITICAL: If seed was auto-locked from single track, don't allow removing it
     const seedIsLocked = selectedTracks.length === 1 && gameState.state.seed;
     
     if (needsSeed && canOfferSongCards) {
@@ -224,12 +281,10 @@ const loadProfileForSeed = async (seed) => {
     if (needsChallenges) {
       cardTypes.push('challenge', 'challenge');
     }
-    // Only offer remove if seed is not locked
     if (!seedIsLocked && (gameState.state.seed || gameState.state.challenges.some(c => c !== null))) {
       cardTypes.push('remove');
     }
     
-    // If no valid card types (shouldn't happen), default to challenges
     if (cardTypes.length === 0) {
       cardTypes.push('challenge', 'challenge');
     }
@@ -245,15 +300,11 @@ const loadProfileForSeed = async (seed) => {
 
     const createCard = (type) => {
       if (type === 'song') {
-        // Use selectedTracks for song cards
         const songsToUse = selectedTracks.filter(s => 
-          s && s.artists && s.track_name &&
-          // CRITICAL: Don't offer the seed as a card option
-          s.track_id !== gameState.state.seed?.track_id
+          s && s.artists && s.name && s.id !== gameState.state.seed?.id
         );
         
         if (songsToUse.length === 0) {
-          // Fallback to challenge if no valid songs
           if (availableChallenges.length === 0) return { type: 'remove', data: null };
           return { type: 'challenge', data: availableChallenges[Math.floor(Math.random() * availableChallenges.length)] };
         }
@@ -272,22 +323,18 @@ const loadProfileForSeed = async (seed) => {
   };
 
   const selectCard = (option) => {
-    console.log('selectCard called with:', option);
-    
     if (option.type === 'song' && !gameState.state.seed) {
-      if (!option.data || !option.data.artists || !option.data.track_name) {
-        console.error('Invalid song data in option:', option);
+      if (!option.data || !option.data.artists || !option.data.name) {
+        console.error('❌ Invalid song data in option:', option);
         setCurrentChoice(null);
         return;
       }
       
-      console.log('Setting seed:', option.data);
       gameState.setSeed(option.data);
       setCurrentChoice(null);
     } else if (option.type === 'challenge') {
       const emptySlot = gameState.state.challenges.findIndex(c => c === null);
       if (emptySlot !== -1) {
-        console.log('Setting challenge in slot', emptySlot, ':', option.data.name);
         gameState.setChallenge(emptySlot, option.data);
         setCurrentChoice(null);
       }
@@ -305,186 +352,134 @@ const loadProfileForSeed = async (seed) => {
     setRemoveMode(false);
   };
 
+  // ============================================================================
+  // GUESS PHASE
+  // ============================================================================
+
   const generateMultipleChoice = () => {
-    if (!loadedProfile || !loadedProfile.tracks) {
-      console.error('❌ No profile loaded!');
+    if (!loadedProfile?.tracks) {
+      console.error('❌ No profile loaded');
       return;
     }
 
-    console.log('🎯 generateMultipleChoice called');
-    console.log('📦 loadedProfile.seed:', loadedProfile.seed?.name, 'by', loadedProfile.seed?.artists);
-    console.log('📦 loadedProfile.tracks.length:', loadedProfile.tracks.length);
-    console.log('📦 gameState.seed:', gameState.state.seed?.track_name, 'by', gameState.state.seed?.artists);
+    const seed = gameState.state.seed;
+    if (!seed) {
+      console.error('❌ No seed set');
+      return;
+    }
 
-    // Helper to create track key from artists array
-    const makeTrackKey = (artists, name) => {
-      const artistStr = Array.isArray(artists) ? artists.join(', ') : artists;
-      return `${artistStr}-${name}`;
-    };
-
-    // ONLY use tracks from the loaded profile JSON - no other source!
-    const allTracks = loadedProfile.tracks;
-    console.log('📦 Using tracks from loadedProfile.tracks:', allTracks.length);
-
-    // Filter out already guessed tracks and the seed
-    const availableTracks = allTracks.filter(t =>
-      t.id !== gameState.state.seed.track_id &&
-      !gameState.state.guessedTracks.has(makeTrackKey(t.artists, t.name))
-    );
-
-    // Split into correct and incorrect based on profile's pre-computed flags
-    const correctTracks = availableTracks.filter(t => t.correct === true);
-    const incorrectTracks = availableTracks.filter(t => t.correct === false);
-
-    console.log('🔍 Available tracks after filtering:', {
-      totalAvailable: availableTracks.length,
-      correct: correctTracks.length,
-      incorrect: incorrectTracks.length
+    const availableTracks = loadedProfile.tracks.filter(track => {
+      if (track.id === seed.id) return false;
+      if (gameState.state.guessedTracks.has(makeTrackKey(track))) return false;
+      return true;
     });
-    console.log('🔍 Sample correct track:', correctTracks[0] ? {
-      name: correctTracks[0].name,
-      artists: correctTracks[0].artists,
-      correct: correctTracks[0].correct,
-      id: correctTracks[0].id
-    } : 'none');
-    console.log('🔍 Sample incorrect track:', incorrectTracks[0] ? {
-      name: incorrectTracks[0].name,
-      artists: incorrectTracks[0].artists,
-      correct: incorrectTracks[0].correct,
-      id: incorrectTracks[0].id
-    } : 'none');
 
-    // Determine mix based on difficulty
+    const correctTracks = availableTracks.filter(t => t.correct);
+    const incorrectTracks = availableTracks.filter(t => !t.correct);
+
     let correctCount;
     const roll = Math.random() * 100;
+
     if (difficulty === 'easy') {
       correctCount = roll < 75 ? 3 : 2;
     } else if (difficulty === 'medium') {
       correctCount = roll < 50 ? 2 : (roll < 85 ? 3 : 1);
-    } else { // hard
+    } else {
       correctCount = roll < 60 ? 1 : 2;
     }
 
     const incorrectCount = 4 - correctCount;
 
-    // Shuffle and pick
-    const shuffledCorrect = [...correctTracks].sort(() => Math.random() - 0.5);
-    const shuffledIncorrect = [...incorrectTracks].sort(() => Math.random() - 0.5);
+    const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+    
+    const picked = shuffle([
+      ...shuffle(correctTracks).slice(0, correctCount),
+      ...shuffle(incorrectTracks).slice(0, incorrectCount)
+    ]);
 
-    const options = [
-      ...shuffledCorrect.slice(0, correctCount).map(t => ({
-        track_id: t.id,
-        track_name: t.name,
-        artists: t.artists,
-        ...t // Includes correct flag and all audio features
-      })),
-      ...shuffledIncorrect.slice(0, incorrectCount).map(t => ({
-        track_id: t.id,
-        track_name: t.name,
-        artists: t.artists,
-        ...t // Includes correct flag and all audio features
-      }))
-    ];
-
-    console.log('✅ Generated options:', options.map(o => ({
-      name: o.track_name,
-      artists: o.artists,
-      correct: o.correct,
-      id: o.track_id
-    })));
-
-    // Final shuffle so correct/incorrect aren't grouped
-    gameState.setMultipleChoice(options.sort(() => Math.random() - 0.5));
+    gameState.setMultipleChoice(picked);
   };
 
-
   const generateFeedback = (song, seed) => {
-    // Use the profile's pre-computed similarity scores for rich feedback
     const feedback = [];
     
-    // Check audio similarity
     if (song.audio_sim !== undefined && song.audio_sim < 0.7) {
-      feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}% vs seed)`);
+      feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}%)`);
     }
     
-    // Check genre similarity  
     if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
       feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
     }
     
-    // Check era distance
     if (song.era_dist !== undefined && song.era_dist > 10) {
       feedback.push(`Different era (${song.era_dist} years apart)`);
     }
     
-    // Check tier - higher tiers are less similar
     if (song.tier !== undefined && song.tier >= 4) {
-      feedback.push(`Very different vibe (tier ${song.tier})`);
+      feedback.push(`Very different vibe (tier ${song.tier}/5)`);
     }
     
-    // If no specific feedback, use generic message
     if (feedback.length === 0) {
-      feedback.push('Doesn\'t fit the radio station\'s vibe');
+      feedback.push("Doesn't fit the radio station's vibe");
     }
     
     return feedback;
   };
 
   const handleGuess = (song) => {
-    console.log('handleGuess called with:', song);
-
-    if (!song || !song.artists || !song.track_name) {
-      setErrorMessage('Invalid song data.');
+    if (!song?.artists || !song?.name) {
+      setErrorMessage('Invalid song data');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
 
-    // Create track key handling both array and string artists
-    const artistStr = Array.isArray(song.artists) ? song.artists.join(', ') : song.artists;
-    const trackKey = `${artistStr}-${song.track_name}`;
+    const seed = gameState.state.seed;
+    if (!seed) {
+      setErrorMessage('Game not initialized');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+
+    const trackKey = makeTrackKey(song);
+    const artistStr = getArtistString(song);
 
     if (gameState.state.guessedTracks.has(trackKey)) {
-      setErrorMessage('You already guessed this song.');
+      setErrorMessage('You already guessed this song');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
 
-    if (song.track_id === gameState.state.seed.track_id) {
-      setErrorMessage('You can\'t guess the seed song!');
+    if (song.id === seed.id) {
+      setErrorMessage("You can't guess the seed song!");
       setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
 
-    // Use profile's correct flag - this is pre-computed and definitive
-    const isCorrect = song.correct === true || song.isCorrect === true;
-
-    console.log('Is correct?', isCorrect, '(correct:', song.correct, 'isCorrect:', song.isCorrect, ')');
+    const isCorrect = song.correct === true;
 
     if (!isCorrect) {
-      // Wrong answer - use profile similarity data for feedback
-      const feedback = generateFeedback(song, gameState.state.seed);
+      const feedback = generateFeedback(song, seed);
 
       gameState.addGuess({
         id: Date.now(),
-        artist: artistStr, // Already clean from profile
-        song: song.track_name,
+        artist: artistStr,
+        song: song.name,
         incorrect: true,
-        feedback,
+        feedback
       }, trackKey);
+
     } else {
-      // Correct answer - calculate points
-      const basePoints = 10; // Base points for correct guess
       const challengeScores = gameState.state.challenges.map(c =>
-        c && c.check(song, gameState.state.seed) ? Math.random() * 100 : 0
+        c && c.check(song, seed) ? Math.random() * 100 : 0
       );
 
       const newGuess = {
         id: Date.now(),
-        artist: artistStr, // Already clean from profile
-        song: song.track_name,
-        basePoints,
+        artist: artistStr,
+        song: song.name,
+        basePoints: 10,
         challengeScores,
-        incorrect: false,
+        incorrect: false
       };
 
       gameState.addGuess(newGuess, trackKey);
@@ -525,7 +520,6 @@ const loadProfileForSeed = async (seed) => {
     const challenge = gameState.state.challenges[challengeIndex];
     if (!challenge || !gameState.state.seed || !loadedProfile) return;
 
-    // Use correct tracks from profile to find examples
     const correctTracks = loadedProfile.tracks.filter(t => t.correct === true);
     const matches = correctTracks
       .filter(song => challenge.check(song, gameState.state.seed))
@@ -536,19 +530,18 @@ const loadProfileForSeed = async (seed) => {
       return;
     }
 
-    const hint = matches.map(s => {
-      const artistStr = Array.isArray(s.artists) ? s.artists.join(', ') : s.artists;
-      return `${artistStr} - ${s.name || s.track_name}`;
-    }).join('\n');
+    const hint = matches.map(s => 
+      `${getArtistString(s)} - ${s.name}`
+    ).join('\n');
+    
     alert(`Examples for "${challenge.name}":\n\n${hint}`);
-
     gameState.useHint(challengeIndex);
   };
 
-  // OLD: TasteBuilder not used in DEMO_MODE
-  // const handleTasteBuilderPick = (genre) => { ... }
+  // ============================================================================
+  // PHASE RENDERING
+  // ============================================================================
 
-  // Phase rendering
   if (phase === 'constellation') {
     return <GenreConstellationSelect onLaunch={handleConstellationLaunch} />;
   }
@@ -577,29 +570,20 @@ const loadProfileForSeed = async (seed) => {
     );
   }
 
-  // OLD: Profile select/TasteBuilder phases not used in DEMO_MODE
-  // if (phase === 'profile-select') { ... }
-  // if (phase === 'taste-builder') { ... }
-  // if (phase === 'profile-summary') { ... }
-
   if (phase === 'loading') {
-    const seedName = gameState.state.seed?.track_name || 'profile';
-    const seedArtists = gameState.state.seed?.artists || '';
-    const seedArtist = Array.isArray(seedArtists) ? seedArtists.join(', ') : seedArtists;
+    const seedName = gameState.state.seed?.name || 'profile';
+    const seedArtist = getArtistString(gameState.state.seed);
 
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500 mx-auto mb-6"></div>
           <p className="text-white text-xl font-bold mb-2">Loading {seedName}</p>
-          {seedArtist && <p className="text-zinc-400">by {seedArtist}</p>}
+          <p className="text-zinc-400">by {seedArtist}</p>
         </div>
       </div>
     );
   }
-
-  // OLD: Setup phase not used in DEMO_MODE
-  // if (phase === 'setup') { ... }
 
   if (phase === 'draft') {
     const seedIsLocked = localStorage.getItem('seedIsLocked') === 'true';
@@ -636,7 +620,7 @@ const loadProfileForSeed = async (seed) => {
         onGetHint={getHint}
         onGuess={handleGuess}
         onRefreshCandidates={generateMultipleChoice}
-        onTextInput={() => {}} // TEXT SEARCH DISABLED
+        onTextInput={() => {}}
         onSeeScore={() => setPhase('score')}
       />
     );
@@ -649,7 +633,6 @@ const loadProfileForSeed = async (seed) => {
         challengePlacements={gameState.state.challengePlacements}
         challenges={gameState.state.challenges}
         onPlayAgain={() => {
-          // Clear all game state
           gameState.resetGame();
           setSelectedTracks([]);
           setLoadedProfile(null);
@@ -658,11 +641,7 @@ const loadProfileForSeed = async (seed) => {
           setRemoveMode(false);
           setErrorMessage('');
           setProfileLoadError(null);
-          
-          // Clear localStorage flags
           localStorage.removeItem('seedIsLocked');
-          
-          // Return to constellation
           setPhase('constellation');
         }}
       />
@@ -675,6 +654,5 @@ const loadProfileForSeed = async (seed) => {
     </div>
   );
 }
-
 
 export default RadioPuzzleGame;
