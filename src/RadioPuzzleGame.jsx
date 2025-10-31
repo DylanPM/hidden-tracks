@@ -71,23 +71,7 @@ useEffect(() => {
 }, [phase, guessesLeft]);
 
 // Skip OAuth path entirely for demo builds, otherwise run normal auth check
-useEffect(() => {
-  if (DEMO_MODE) return;
-
-  const checkAuth = async () => {
-    const token = localStorage.getItem('spotify_token');
-    if (token) {
-      setSpotifyToken(token);
-      await fetchSpotifyProfile(token);
-    } else {
-      setPhase('profile-select');
-    }
-  };
-
-  if (phase === 'auth-check') {
-    checkAuth();
-  }
-}, [phase]);
+// 
 
 
   // const fetchSpotifyProfile = async (token) => {
