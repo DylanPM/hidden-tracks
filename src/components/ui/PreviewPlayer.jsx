@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Play, X } from 'lucide-react';
 
-export function PreviewPlayer({ song, compact = false }) {
+export function PreviewPlayer({ song, compact = true }) {
   const [showEmbed, setShowEmbed] = useState(false);
+  const embedRef = useRef(null);
+  
+  // Close embed when clicking outside
+  useEffect(() => {
+    if (!showEmbed) return;
+    
+    const handleClickOutside = (e) => {
+      if (embedRef.current && !embedRef.current.contains(e.target)) {
+        setShowEmbed(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmbed]);
   
   if (!song) {
     return null;
@@ -29,68 +44,40 @@ export function PreviewPlayer({ song, compact = false }) {
     return null;
   }
 
-  // For compact mode (inline button)
-  if (compact) {
-    return (
-      <div className="relative">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowEmbed(!showEmbed);
-          }}
-          className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all duration-200 flex items-center justify-center"
-          aria-label={showEmbed ? "Close preview" : "Play preview"}
-        >
-          {showEmbed ? (
-            <X className="w-5 h-5" fill="currentColor" />
-          ) : (
-            <Play className="w-5 h-5" fill="currentColor" />
-          )}
-        </button>
-        
-        {showEmbed && (
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="absolute top-full left-0 mt-2 z-50 bg-black rounded-lg shadow-2xl border border-zinc-800"
-            style={{ width: '300px' }}
-          >
-            <iframe
-              src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`}
-              width="100%"
-              height="152"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-            />
-          </div>
-        )}
-      </div>
-    );
-  }
+  const buttonSize = compact ? 'w-10 h-10' : 'w-12 h-12';
+  const iconSize = compact ? 'w-5 h-5' : 'w-6 h-6';
 
-  // For regular mode (larger button)
   return (
-    <div className="relative">
+    <div className="relative inline-block" ref={embedRef}>
+      {/* Play/Close Button - Always visible */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           setShowEmbed(!showEmbed);
         }}
-        className="w-12 h-12 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all duration-200 flex items-center justify-center"
+        className={`${buttonSize} ${
+          showEmbed 
+            ? 'bg-red-500 hover:bg-red-600' 
+            : 'bg-green-500 hover:bg-green-600'
+        } text-white rounded-full transition-all duration-200 flex items-center justify-center shadow-lg z-20 relative`}
         aria-label={showEmbed ? "Close preview" : "Play preview"}
       >
         {showEmbed ? (
-          <X className="w-6 h-6" fill="currentColor" />
+          <X className={iconSize} strokeWidth={3} />
         ) : (
-          <Play className="w-6 h-6" fill="currentColor" />
+          <Play className={iconSize} fill="currentColor" strokeWidth={0} style={{ marginLeft: '2px' }} />
         )}
       </button>
       
+      {/* Embed Player - Positioned correctly */}
       {showEmbed && (
         <div 
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-full left-0 mt-2 z-50 bg-black rounded-lg shadow-2xl border border-zinc-800"
-          style={{ width: '300px' }}
+          className="absolute left-0 mt-2 bg-black rounded-lg shadow-2xl border-2 border-green-500 z-50"
+          style={{ 
+            width: '300px',
+            top: '100%' // Position below the button
+          }}
         >
           <iframe
             src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`}
@@ -99,6 +86,7 @@ export function PreviewPlayer({ song, compact = false }) {
             frameBorder="0"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             loading="lazy"
+            style={{ borderRadius: '8px' }}
           />
         </div>
       )}

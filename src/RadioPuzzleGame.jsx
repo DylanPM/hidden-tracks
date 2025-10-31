@@ -161,6 +161,13 @@ const handleConstellationLaunch = (tracks, selectedDifficulty) => {
   setSelectedTracks(convertedTracks);
   setDifficulty(selectedDifficulty);
   
+  // Mark if this is a single-track launch (seed is locked)
+  if (tracks.length === 1) {
+    localStorage.setItem('seedIsLocked', 'true');
+  } else {
+    localStorage.removeItem('seedIsLocked');
+  }
+  
   // Go to draft phase - user will pick seed + challenges
   setPhase('draft');
 };
@@ -334,13 +341,17 @@ const loadProfileForSeed = async (seed) => {
     // CRITICAL: If we only have 1 track and it's the seed, DON'T offer song cards
     const canOfferSongCards = selectedTracks.length > 1 || !gameState.state.seed;
     
+    // CRITICAL: If seed was auto-locked from single track, don't allow removing it
+    const seedIsLocked = selectedTracks.length === 1 && gameState.state.seed;
+    
     if (needsSeed && canOfferSongCards) {
       cardTypes.push('song', 'song');
     }
     if (needsChallenges) {
       cardTypes.push('challenge', 'challenge');
     }
-    if (gameState.state.seed || gameState.state.challenges.some(c => c !== null)) {
+    // Only offer remove if seed is not locked
+    if (!seedIsLocked && (gameState.state.seed || gameState.state.challenges.some(c => c !== null))) {
       cardTypes.push('remove');
     }
     
@@ -363,13 +374,14 @@ const loadProfileForSeed = async (seed) => {
         // Use selectedTracks for song cards
         const songsToUse = selectedTracks.filter(s => 
           s && s.artists && s.track_name &&
-          // Don't offer the seed as a card option
+          // CRITICAL: Don't offer the seed as a card option
           s.track_id !== gameState.state.seed?.track_id
         );
         
         if (songsToUse.length === 0) {
-          // Fallback to remove card if no valid songs
-          return { type: 'remove', data: null };
+          // Fallback to challenge if no valid songs
+          if (availableChallenges.length === 0) return { type: 'remove', data: null };
+          return { type: 'challenge', data: availableChallenges[Math.floor(Math.random() * availableChallenges.length)] };
         }
         
         const song = songsToUse[Math.floor(Math.random() * songsToUse.length)];
@@ -713,12 +725,15 @@ const loadProfileForSeed = async (seed) => {
   }
 
   if (phase === 'draft') {
+    const seedIsLocked = localStorage.getItem('seedIsLocked') === 'true';
+    
     return (
       <DraftPhase
         seed={gameState.state.seed}
         challenges={gameState.state.challenges}
         currentChoice={currentChoice}
         removeMode={removeMode}
+        seedIsLocked={seedIsLocked}
         onSelectCard={selectCard}
         onRemoveSlot={removeSlot}
       />
