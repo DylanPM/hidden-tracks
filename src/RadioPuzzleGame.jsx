@@ -7,11 +7,11 @@ import { GenreConstellationSelect } from './components/game/GenreConstellationSe
 import { DraftPhase } from './components/game/DraftPhase';
 import { GuessPhase } from './components/game/GuessPhase';
 import { ScorePhase } from './components/game/ScorePhase';
-import { calculateSimilarity, fuzzyMatch, generateSeedHints, loadSpotifyDataset } from './utils/gameUtils';
-import { buildSpotifyProfile } from './utils/trackUtils';
+import { generateSeedHints } from './utils/gameUtils';
 import { CHALLENGES } from './constants/gameConfig';
 
 const DEMO_MODE = true;
+const DEBUG_MODE = true; // Set to false to disable debug view
 
 function RadioPuzzleGame() {
   const [phase, setPhase] = useState('constellation'); // NEW: Start with constellation
@@ -148,11 +148,11 @@ useEffect(() => {
 const handleConstellationLaunch = (tracks, selectedDifficulty) => {
   console.log('Constellation launch:', { tracks, selectedDifficulty });
   
-  // Convert constellation format to game format immediately
+  // Convert constellation format to game format, keeping artists as array
   const convertedTracks = tracks.map(track => ({
     track_id: track.uri,
     track_name: track.name,
-    artists: track.artist,
+    artists: Array.isArray(track.artist) ? track.artist : [track.artist],
     filename: track.filename,
     // Store original for reference
     _constellation: track
@@ -245,7 +245,7 @@ const loadProfileForSeed = async (seed) => {
     // Use the profile's seed data (has full audio features)
     const fullSeed = {
       track_id: profile.seed.id,
-      artists: Array.isArray(profile.seed.artists) ? profile.seed.artists.join(', ') : profile.seed.artists,
+      artists: profile.seed.artists, // Keep as array
       track_name: profile.seed.name,
       ...profile.seed // includes all audio features
     };
@@ -267,10 +267,10 @@ const loadProfileForSeed = async (seed) => {
     
     console.log(`Using ${difficulty} pool:`, correctTracks.length, 'correct tracks');
     
-    // Convert to game format
+    // Convert to game format, keeping artists as arrays
     const radioPlaylist = correctTracks.map(t => ({
       track_id: t.id,
-      artists: Array.isArray(t.artists) ? t.artists.join(', ') : t.artists,
+      artists: t.artists, // Keep as array
       track_name: t.name,
       ...t // includes all audio features and correct flag
     }));
@@ -314,7 +314,7 @@ const loadProfileForSeed = async (seed) => {
     if (!seedSong) return [];
     
     const songsToUse = allSongs.filter(s => 
-      s && s.artists && typeof s.artists === 'string' && s.track_name && typeof s.track_name === 'string'
+      s && Array.isArray(s.artists) && s.artists.length > 0 && s.track_name && typeof s.track_name === 'string'
     );
     
     const similarities = songsToUse
@@ -431,6 +431,50 @@ const loadProfileForSeed = async (seed) => {
     setRemoveMode(false);
   };
 
+  // const generateFeedback = (song, seed) => {
+  //   const feedback = [];
+    
+  //   // Use profile's similarity scores for precise feedback
+  //   if (song.radio_fit !== undefined && song.radio_fit < 0.5) {
+  //     feedback.push(`Low radio fit score (${(song.radio_fit * 100).toFixed(0)}%)`);
+  //   }
+    
+  //   if (song.audio_sim !== undefined && song.audio_sim < 0.6) {
+  //     feedback.push(`Audio features don't match closely (${(song.audio_sim * 100).toFixed(0)}% similar)`);
+  //   }
+    
+  //   if (song.genre_sim !== undefined && song.genre_sim < 0.3) {
+  //     feedback.push(`Different genre (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
+  //   }
+    
+  //   if (song.era_dist !== undefined && song.era_dist > 15) {
+  //     feedback.push(`Different era (${song.era_dist} years apart)`);
+  //   }
+    
+  //   // Fallback to basic comparison if similarity scores aren't available
+  //   if (feedback.length === 0) {
+  //     if (song.energy !== undefined && seed.energy !== undefined) {
+  //       const energyDiff = Math.abs(song.energy - seed.energy);
+  //       if (energyDiff > 0.2) {
+  //         feedback.push(song.energy > seed.energy ? 'Much higher energy' : 'Much lower energy');
+  //       }
+  //     }
+      
+  //     if (song.valence !== undefined && seed.valence !== undefined) {
+  //       const valenceDiff = Math.abs(song.valence - seed.valence);
+  //       if (valenceDiff > 0.2) {
+  //         feedback.push(song.valence > seed.valence ? 'Much more positive vibe' : 'Much more negative vibe');
+  //       }
+  //     }
+      
+  //     if (feedback.length === 0) {
+  //       feedback.push('Not similar enough to belong on this radio station');
+  //     }
+  //   }
+    
+  //   return feedback;
+  // };
+
   const generateMultipleChoice = () => {
     // Use difficulty setting to determine mix
     let correctCount;
@@ -450,14 +494,15 @@ const loadProfileForSeed = async (seed) => {
     
     // Get correct answers from radioPlaylist (pre-filtered from profile)
     const availableCorrect = gameState.state.radioPlaylist.filter(s => 
-      !gameState.state.guessedTracks.has(`${s.artists}-${s.track_name}`) && 
+      !gameState.state.guessedTracks.has(`${s.artists.join(', ')}-${s.track_name}`) && 
       s.track_id !== gameState.state.seed.track_id
     );
     const shuffledCorrect = [...availableCorrect].sort(() => Math.random() - 0.5);
     
     for (let i = 0; i < Math.min(correctCount, shuffledCorrect.length); i++) {
-      options.push({ ...shuffledCorrect[i], isCorrect: true });
-      usedSongs.add(shuffledCorrect[i].track_id);
+      const track = shuffledCorrect[i];
+      options.push({ ...track, isCorrect: true });
+      usedSongs.add(track.track_id);
     }
     
     // Get wrong answers from profile pool
@@ -468,7 +513,7 @@ const loadProfileForSeed = async (seed) => {
         t.correct === false &&
         !usedSongs.has(t.id) &&
         t.id !== gameState.state.seed.track_id &&
-        !gameState.state.guessedTracks.has(`${t.artists.join ? t.artists.join(', ') : t.artists}-${t.name}`)
+        !gameState.state.guessedTracks.has(`${t.artists.join(', ')}-${t.name}`)
       );
       
       const shuffledWrong = wrongTracks.sort(() => Math.random() - 0.5);
@@ -477,7 +522,7 @@ const loadProfileForSeed = async (seed) => {
         const track = shuffledWrong[i];
         options.push({
           track_id: track.id,
-          artists: Array.isArray(track.artists) ? track.artists.join(', ') : track.artists,
+          artists: track.artists,
           track_name: track.name,
           ...track,
           isCorrect: false
@@ -496,14 +541,48 @@ const loadProfileForSeed = async (seed) => {
     return;
   };
 
+  const generateFeedback = (song, seed) => {
+    // Use the profile's pre-computed similarity scores for rich feedback
+    const feedback = [];
+    
+    // Check audio similarity
+    if (song.audio_sim !== undefined && song.audio_sim < 0.7) {
+      feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}% vs seed)`);
+    }
+    
+    // Check genre similarity  
+    if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
+      feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
+    }
+    
+    // Check era distance
+    if (song.era_dist !== undefined && song.era_dist > 10) {
+      feedback.push(`Different era (${song.era_dist} years apart)`);
+    }
+    
+    // Check tier - higher tiers are less similar
+    if (song.tier !== undefined && song.tier >= 4) {
+      feedback.push(`Very different vibe (tier ${song.tier})`);
+    }
+    
+    // If no specific feedback, use generic message
+    if (feedback.length === 0) {
+      feedback.push('Doesn\'t fit the radio station\'s vibe');
+    }
+    
+    return feedback;
+  };
+
   const handleGuess = (song) => {
+    console.log('handleGuess called with:', song);
+    
     if (!song || !song.artists || !song.track_name) {
       setErrorMessage('Invalid song data.');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
     
-    const trackKey = `${song.artists}-${song.track_name}`;
+    const trackKey = `${song.artists.join(', ')}-${song.track_name}`;
     
     if (gameState.state.guessedTracks.has(trackKey)) {
       setErrorMessage('You already guessed this song.');
@@ -517,39 +596,32 @@ const loadProfileForSeed = async (seed) => {
       return;
     }
     
-    const onPlaylist = song.isCorrect !== undefined ? song.isCorrect : 
-      gameState.state.radioPlaylist.some(s => s.track_id === song.track_id);
+    // Use profile's correct flag - this is pre-computed and definitive
+    const isCorrect = song.correct === true || song.isCorrect === true;
     
-    if (!onPlaylist) {
-      let feedback = [];
-      if (song.track_genre !== gameState.state.seed.track_genre) {
-        feedback.push(`Different genre (${song.track_genre} vs ${gameState.state.seed.track_genre})`);
-      }
-      const energyDiff = Math.abs(song.energy - gameState.state.seed.energy);
-      if (energyDiff > 0.2) {
-        feedback.push(song.energy > gameState.state.seed.energy ? 'Much higher energy' : 'Much lower energy');
-      }
-      if (feedback.length === 0) {
-        feedback.push('Attributes don\'t align closely enough');
-      }
+    console.log('Is correct?', isCorrect, '(correct:', song.correct, 'isCorrect:', song.isCorrect, ')');
+    
+    if (!isCorrect) {
+      // Wrong answer - use profile similarity data for feedback
+      const feedback = generateFeedback(song, gameState.state.seed);
       
       gameState.addGuess({
         id: Date.now(),
-        artist: song.artists,
+        artist: song.artists.join(', '),
         song: song.track_name,
         incorrect: true,
         feedback,
       }, trackKey);
     } else {
-      const isSameArtist = fuzzyMatch(song.artists, gameState.state.seed.artists);
-      const basePoints = isSameArtist ? 0 : 2;
+      // Correct answer - calculate points
+      const basePoints = 10; // Base points for correct guess
       const challengeScores = gameState.state.challenges.map(c => 
         c && c.check(song, gameState.state.seed) ? Math.random() * 100 : 0
       );
       
       const newGuess = {
         id: Date.now(),
-        artist: song.artists,
+        artist: song.artists.join(', '),
         song: song.track_name,
         basePoints,
         challengeScores,
@@ -605,7 +677,7 @@ const loadProfileForSeed = async (seed) => {
       return;
     }
     
-    const hint = matches.map(s => `${s.artists} - ${s.track_name}`).join('\n');
+    const hint = matches.map(s => `${s.artists.join(', ')} - ${s.track_name}`).join('\n');
     alert(`Examples for "${challenge.name}":\n\n${hint}`);
     
     gameState.useHint(challengeIndex);
@@ -688,7 +760,7 @@ const loadProfileForSeed = async (seed) => {
 
   if (phase === 'loading') {
     const seedName = gameState.state.seed?.track_name || 'profile';
-    const seedArtist = gameState.state.seed?.artists || '';
+    const seedArtist = gameState.state.seed?.artists?.join(', ') || '';
     
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
@@ -754,6 +826,7 @@ const loadProfileForSeed = async (seed) => {
         errorMessage={errorMessage}
         guesses={gameState.state.guesses}
         guessesLeft={guessesLeft}
+        debugMode={DEBUG_MODE}
         onRevealHint={(idx) => gameState.revealHint(idx)}
         onGetHint={getHint}
         onGuess={handleGuess}
@@ -771,10 +844,20 @@ const loadProfileForSeed = async (seed) => {
         challengePlacements={gameState.state.challengePlacements}
         challenges={gameState.state.challenges}
         onPlayAgain={() => {
+          // Clear all game state
           gameState.resetGame();
           setSelectedTracks([]);
           setLoadedProfile(null);
           setDifficulty('medium');
+          setCurrentChoice(null);
+          setRemoveMode(false);
+          setErrorMessage('');
+          setProfileLoadError(null);
+          
+          // Clear localStorage flags
+          localStorage.removeItem('seedIsLocked');
+          
+          // Return to constellation
           setPhase('constellation');
         }}
       />

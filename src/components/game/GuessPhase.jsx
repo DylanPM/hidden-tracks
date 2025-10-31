@@ -1,5 +1,5 @@
-import React from 'react';
-import { Shuffle, Lightbulb } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shuffle, Lightbulb, Bug } from 'lucide-react';
 import { PreviewPlayer } from '../ui/PreviewPlayer.jsx';
 
 export function GuessPhase({
@@ -14,6 +14,7 @@ export function GuessPhase({
   errorMessage,
   guesses,
   guessesLeft,
+  debugMode = false,
   onRevealHint,
   onGetHint,
   onGuess,
@@ -21,6 +22,36 @@ export function GuessPhase({
   onTextInput,
   onSeeScore,
 }) {
+  const [showDebugFor, setShowDebugFor] = useState(null);
+
+  const DebugOverlay = ({ track, onClose }) => (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-zinc-900 border border-green-500 rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-xl font-bold text-white">Debug Info</h3>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white">✕</button>
+        </div>
+        <div className="space-y-2 text-sm font-mono">
+          <div><span className="text-zinc-400">Track ID:</span> <span className="text-white">{track.track_id || track.id}</span></div>
+          <div><span className="text-zinc-400">Name:</span> <span className="text-white">{track.track_name || track.name}</span></div>
+          <div><span className="text-zinc-400">Artists:</span> <span className="text-white">{JSON.stringify(track.artists)}</span></div>
+          <div><span className="text-zinc-400">Year:</span> <span className="text-white">{track.year}</span></div>
+          <div><span className="text-zinc-400">Popularity:</span> <span className="text-white">{track.popularity}</span></div>
+          <div><span className="text-zinc-400">Tier:</span> <span className="text-white">{track.tier}</span></div>
+          <div><span className="text-zinc-400">Correct:</span> <span className={track.correct ? "text-green-400" : "text-red-400"}>{String(track.correct)}</span></div>
+          <div><span className="text-zinc-400">isCorrect flag:</span> <span className={track.isCorrect ? "text-green-400" : "text-red-400"}>{String(track.isCorrect)}</span></div>
+          <div><span className="text-zinc-400">Pools:</span> <span className="text-white">{JSON.stringify(track.pools)}</span></div>
+          <div><span className="text-zinc-400">Radio Fit:</span> <span className="text-white">{track.radio_fit?.toFixed(4)}</span></div>
+          <div><span className="text-zinc-400">Audio Sim:</span> <span className="text-white">{track.audio_sim?.toFixed(4)}</span></div>
+          <div><span className="text-zinc-400">Genre Sim:</span> <span className="text-white">{track.genre_sim?.toFixed(4)}</span></div>
+          <div><span className="text-zinc-400">Energy:</span> <span className="text-white">{track.energy?.toFixed(2)}</span></div>
+          <div><span className="text-zinc-400">Valence:</span> <span className="text-white">{track.valence?.toFixed(2)}</span></div>
+          <div><span className="text-zinc-400">Danceability:</span> <span className="text-white">{track.danceability?.toFixed(2)}</span></div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-black p-6">
       <div className="max-w-7xl mx-auto">
@@ -31,7 +62,18 @@ export function GuessPhase({
               <p className="text-white text-xl font-bold">{seed.artists}</p>
               <p className="text-zinc-300 text-lg">{seed.track_name}</p>
             </div>
-            <PreviewPlayer song={seed} />
+            <div className="flex items-center gap-2">
+              {debugMode && (
+                <button
+                  onClick={() => setShowDebugFor(seed)}
+                  className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded-full transition"
+                  title="Show debug info"
+                >
+                  <Bug className="w-5 h-5 text-yellow-400" />
+                </button>
+              )}
+              <PreviewPlayer song={seed} />
+            </div>
           </div>
 
           <div className="mt-4 p-4 bg-green-500/10 rounded-lg border border-green-500/30">
@@ -93,13 +135,27 @@ export function GuessPhase({
                   <button
                     key={idx}
                     onClick={() => onGuess(option)}
-                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-green-500 text-left p-3 rounded-lg transition flex items-start justify-between gap-2"
+                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-green-500 text-left p-3 rounded-lg transition flex items-start justify-between gap-2 relative"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold text-sm">{option.artists}</p>
                       <p className="text-zinc-400 text-xs truncate">{option.track_name}</p>
                     </div>
-                    <PreviewPlayer song={option} compact />
+                    <div className="flex items-center gap-1">
+                      {debugMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDebugFor(option);
+                          }}
+                          className="p-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 rounded-full transition"
+                          title="Show debug info"
+                        >
+                          <Bug className="w-4 h-4 text-yellow-400" />
+                        </button>
+                      )}
+                      <PreviewPlayer song={option} compact />
+                    </div>
                   </button>
                 ))}
               </div>
@@ -199,11 +255,15 @@ export function GuessPhase({
           <button
             onClick={onSeeScore}
             className="w-full mt-4 bg-green-500 text-black py-3 rounded-lg font-bold text-lg hover:bg-green-400 transition"
-            >
-              See Your Score
+          >
+            See Your Score
           </button>
         )}
       </div>
+
+      {showDebugFor && (
+        <DebugOverlay track={showDebugFor} onClose={() => setShowDebugFor(null)} />
+      )}
     </div>
   );
 }
