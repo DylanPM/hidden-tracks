@@ -191,18 +191,45 @@ const loadProfileForSeed = async (seed) => {
     console.log('Profile loaded:', profile);
     console.log('Profile keys:', Object.keys(profile));
     console.log('Has seed?', !!profile?.seed);
-    console.log('Has pools?', !!profile?.pools);
-    console.log('Pools keys:', profile?.pools ? Object.keys(profile.pools) : 'NO POOLS');
+    console.log('Has tracks?', !!profile?.tracks);
+    console.log('Track count:', profile?.tracks?.length);
     
     // VALIDATION: Check profile has required data
     if (!profile?.seed) {
       throw new Error('Profile missing seed data');
     }
-    if (!profile?.pools) {
-      throw new Error(`Profile missing pools data. Found keys: ${Object.keys(profile).join(', ')}`);
+    
+    if (!profile?.tracks || profile.tracks.length === 0) {
+      throw new Error('Profile missing tracks data');
     }
-    if (!profile.pools[difficulty] && !profile.pools.medium) {
-      throw new Error('Profile missing difficulty pools');
+    
+    // Build pools from tracks by filtering on their pools array
+    console.log('Building difficulty pools from tracks...');
+    
+    const allTracks = profile.tracks;
+    
+    // Filter tracks by which pools they belong to
+    const easyPool = allTracks.filter(t => t.pools?.includes('easy'));
+    const mediumPool = allTracks.filter(t => t.pools?.includes('medium'));
+    const hardPool = allTracks.filter(t => t.pools?.includes('hard'));
+    
+    console.log('Pool sizes:', {
+      easy: easyPool.length,
+      medium: mediumPool.length,
+      hard: hardPool.length
+    });
+    
+    // Store pools in profile object for easy access
+    profile.pools = {
+      easy: easyPool,
+      medium: mediumPool,
+      hard: hardPool
+    };
+    
+    // Validate we have enough tracks in selected difficulty
+    const selectedPool = profile.pools[difficulty] || profile.pools.medium;
+    if (!selectedPool || selectedPool.length === 0) {
+      throw new Error(`No tracks in ${difficulty} pool`);
     }
     
     // Store the profile
