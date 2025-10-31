@@ -10,6 +10,8 @@ import { ScorePhase } from './components/game/ScorePhase';
 import { generateSeedHints } from './utils/gameUtils';
 import { CHALLENGES } from './constants/gameConfig';
 
+const displayArtists = (a) => Array.isArray(a) ? a.join(', ') : String(a || '');
+
 const DEMO_MODE = true;
 const DEBUG_MODE = true; // Set to false to disable debug view
 
@@ -71,50 +73,61 @@ useEffect(() => {
 }, [phase, guessesLeft]);
 
 // Skip OAuth path entirely for demo builds, otherwise run normal auth check
-// 
+useEffect(() => {
+  if (DEMO_MODE) return;
+
+  const checkAuth = async () => {
+    const token = localStorage.getItem('spotify_token');
+    if (token) {
+      setSpotifyToken(token);
+      await fetchSpotifyProfile(token);
+    } else {
+      setPhase('profile-select');
+    }
+  };
+
+  if (phase === 'auth-check') {
+    checkAuth();
+  }
+}, [phase]);
 
 
-  // const fetchSpotifyProfile = async (token) => {
-  //   try {
-  //     setLoading(true);
+  async function fetchSpotifyProfile(token) {
+    try {
+      setLoading(true);
       
-  //     const tracksResponse = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=50', {
-  //       headers: { 'Authorization': 'Bearer ' + token }
-  //     });
+      const tracksResponse = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=50', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
       
-  //     if (!tracksResponse.ok) throw new Error('Failed to fetch tracks');
+      if (!tracksResponse.ok) throw new Error('Failed to fetch tracks');
       
-  //     const tracksData = await tracksResponse.json();
+      const tracksData = await tracksResponse.json();
       
-  //     if (!tracksData.items || tracksData.items.length === 0) {
-  //       throw new Error('No tracks found');
-  //     }
+      if (!tracksData.items || tracksData.items.length === 0) {
+        throw new Error('No tracks found');
+      }
       
-  //     const trackIds = tracksData.items.map(t => t.id).join(',');
+      const trackIds = tracksData.items.map(t => t.id).join(',');
       
-  //     const featuresResponse = await fetch(`https://api.spotify.com/v1/audio-features?ids=${trackIds}`, {
-  //       headers: { 'Authorization': 'Bearer ' + token }
-  //     });
+      const featuresResponse = await fetch(`https://api.spotify.com/v1/audio-features?ids=${trackIds}`, { 
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
       
-  //     const featuresData = await featuresResponse.json();
-
-  //     //building profile here
-  //     // const profile = buildSpotifyProfile(tracksData.items, featuresData.audio_features);
+      const featuresData = await featuresResponse.json();
       
-  //     if (!profile) {
-  //       throw new Error('Failed to build profile');
-  //     }
+      // TODO: when enabling OAuth path, build a profile from tracksData + featuresData
+      // setTasteProfile(profileFromOAuth);
+      // setPhase('profile-summary');
       
-  //     setTasteProfile(profile);
-  //     setPhase('profile-summary');
-  //   } catch (error) {
-  //     console.error('Spotify profile fetch error:', error);
-  //     setAuthError('Failed to load your Spotify data. You can still play with a preset profile.');
-  //     setPhase('profile-select');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+    } catch (error) {
+      console.error('Spotify profile fetch error:', error);
+      setAuthError('Failed to load your Spotify data. You can still play with a preset profile.');
+      setPhase('profile-select');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // // Load dataset when entering loading phase
   // useEffect(() => {
@@ -133,14 +146,18 @@ const handleConstellationLaunch = (tracks, selectedDifficulty) => {
   console.log('Constellation launch:', { tracks, selectedDifficulty });
   
   // Convert constellation format to game format, keeping artists as array
-  const convertedTracks = tracks.map(track => ({
-    track_id: track.uri,
-    track_name: track.name,
-    artists: Array.isArray(track.artist) ? track.artist : [track.artist],
-    filename: track.filename,
-    // Store original for reference
-    _constellation: track
-  }));
+  const convertedTracks = tracks.map(track => {
+    const artists = Array.isArray(track.artists)
+      ? track.artists
+      : track.artist ? [track.artist] : [];
+    return {
+      track_id: track.id || track.uri,
+      track_name: track.name,
+      artists,
+      filename: track.filename,
+      _constellation: track
+    };
+  });
   
   setSelectedTracks(convertedTracks);
   setDifficulty(selectedDifficulty);
@@ -293,22 +310,6 @@ const loadProfileForSeed = async (seed) => {
       generateMultipleChoice();
     }
   }, [phase, currentChoice, removeMode, gameState.state.radioPlaylist.length, gameState.state.multipleChoiceOptions.length, selectedTracks]);
-
-  const generateRadioPlaylist = (seedSong) => {
-    if (!seedSong) return [];
-    
-    const songsToUse = allSongs.filter(s => 
-      s && Array.isArray(s.artists) && s.artists.length > 0 && s.track_name && typeof s.track_name === 'string'
-    );
-    
-    const similarities = songsToUse
-      .filter(song => song.track_id !== seedSong.track_id)
-      .map(song => ({ song, similarity: calculateSimilarity(seedSong, song) }))
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, 25);
-    
-    return similarities.map(s => s.song);
-  };
 
   const generateChoice = () => {
     const needsSeed = !gameState.state.seed;
