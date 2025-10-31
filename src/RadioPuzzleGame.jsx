@@ -90,47 +90,47 @@ useEffect(() => {
 }, [phase]);
 
 
-  const fetchSpotifyProfile = async (token) => {
-    try {
-      setLoading(true);
+  // const fetchSpotifyProfile = async (token) => {
+  //   try {
+  //     setLoading(true);
       
-      const tracksResponse = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=50', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+  //     const tracksResponse = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=50', {
+  //       headers: { 'Authorization': 'Bearer ' + token }
+  //     });
       
-      if (!tracksResponse.ok) throw new Error('Failed to fetch tracks');
+  //     if (!tracksResponse.ok) throw new Error('Failed to fetch tracks');
       
-      const tracksData = await tracksResponse.json();
+  //     const tracksData = await tracksResponse.json();
       
-      if (!tracksData.items || tracksData.items.length === 0) {
-        throw new Error('No tracks found');
-      }
+  //     if (!tracksData.items || tracksData.items.length === 0) {
+  //       throw new Error('No tracks found');
+  //     }
       
-      const trackIds = tracksData.items.map(t => t.id).join(',');
+  //     const trackIds = tracksData.items.map(t => t.id).join(',');
       
-      const featuresResponse = await fetch(`https://api.spotify.com/v1/audio-features?ids=${trackIds}`, {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+  //     const featuresResponse = await fetch(`https://api.spotify.com/v1/audio-features?ids=${trackIds}`, {
+  //       headers: { 'Authorization': 'Bearer ' + token }
+  //     });
       
-      const featuresData = await featuresResponse.json();
+  //     const featuresData = await featuresResponse.json();
 
-      //building profile here
-      // const profile = buildSpotifyProfile(tracksData.items, featuresData.audio_features);
+  //     //building profile here
+  //     // const profile = buildSpotifyProfile(tracksData.items, featuresData.audio_features);
       
-      if (!profile) {
-        throw new Error('Failed to build profile');
-      }
+  //     if (!profile) {
+  //       throw new Error('Failed to build profile');
+  //     }
       
-      setTasteProfile(profile);
-      setPhase('profile-summary');
-    } catch (error) {
-      console.error('Spotify profile fetch error:', error);
-      setAuthError('Failed to load your Spotify data. You can still play with a preset profile.');
-      setPhase('profile-select');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     setTasteProfile(profile);
+  //     setPhase('profile-summary');
+  //   } catch (error) {
+  //     console.error('Spotify profile fetch error:', error);
+  //     setAuthError('Failed to load your Spotify data. You can still play with a preset profile.');
+  //     setPhase('profile-select');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   // // Load dataset when entering loading phase
   // useEffect(() => {
