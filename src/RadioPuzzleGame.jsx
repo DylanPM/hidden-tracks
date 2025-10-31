@@ -189,13 +189,17 @@ const loadProfileForSeed = async (seed) => {
     
     const profile = await response.json();
     console.log('Profile loaded:', profile);
+    console.log('Profile keys:', Object.keys(profile));
+    console.log('Has seed?', !!profile?.seed);
+    console.log('Has pools?', !!profile?.pools);
+    console.log('Pools keys:', profile?.pools ? Object.keys(profile.pools) : 'NO POOLS');
     
     // VALIDATION: Check profile has required data
     if (!profile?.seed) {
       throw new Error('Profile missing seed data');
     }
     if (!profile?.pools) {
-      throw new Error('Profile missing pools data');
+      throw new Error(`Profile missing pools data. Found keys: ${Object.keys(profile).join(', ')}`);
     }
     if (!profile.pools[difficulty] && !profile.pools.medium) {
       throw new Error('Profile missing difficulty pools');
