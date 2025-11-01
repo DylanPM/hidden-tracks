@@ -89,7 +89,6 @@ const transformTrack = (profileTrack) => ({
 
 function RadioPuzzleGame() {
   const [phase, setPhase] = useState('constellation');
-  //const [phase, setPhase] = useState('loading');
 
   // Constellation/Draft state
   const [selectedTracks, setSelectedTracks] = useState([]);
@@ -158,8 +157,6 @@ function RadioPuzzleGame() {
 
   const handleConstellationLaunch = (tracks, selectedDifficulty) => {
     console.log('🎨 Constellation launch');
-    console.log('🔍 Tracks received:', tracks); // ADD THIS
-    console.log('🔍 First track filename:', tracks[0]?.filename); // ADD THIS
 
     const convertedTracks = tracks.map(track => ({
       id: track.uri,
@@ -186,13 +183,7 @@ function RadioPuzzleGame() {
 
   const loadProfileForSeed = async (seed) => {
     if (!seed || !seed.filename) {
-  console.log('🔍 SEED OBJECT PASSED TO LOAD:', seed);  // ADD THIS
-  console.log('🔍 SEED HAS FILENAME?:', seed?.filename); // ADD THIS
-  
-  if (!seed || !seed.filename) {
-    console.error('❌ No filename on seed:', seed);
-    return;
-  }
+      console.error('❌ No filename on seed:', seed);
       return;
     }
     
@@ -207,7 +198,7 @@ function RadioPuzzleGame() {
       
       console.log('📂 Loading profile:', seed.filename);
       
-      const response = await fetch(`profiles/${seed.filename}`);
+      const response = await fetch(`/profiles/${seed.filename}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -377,24 +368,12 @@ function RadioPuzzleGame() {
     const correctTracks = availableTracks.filter(t => t.correct);
     const incorrectTracks = availableTracks.filter(t => !t.correct);
 
-    let correctCount;
-    const roll = Math.random() * 100;
-
-    if (difficulty === 'easy') {
-      correctCount = roll < 75 ? 3 : 2;
-    } else if (difficulty === 'medium') {
-      correctCount = roll < 50 ? 2 : (roll < 85 ? 3 : 1);
-    } else {
-      correctCount = roll < 60 ? 1 : 2;
-    }
-
-    const incorrectCount = 4 - correctCount;
-
+    // Always 1 correct + 2 incorrect = 3 total
     const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
     
     const picked = shuffle([
-      ...shuffle(correctTracks).slice(0, correctCount),
-      ...shuffle(incorrectTracks).slice(0, incorrectCount)
+      ...shuffle(correctTracks).slice(0, 1),
+      ...shuffle(incorrectTracks).slice(0, 2)
     ]);
 
     gameState.setMultipleChoice(picked);
@@ -634,6 +613,7 @@ function RadioPuzzleGame() {
         challenges={gameState.state.challenges}
         onPlayAgain={() => {
           gameState.resetGame();
+          gameState.setMultipleChoice([]);
           setSelectedTracks([]);
           setLoadedProfile(null);
           setDifficulty('medium');
