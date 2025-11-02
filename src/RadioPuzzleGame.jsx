@@ -444,7 +444,8 @@ function RadioPuzzleGame() {
         artist: artistStr,
         song: song.name,
         incorrect: true,
-        feedback
+        feedback,
+        trackData: song // Store full track for clue generation
       }, trackKey);
 
     } else {
@@ -458,7 +459,8 @@ function RadioPuzzleGame() {
         song: song.name,
         basePoints: 10,
         challengeScores,
-        incorrect: false
+        incorrect: false,
+        trackData: song // Store full track for clue generation
       };
 
       gameState.addGuess(newGuess, trackKey);

@@ -44,6 +44,66 @@ export function GuessPhase({
   const unusedHintCount = revealedHints.filter(r => !r).length;
   const hintPointsAvailable = unusedHintCount * HINT_POINTS;
 
+  // Generate clues from guesses (1 clue per guess)
+  const generateClues = () => {
+    if (!seed || guesses.length === 0) return [];
+    
+    const clues = [];
+    const attributes = ['genre', 'year', 'valence', 'popularity', 'danceability', 
+                        'energy', 'acousticness', 'instrumentalness', 'speechiness'];
+    
+    guesses.forEach((guess) => {
+      if (!guess.trackData) return;
+      
+      const guessTrack = guess.trackData;
+      
+      // Pick random attribute
+      const attr = attributes[Math.floor(Math.random() * attributes.length)];
+      let clue = '';
+      
+      if (guess.incorrect) {
+        // Wrong guess - tell what it's NOT
+        if (attr === 'genre' && guessTrack.genres?.length > 0 && seed.genres?.length > 0) {
+          const diff = guessTrack.genres.filter(g => !seed.genres.includes(g));
+          if (diff.length > 0) clue = `Genre is not ${diff[0]}`;
+        } else if (attr === 'year' && guessTrack.year && seed.year) {
+          if (guessTrack.year < seed.year) clue = `Released after ${guessTrack.year}`;
+          else if (guessTrack.year > seed.year) clue = `Released before ${guessTrack.year}`;
+        } else if (attr === 'popularity' && guessTrack.popularity !== undefined && seed.popularity !== undefined) {
+          if (guessTrack.popularity < seed.popularity) clue = `Popularity higher than ${guessTrack.popularity}`;
+          else clue = `Popularity lower than ${guessTrack.popularity}`;
+        } else if (guessTrack[attr] !== undefined && seed[attr] !== undefined) {
+          // Numeric attributes (0-1 scale)
+          const guessVal = Math.round(guessTrack[attr] * 100);
+          const seedVal = seed[attr];
+          if (guessTrack[attr] < seedVal) {
+            clue = `${attr.charAt(0).toUpperCase() + attr.slice(1)} higher than ${guessVal}%`;
+          } else {
+            clue = `${attr.charAt(0).toUpperCase() + attr.slice(1)} lower than ${guessVal}%`;
+          }
+        }
+      } else {
+        // Correct guess - tell what it IS
+        if (attr === 'genre' && guessTrack.genres?.length > 0) {
+          clue = `Genre includes ${guessTrack.genres[0]}`;
+        } else if (attr === 'year' && guessTrack.year) {
+          clue = `Released around ${guessTrack.year}`;
+        } else if (attr === 'popularity' && guessTrack.popularity !== undefined) {
+          clue = `Popularity around ${guessTrack.popularity}`;
+        } else if (guessTrack[attr] !== undefined) {
+          const val = Math.round(guessTrack[attr] * 100);
+          clue = `${attr.charAt(0).toUpperCase() + attr.slice(1)} around ${val}%`;
+        }
+      }
+      
+      if (clue) clues.push(clue);
+    });
+    
+    return clues;
+  };
+
+  const clues = generateClues();
+
   return (
     <div className="min-h-screen bg-zinc-950 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -57,8 +117,15 @@ export function GuessPhase({
             {seed && (
               <div className="bg-zinc-900 rounded-lg p-4 border-2 border-green-500">
                 <h2 className="text-green-400 font-bold mb-2">Seed Track</h2>
-                <p className="text-white text-lg font-bold">{seed.name}</p>
-                <p className="text-zinc-400">{getArtistString(seed)}</p>
+                <iframe
+                  src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
+                  width="100%"
+                  height="152"
+                  frameBorder="0"
+                  allowtransparency="true"
+                  allow="encrypted-media"
+                  className="rounded-lg"
+                />
               </div>
             )}
 
@@ -92,6 +159,24 @@ export function GuessPhase({
                 ))}
               </div>
             </div>
+
+            {/* What We Know So Far */}
+            {clues.length > 0 && (
+              <div className="bg-zinc-900 rounded-lg p-4">
+                <h3 className="text-white font-bold mb-2">What We Know So Far</h3>
+                <p className="text-zinc-400 text-sm mb-3">
+                  Clues discovered from your guesses
+                </p>
+                <ul className="space-y-2 text-zinc-300 text-sm">
+                  {clues.map((clue, idx) => (
+                    <li key={idx} className="flex items-start">
+                      <span className="text-green-400 mr-2">•</span>
+                      <span>{clue}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* RIGHT: Guess Cards (Spotify Embeds) */}
@@ -125,32 +210,13 @@ export function GuessPhase({
                       className="rounded-lg"
                     />
 
-                    {/* Overlay - click anywhere to select */}
-                    {/* Play button is at left side, we'll leave that area clear */}
+                    {/* Clickable overlay - only covers right 80% so play button (left 20%) works */}
                     <div 
                       onClick={() => onGuess(track)}
-                      className="absolute inset-0 cursor-pointer hover:ring-2 hover:ring-green-500 rounded-lg transition"
+                      className="absolute top-0 bottom-0 right-0 cursor-pointer hover:bg-green-500/10 rounded-r-lg transition"
+                      style={{ width: '80%' }}
                       title="Click to select this track"
-                    >
-                      {/* Invisible but captures clicks except in play button area */}
-                      <div className="absolute inset-0">
-                        {/* Right side - clickable */}
-                        <div 
-                          className="absolute right-0 top-0 bottom-0 bg-transparent"
-                          style={{ left: '80px' }}
-                        />
-                        {/* Top strip - clickable */}
-                        <div 
-                          className="absolute left-0 right-0 top-0 bg-transparent"
-                          style={{ height: '40px' }}
-                        />
-                        {/* Bottom strip - clickable */}
-                        <div 
-                          className="absolute left-0 right-0 bottom-0 bg-transparent"
-                          style={{ height: '40px' }}
-                        />
-                      </div>
-                    </div>
+                    />
 
                     {/* Debug indicator */}
                     {debugMode && track.correct && (

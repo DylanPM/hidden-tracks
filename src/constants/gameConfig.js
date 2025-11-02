@@ -74,4 +74,3 @@ export const CHALLENGES = [
     check: (song, seed) => song.tempo < 90
   }
 ];
-
