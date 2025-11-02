@@ -596,6 +596,7 @@ function RadioPuzzleGame() {
         errorMessage={errorMessage}
         guesses={gameState.state.guesses}
         guessesLeft={guessesLeft}
+        maxGuesses={maxGuesses}
         debugMode={DEBUG_MODE}
         onRevealHint={(idx) => gameState.revealHint(idx)}
         onGetHint={getHint}
