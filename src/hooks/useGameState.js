@@ -65,7 +65,8 @@ const gameReducer = (state, action) => {
       return { ...state, challengePlacements: action.payload };
     
     case 'RESET_GAME':
-      return initialState;
+      //return initialState;
+      return { ...initialState, guessedTracks: new Set() };
     
     default:
       return state;
@@ -77,7 +78,7 @@ export const useGameState = () => {
   
   return {
     state,
-    setdifficultyTier: (difficultyTier) => dispatch({ type: 'SET_DIFFICULTY_TIER', payload: difficultyTier }),
+    setDifficultyTier: (difficultyTier) => dispatch({ type: 'SET_DIFFICULTY_TIER', payload: difficultyTier }),
     setSeed: (seed) => dispatch({ type: 'SET_SEED', payload: seed }),
     setChallenge: (index, challenge) => dispatch({ type: 'SET_CHALLENGE', index, payload: challenge }),
     removeSeed: () => dispatch({ type: 'REMOVE_SEED' }),
