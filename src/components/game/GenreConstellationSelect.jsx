@@ -138,18 +138,51 @@ export function GenreConstellationSelect({ onLaunch }) {
     }
   };
 
-  // --- UI derived values ---
+    // Orbit geometry
+  const CENTER_X = 400;
+  const CENTER_Y = 300;
+  const LAUNCH_R = 90;          // center button
+  const DESC_R   = 130;         // circular text path
+  const RING_OUTER_R = 150;     // faint outer ring
+  const GAP = 16;               // space between rings and node circles
+  const CHIP_SAFE_R = 185;      // anything below this risks hitting difficulty chips
+
+  // // --- UI derived values ---
+  // const children = getChildren();
+  // const seeds = getSeeds();
+  // const currentGenre =
+  //   navigationPath.length > 0 ? navigationPath[navigationPath.length - 1] : 'a genre';
+
+  // // geometry
+
+
+  // const numCircles = children.length > 0 ? children.length : seeds.length;
+  // const baseRadius = Math.min(220, 160 + numCircles * 5); // orbit radius
+  // const circleRadius = children.length > 0
+  //   ? Math.max(45, 85 - numCircles * 2)  // genre circle size
+  //   : Math.max(55, 95 - numCircles * 2); // track circle size
+
+  // How many nodes at this level
   const children = getChildren();
   const seeds = getSeeds();
-  const currentGenre =
-    navigationPath.length > 0 ? navigationPath[navigationPath.length - 1] : 'a genre';
 
-  // geometry
-  const numCircles = children.length > 0 ? children.length : seeds.length;
-  const baseRadius = Math.min(220, 160 + numCircles * 5); // orbit radius
-  const circleRadius = children.length > 0
-    ? Math.max(45, 85 - numCircles * 2)  // genre circle size
-    : Math.max(55, 95 - numCircles * 2); // track circle size
+  // Node sizes
+  const genreNodeR = Math.max(48, 90 - (children.length * 1.5)); // parent/subgenre nodes
+  const seedNodeR  = Math.max(56, 96 - (seeds.length * 1.5));    // track nodes
+
+  // Orbits
+  // For genres/subgenres: tangent to the outer text ring, plus a margin
+  const childrenOrbitR = Math.max(
+    RING_OUTER_R + genreNodeR + GAP,
+    CHIP_SAFE_R + genreNodeR // guarantee clearance from difficulty chips
+  );
+
+  // For leaf nodes: push farther so labels never collide with chips
+  const seedsOrbitR = Math.max(
+    RING_OUTER_R + seedNodeR + GAP + 28,
+    CHIP_SAFE_R + seedNodeR + 20
+  );
+
 
   // description for SVG ring text (better than your previous “explore the sounds of …”)
   const genreDescription = getGenreDescriptionBetter(currentGenre);
@@ -224,34 +257,36 @@ export function GenreConstellationSelect({ onLaunch }) {
           <svg width="100%" height="600" viewBox="0 0 800 600" className="overflow-visible">
             {/* Center ring + circular description + launch */}
             <g className={launchAnimation ? 'animate-bounce-subtle' : ''}>
-              {/* circular text path (inside ring) */}
+              {/* circular text path and rings */}
               <defs>
-                <path id="ringPath" d="M400,300 m-120,0 a120,120 0 1,1 240,0 a120,120 0 1,1 -240,0" />
+                {/* description text runs around DESC_R */}
+                <path id="ringPath" d={`M${CENTER_X},${CENTER_Y} m-${DESC_R},0 a${DESC_R},${DESC_R} 0 1,1 ${DESC_R*2},0 a${DESC_R},${DESC_R} 0 1,1 -${DESC_R*2},0`} />
               </defs>
 
-              {/* outer ring */}
+              {/* faint outer ring */}
               <circle
-                cx="400"
-                cy="300"
-                r="140"
+                cx={CENTER_X}
+                cy={CENTER_Y}
+                r={RING_OUTER_R}
                 fill="none"
                 stroke="#16a34a"
                 strokeWidth="2"
                 opacity="0.35"
               />
 
-              {/* inner description text */}
+              {/* animated ticker description */}
               <text className="fill-green-200" style={{ fontSize: 10, letterSpacing: 0.5 }}>
                 <textPath href="#ringPath" startOffset="0%">
+                  <animate attributeName="startOffset" from="0%" to="100%" dur="10s" repeatCount="indefinite" />
                   {genreDescription}
                 </textPath>
               </text>
 
               {/* launch button */}
               <circle
-                cx="400"
-                cy="300"
-                r="90"
+                 cx={CENTER_X}
+                 cy={CENTER_Y}
+                 r={LAUNCH_R}
                 fill={canLaunch() ? "#22c55e" : "#27272a"}
                 stroke={canLaunch() ? "#16a34a" : "#3f3f46"}
                 strokeWidth="4"
@@ -293,110 +328,114 @@ export function GenreConstellationSelect({ onLaunch }) {
               {renderDifficultyChip(400 + 120, 360, 'hard', difficulty, setDifficulty)}
             </g>
 
-            {/* genre/subgenre nodes OR track nodes */}
-            {children.length > 0
-              ? children.map((child, index) => {
-                  const angle = (index / children.length) * 2 * Math.PI - Math.PI / 2;
-                  const cx = 400 + Math.cos(angle) * baseRadius;
-                  const cy = 300 + Math.sin(angle) * baseRadius;
+            {/* --- GENRE / SUBGENRE ORBIT --- */}
+            {children.length > 0 && children.map((child, index) => {
+              const angle = (index / children.length) * 2 * Math.PI - Math.PI / 2;
+              const cx = CENTER_X + Math.cos(angle) * childrenOrbitR;
+              const cy = CENTER_Y + Math.sin(angle) * childrenOrbitR;
 
-                  // wrap label
-                  const words = child.key.split(' ');
-                  const lines = [];
-                  let line = '';
-                  words.forEach(w => {
-                    if ((line + ' ' + w).trim().length > 12) {
-                      if (line) lines.push(line);
-                      line = w;
-                    } else {
-                      line = line ? `${line} ${w}` : w;
-                    }
-                  });
-                  if (line) lines.push(line);
+              // word-wrap genre label
+              const words = child.key.split(' ');
+              const lines = [];
+              let currentLine = '';
+              words.forEach(w => {
+                if ((currentLine + ' ' + w).trim().length > 12) {
+                  if (currentLine) lines.push(currentLine);
+                  currentLine = w;
+                } else {
+                  currentLine = currentLine ? `${currentLine} ${w}` : w;
+                }
+              });
+              if (currentLine) lines.push(currentLine);
 
-                  return (
-                    <g
-                      key={child.key}
-                      onClick={() => handleGenreClick(child.key)}
-                      className="cursor-pointer transition-all"
+              return (
+                <g
+                  key={child.key}
+                  onClick={() => handleGenreClick(child.key)}
+                  className="cursor-pointer transition-all"
+                >
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={genreNodeR}
+                    fill="#18181b"
+                    stroke="#22c55e"
+                    strokeWidth="3"
+                    className="hover:fill-zinc-800 hover:stroke-green-400 transition-all"
+                  />
+                  {lines.map((ln, i) => (
+                    <text
+                      key={i}
+                      x={cx}
+                      y={cy - (lines.length - 1) * 7 + i * 14}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="white"
+                      fontSize="13"
+                      fontWeight="500"
+                      className="pointer-events-none"
                     >
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={circleRadius}
-                        fill="#18181b"
-                        stroke="#22c55e"
-                        strokeWidth="3"
-                        className="hover:fill-zinc-800 hover:stroke-green-400 transition-all"
-                      />
-                      {lines.map((ln, i) => (
-                        <text
-                          key={i}
-                          x={cx}
-                          y={cy - (lines.length - 1) * 7 + i * 14}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill="white"
-                          fontSize="13"
-                          fontWeight="500"
-                          className="pointer-events-none"
-                        >
-                          {ln}
-                        </text>
-                      ))}
-                    </g>
-                  );
-                })
-              : seeds.map((track, index) => {
-                  const angle = (index / seeds.length) * 2 * Math.PI - Math.PI / 2;
-                  const cx = 400 + Math.cos(angle) * baseRadius;
-                  const cy = 300 + Math.sin(angle) * baseRadius;
-                  const isSelected = selectedTrack?.uri === track.uri;
+                      {ln}
+                    </text>
+                  ))}
+                </g>
+              );
+            })}
 
-                  const maxArtistLen = 16;
-                  const maxSongLen = 18;
-                  const artistText =
-                    track.artist.length > maxArtistLen ? track.artist.slice(0, maxArtistLen) + '…' : track.artist;
-                  const songText =
-                    track.name.length > maxSongLen ? track.name.slice(0, maxSongLen) + '…' : track.name;
+            {/* --- LEAF-LEVEL SEEDS / TRACKS ORBIT --- */}
+            {seeds.length > 0 && children.length === 0 && seeds.map((track, index) => {
+              const angle = (index / seeds.length) * 2 * Math.PI - Math.PI / 2;
+              const cx = CENTER_X + Math.cos(angle) * seedsOrbitR;
+              const cy = CENTER_Y + Math.sin(angle) * seedsOrbitR;
+              const isSelected = selectedTrack?.uri === track.uri;
 
-                  return (
-                    <g key={track.uri} onClick={() => handleTrackClick(track)} className="cursor-pointer">
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={circleRadius}
-                        fill={isSelected ? "#22c55e" : "#18181b"}
-                        stroke="#22c55e"
-                        strokeWidth={isSelected ? "4" : "3"}
-                        className="hover:fill-zinc-800 transition-all"
-                      />
-                      <text
-                        x={cx}
-                        y={cy - 14}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill="white"
-                        fontSize="13"
-                        fontWeight="600"
-                        className="pointer-events-none"
-                      >
-                        {artistText}
-                      </text>
-                      <text
-                        x={cx}
-                        y={cy + 10}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill="#a1a1aa"
-                        fontSize="11"
-                        className="pointer-events-none"
-                      >
-                        {songText}
-                      </text>
-                    </g>
-                  );
-                })}
+              // truncate long artist / title
+              const artistText =
+                track.artist.length > 16 ? track.artist.slice(0, 16) + '…' : track.artist;
+              const songText =
+                track.name.length > 18 ? track.name.slice(0, 18) + '…' : track.name;
+
+              return (
+                <g
+                  key={track.uri}
+                  onClick={() => handleTrackClick(track)}
+                  className="cursor-pointer transition-all"
+                >
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={seedNodeR}
+                    fill={isSelected ? "#22c55e" : "#18181b"}
+                    stroke="#22c55e"
+                    strokeWidth={isSelected ? "4" : "3"}
+                    className="hover:fill-zinc-800 transition-all"
+                  />
+                  <text
+                    x={cx}
+                    y={cy - 14}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="white"
+                    fontSize="13"
+                    fontWeight="600"
+                    className="pointer-events-none"
+                  >
+                    {artistText}
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy + 10}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#a1a1aa"
+                    fontSize="11"
+                    className="pointer-events-none"
+                  >
+                    {songText}
+                  </text>
+                </g>
+              );
+            })}
           </svg>
         </div>
       </div>
