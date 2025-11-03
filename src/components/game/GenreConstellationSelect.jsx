@@ -12,6 +12,9 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  //welcome banner
+  const [showIntro, setShowIntro] = useState(true);
+
   // Navigation state
   const [navigationPath, setNavigationPath] = useState([]); // ['rock', 'metal']
   const [activeNode, setActiveNode] = useState(null); // Current genre data
@@ -234,9 +237,58 @@ export function GenreConstellationSelect({ onLaunch }) {
     : Math.max(55, 95 - numCircles * 2); // Track circles (bigger)
   
   return (
+    
     <div className="min-h-screen bg-zinc-950 text-white relative">
+          {showIntro && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70">
+        <div className="w-full max-w-xl rounded-2xl bg-zinc-900 shadow-xl border border-zinc-800 animate-fadeIn">
+          <div className="p-6 text-center">
+            <h2 className="text-2xl font-bold text-white mb-3">Welcome to Hidden Tracks</h2>
+            <p className="text-zinc-300 mb-2">
+              See how recommendation systems “think.” Explore the logic behind algorithmic playlists and
+              guess the other songs the machine would queue up next.
+            </p>
+            <p className="text-zinc-400 mb-4">
+              Pick a genre, sub-genre, or song you love, set a difficulty, then launch your mix.
+            </p>
+            <p className="text-zinc-500 text-xs mb-6">
+              Built with the help of Anthropic’s Claude.
+            </p>
+            <button
+              onClick={() => setShowIntro(false)}
+              className="px-5 py-2 rounded-lg font-semibold bg-green-500 text-black hover:bg-green-400 transition"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
       {/* Giant back button - left half of screen */}
       {navigationPath.length > 0 && (
+      <button
+        onClick={handleBack}
+        className="fixed left-0 top-0 h-full w-1/3 
+                  bg-gradient-to-r from-green-900/70 via-green-900/30 to-transparent
+                  flex items-center justify-start pl-10
+                  hover:from-green-700/70 hover:via-green-700/40
+                  transition-all duration-300 z-20 group"
+      >
+        <div className="flex flex-col items-center gap-3">
+          <ChevronLeft
+            size={80}
+            className="text-green-400 group-hover:text-green-300 transition-colors animate-pulse"
+
+          />
+          <span className="text-green-400 group-hover:text-green-300 text-sm font-bold rotate-[-90deg] tracking-wider">
+            BACK
+          </span>
+        </div>
+      </button>
+    )}
+
+      {/* {navigationPath.length > 0 && (
         <button
           onClick={handleBack}
           className="fixed left-0 top-0 h-full w-32 bg-gradient-to-r from-green-900/40 to-transparent 
@@ -250,7 +302,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             </span>
           </div>
         </button>
-      )}
+      )} */}
       
       {/* Main content */}
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
@@ -418,6 +470,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         </div>
         
         {/* Info below canvas */}
+        
         {canLaunch() && (
           <div className="mt-8 text-center animate-fade-in">
             <div className="text-2xl font-bold mb-2">
@@ -430,23 +483,6 @@ export function GenreConstellationSelect({ onLaunch }) {
               {seeds.length} track{seeds.length !== 1 ? 's' : ''} available
               {selectedTrack && ` • ${selectedTrack.name} selected`}
             </div>
-
-            {/* Intro banner */}
-            <div className="max-w-2xl mx-auto mb-8 text-center animate-fadeIn">
-
-              <h2 className="text-2xl font-bold text-white mb-3">Welcome to Hidden Tracks</h2>
-              <p className="text-zinc-300 mb-2">
-                See how recommendation systems “think.” This game lets you explore the logic behind
-                algorithmic playlists—guess the other songs the machine would queue up next.
-              </p>
-              <p className="text-zinc-400 mb-2">
-                Pick a genre, sub-genre, or song you love, set a difficulty, and launch your mix.
-              </p>
-              <p className="text-zinc-500 text-sm">
-                Built with the help of Anthropic’s Claude.
-              </p>
-            </div>
-
             
             {/* Difficulty selector */}
             <div className="flex items-center justify-center gap-3">
