@@ -11,11 +11,15 @@ const initialState = {
   seedHints: [],
   revealedHints: [false, false, false],
   usedHints: [false, false, false],
+  difficultyTier: 'medium',
 };
 
 const gameReducer = (state, action) => {
   switch (action.type) {
-    case 'SET_SEED':
+      case 'SET_DIFFICULTY_TIER':
+      return { ...state, difficultyTier: action.payload };
+    
+      case 'SET_SEED':
       return { ...state, seed: action.payload };
     
     case 'SET_CHALLENGE':
@@ -73,6 +77,7 @@ export const useGameState = () => {
   
   return {
     state,
+    setdifficultyTier: (difficultyTier) => dispatch({ type: 'SET_DIFFICULTY_TIER', payload: difficultyTier }),
     setSeed: (seed) => dispatch({ type: 'SET_SEED', payload: seed }),
     setChallenge: (index, challenge) => dispatch({ type: 'SET_CHALLENGE', index, payload: challenge }),
     removeSeed: () => dispatch({ type: 'REMOVE_SEED' }),

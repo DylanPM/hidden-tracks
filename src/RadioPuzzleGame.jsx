@@ -55,7 +55,8 @@ const transformTrack = (profileTrack) => ({
   id: profileTrack.id,
   name: profileTrack.name,
   artists: profileTrack.artists,
-  correct: profileTrack.correct === true,
+  //correct: profileTrack.correct === true,
+  correct: !!profileTrack.correct,   // coerce truthy -> true, falsy -> false
   year: profileTrack.year,
   popularity: profileTrack.popularity,
   genres: profileTrack.genres || [],
@@ -110,6 +111,11 @@ function RadioPuzzleGame() {
   const [profileLoadError, setProfileLoadError] = useState(null);
   
   const gameState = useGameState();
+
+  useEffect(() => {
+  console.log("[DIFFICULTY_TIER]", gameState.state.difficultyTier);
+}, [gameState.state.difficultyTier]);
+
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
 
   // Resize iframe dynamically
@@ -169,7 +175,8 @@ function RadioPuzzleGame() {
       filename: track.filename
     }));
 
-    setDifficulty(selectedDifficulty);
+    setDifficulty(selectedDifficulty);              // local UI, optional
+    gameState.setDifficultyTier(selectedDifficulty); // this updates game state
 
     // Auto-assign seed and challenges
     const randomSeed = convertedTracks[Math.floor(Math.random() * convertedTracks.length)];
@@ -367,7 +374,13 @@ function RadioPuzzleGame() {
     return;
   }
 
-  const difficulty = gameState.state.tier || "medium";
+ // BEFORE (bad: ignores local state if gameState.tier not set)
+// const difficulty = gameState.state.tier || "medium";
+
+// AFTER
+const currentDifficulty = gameState.state.difficultyTier || difficulty || "medium";
+
+  
 
   // local helpers
   const fyShuffle = (a) => {
@@ -391,14 +404,14 @@ function RadioPuzzleGame() {
   // 1) filter strictly by JSON pools
   const pool = loadedProfile.tracks.filter((t) => {
     if (!t?.id) return false;
-    if (!Array.isArray(t.pools) || !t.pools.includes(difficulty)) return false;
+    if (!Array.isArray(t.pools) || !t.pools.includes(currentDifficulty)) return false;
     if (t.id === seed.id) return false;
     if (gameState.state.guessedTracks?.has?.(makeTrackKey(t))) return false;
     return true;
   });
 
   if (pool.length === 0) {
-    console.error("❌ Empty pool for difficulty:", difficulty);
+    console.error("❌ Empty pool for difficulty:", currentDifficulty);
     gameState.setMultipleChoice([]);
     return;
   }
@@ -408,11 +421,11 @@ function RadioPuzzleGame() {
   let   wrongPool   = pool.filter((t) => t.correct !== true);
 
   // feel-only ordering; doesn’t change membership
-  if (difficulty === "easy") wrongPool = wrongPool.slice().sort((a, b) => (a.radio_fit ?? 0) - (b.radio_fit ?? 0));
-  if (difficulty === "hard") wrongPool = wrongPool.slice().sort((a, b) => (b.radio_fit ?? 0) - (a.radio_fit ?? 0));
+  if (currentDifficulty === "easy") wrongPool = wrongPool.slice().sort((a, b) => (a.radio_fit ?? 0) - (b.radio_fit ?? 0));
+  if (currentDifficulty === "hard") wrongPool = wrongPool.slice().sort((a, b) => (b.radio_fit ?? 0) - (a.radio_fit ?? 0));
 
   // 3) pick k correct, fill to 3, degrade gracefully
-  let k = Math.min(pickK(difficulty), 3, correctPool.length);
+  let k = Math.min(pickK(currentDifficulty), 3, correctPool.length);
   let needWrong = 3 - k;
 
   if (wrongPool.length < needWrong) {
@@ -433,6 +446,13 @@ function RadioPuzzleGame() {
 
   // 4) set the three choices
   gameState.setMultipleChoice(fyShuffle(picks));
+
+  console.log('[MCQ]', {
+  difficulty: currentDifficulty,
+  pool: pool.length,
+  correctInPool: pool.filter(t => t.correct).length,
+  sample: pool.slice(0,3).map(t => ({ name: t.name, tier: t.tier, correct: t.correct }))
+});
 };
 
 //     const difficulty = gameState.state.tier || "medium";
