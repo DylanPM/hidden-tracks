@@ -430,6 +430,23 @@ export function GenreConstellationSelect({ onLaunch }) {
               {seeds.length} track{seeds.length !== 1 ? 's' : ''} available
               {selectedTrack && ` • ${selectedTrack.name} selected`}
             </div>
+
+            {/* Intro banner */}
+            <div className="max-w-2xl mx-auto mb-8 text-center animate-fadeIn">
+
+              <h2 className="text-2xl font-bold text-white mb-3">Welcome to Hidden Tracks</h2>
+              <p className="text-zinc-300 mb-2">
+                See how recommendation systems “think.” This game lets you explore the logic behind
+                algorithmic playlists—guess the other songs the machine would queue up next.
+              </p>
+              <p className="text-zinc-400 mb-2">
+                Pick a genre, sub-genre, or song you love, set a difficulty, and launch your mix.
+              </p>
+              <p className="text-zinc-500 text-sm">
+                Built with the help of Anthropic’s Claude.
+              </p>
+            </div>
+
             
             {/* Difficulty selector */}
             <div className="flex items-center justify-center gap-3">
