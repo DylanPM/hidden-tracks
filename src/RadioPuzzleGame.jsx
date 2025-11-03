@@ -472,36 +472,36 @@ gameState.setMultipleChoice(fyShuffle(picks));
   //   gameState.setMultipleChoice(shuffle(picked));
   // };
 
-  // const generateFeedback = (song, seed) => {
-  //   const feedback = [];
+  const generateFeedback = (song, seed) => {
+    const feedback = [];
     
-  //   // Check audio similarity
-  //   if (song.audio_sim !== undefined && song.audio_sim < 0.7) {
-  //     feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}% vs seed)`);
-  //   }
+    // Check audio similarity
+    if (song.audio_sim !== undefined && song.audio_sim < 0.7) {
+      feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}% vs seed)`);
+    }
     
-  //   // Genre similarity - commented out 0% issue
-  //   // if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
-  //   //   feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
-  //   // }
+    // Genre similarity - commented out 0% issue
+    // if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
+    //   feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
+    // }
     
-  //   // Check era distance
-  //   if (song.era_dist !== undefined && song.era_dist > 10) {
-  //     feedback.push(`Different era (${song.era_dist} years apart)`);
-  //   }
+    // Check era distance
+    if (song.era_dist !== undefined && song.era_dist > 10) {
+      feedback.push(`Different era (${song.era_dist} years apart)`);
+    }
     
-  //   // Tier feedback - commented out (not about vibe, just difficulty sorting)
-  //   // if (song.tier !== undefined && song.tier >= 4) {
-  //   //   feedback.push(`Very different vibe (tier ${song.tier})`);
-  //   // }
+    // Tier feedback - commented out (not about vibe, just difficulty sorting)
+    // if (song.tier !== undefined && song.tier >= 4) {
+    //   feedback.push(`Very different vibe (tier ${song.tier})`);
+    // }
     
-  //   // If no specific feedback, use generic message
-  //   if (feedback.length === 0) {
-  //     feedback.push('Doesn\'t fit the radio station\'s vibe');
-  //   }
+    // If no specific feedback, use generic message
+    if (feedback.length === 0) {
+      feedback.push('Doesn\'t fit the radio station\'s vibe');
+    }
     
-  //   return feedback;
-  // };
+    return feedback;
+  };
 
   const handleGuess = (song) => {
     if (!song?.artists || !song?.name) {
