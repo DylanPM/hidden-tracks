@@ -2,7 +2,7 @@ import React from 'react';
 import { HINT_POINTS, CHALLENGE_POINTS } from '../../constants/gameConfig';
 
 // Version tracking
-console.log('🎮 GuessPhase v2.1 - Clue system + compact layout');
+console.log('🎮 GuessPhase v2.2 - Bottom controls accessible + additive clues');
 
 export function GuessPhase({
   seed,
@@ -163,15 +163,18 @@ export function GuessPhase({
             {seed && (
               <div className="bg-zinc-900 rounded-lg p-3 border-2 border-green-500">
                 <h2 className="text-green-400 font-bold mb-2 text-sm">Seed Track</h2>
-                <iframe
-                  src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
-                  width="100%"
-                  height="152"
-                  frameBorder="0"
-                  allowtransparency="true"
-                  allow="encrypted-media"
-                  className="rounded-lg"
-                />
+                <div className="relative">
+                  <iframe
+                    src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
+                    width="100%"
+                    height="152"
+                    frameBorder="0"
+                    allowtransparency="true"
+                    allow="encrypted-media"
+                    className="rounded-lg"
+                  />
+                  {/* No overlay on seed - let them interact freely */}
+                </div>
               </div>
             )}
 
@@ -234,7 +237,7 @@ export function GuessPhase({
             <div className="bg-zinc-900 rounded-lg p-3 mb-3 flex justify-between items-center">
               <div>
                 <h3 className="text-white font-bold mb-1 text-sm">Make Your Guess</h3>
-                <p className="text-zinc-400 text-xs">Press play to preview, then click the card to select</p>
+                <p className="text-zinc-400 text-xs">Click card to select, use controls at bottom to play/scrub</p>
               </div>
               <div className="text-right">
                 <div className="text-3xl font-bold text-white">{guesses.length}</div>
@@ -266,11 +269,11 @@ export function GuessPhase({
                       className="rounded-lg"
                     />
 
-                    {/* Clickable overlay - only covers left 80% so play button (right 20%) works */}
+                    {/* Clickable overlay - covers top 80% so controls (bottom 20%) work */}
                     <div 
                       onClick={() => onGuess(track)}
-                      className="absolute top-0 bottom-0 left-0 cursor-pointer hover:bg-green-500/10 rounded-l-lg transition"
-                      style={{ width: '80%' }}
+                      className="absolute top-0 left-0 right-0 cursor-pointer hover:bg-green-500/10 rounded-t-lg transition"
+                      style={{ height: '80%' }}
                       title="Click to select this track"
                     />
 
