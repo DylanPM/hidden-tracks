@@ -81,7 +81,7 @@ const transformTrack = (profileTrack) => ({
   composite_raw: profileTrack.composite_raw,
   radio_fit: profileTrack.radio_fit,
   tier: profileTrack.tier,
-  pools: Array.isArray(t.pools) ? t.pools : []// <- carry pools exactly as provided
+  pools: Array.isArray(profileTrack.pools) ? profileTrack.pools : [], // <-- use profileTrack here
 });
 
 // ============================================================================
