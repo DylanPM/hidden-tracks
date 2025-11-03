@@ -240,8 +240,8 @@ export function GuessPhase({
                 <p className="text-zinc-400 text-xs">Click card to select, use controls at bottom to play/scrub</p>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-white">{guesses.length}</div>
-                <div className="text-xs text-zinc-400">of {maxGuesses || 6}</div>
+                <div className="text-3xl font-bold text-green-400">{guesses.length}</div>
+                <div className="text-xs text-green-500/70">of {maxGuesses || 6}</div>
               </div>
             </div>
 
@@ -269,11 +269,11 @@ export function GuessPhase({
                       className="rounded-lg"
                     />
 
-                    {/* Clickable overlay - covers top 80% so controls (bottom 20%) work */}
+                    {/* Clickable overlay - covers top 70% so controls (bottom 30%) work */}
                     <div 
                       onClick={() => onGuess(track)}
                       className="absolute top-0 left-0 right-0 cursor-pointer hover:bg-green-500/10 rounded-t-lg transition"
-                      style={{ height: '80%' }}
+                      style={{ height: '70%' }}
                       title="Click to select this track"
                     />
 
@@ -304,7 +304,7 @@ export function GuessPhase({
         </div>
 
         {/* Challenge Slots + Playlist */}
-        <div className="bg-zinc-900 rounded-lg p-4">
+        <div className="bg-zinc-900 rounded-lg p-4" data-playlist-section>
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-white text-lg font-bold">Your Playlist</h2>
             <div className="text-zinc-400 text-sm">

@@ -368,38 +368,57 @@ function RadioPuzzleGame() {
     const correctTracks = availableTracks.filter(t => t.correct);
     const incorrectTracks = availableTracks.filter(t => !t.correct);
 
-    // Always 1 correct + 2 incorrect = 3 total
+    // Weighted random: target 33% correct on average
+    // More correct tracks in pool = higher chance of picking them
+    const totalTracks = correctTracks.length + incorrectTracks.length;
+    const correctRatio = correctTracks.length / totalTracks;
+    
+    // Pick 3 tracks with ~33% chance each is correct
+    const picked = [];
     const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
     
-    const picked = shuffle([
-      ...shuffle(correctTracks).slice(0, 1),
-      ...shuffle(incorrectTracks).slice(0, 2)
-    ]);
+    for (let i = 0; i < 3; i++) {
+      const useCorrect = Math.random() < correctRatio * 0.33 / (1 - correctRatio);
+      if (useCorrect && correctTracks.length > 0) {
+        const track = shuffle(correctTracks)[0];
+        picked.push(track);
+        correctTracks.splice(correctTracks.indexOf(track), 1);
+      } else if (incorrectTracks.length > 0) {
+        const track = shuffle(incorrectTracks)[0];
+        picked.push(track);
+        incorrectTracks.splice(incorrectTracks.indexOf(track), 1);
+      }
+    }
 
-    gameState.setMultipleChoice(picked);
+    gameState.setMultipleChoice(shuffle(picked));
   };
 
   const generateFeedback = (song, seed) => {
     const feedback = [];
     
+    // Check audio similarity
     if (song.audio_sim !== undefined && song.audio_sim < 0.7) {
-      feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}%)`);
+      feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}% vs seed)`);
     }
     
-    if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
-      feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
-    }
+    // Genre similarity - commented out 0% issue
+    // if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
+    //   feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
+    // }
     
+    // Check era distance
     if (song.era_dist !== undefined && song.era_dist > 10) {
       feedback.push(`Different era (${song.era_dist} years apart)`);
     }
     
-    if (song.tier !== undefined && song.tier >= 4) {
-      feedback.push(`Very different vibe (tier ${song.tier}/5)`);
-    }
+    // Tier feedback - commented out (not about vibe, just difficulty sorting)
+    // if (song.tier !== undefined && song.tier >= 4) {
+    //   feedback.push(`Very different vibe (tier ${song.tier})`);
+    // }
     
+    // If no specific feedback, use generic message
     if (feedback.length === 0) {
-      feedback.push("Doesn't fit the radio station's vibe");
+      feedback.push('Doesn\'t fit the radio station\'s vibe');
     }
     
     return feedback;
@@ -468,6 +487,17 @@ function RadioPuzzleGame() {
     }
 
     generateMultipleChoice();
+    
+    // Scroll to playlist to show result, then back to top
+    setTimeout(() => {
+      const playlistSection = document.querySelector('[data-playlist-section]');
+      if (playlistSection) {
+        playlistSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 2000);
+      }
+    }, 100);
   };
 
   const autoAssignChallenges = (currentGuesses) => {
