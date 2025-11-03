@@ -80,7 +80,8 @@ const transformTrack = (profileTrack) => ({
   genre_factor: profileTrack.genre_factor,
   composite_raw: profileTrack.composite_raw,
   radio_fit: profileTrack.radio_fit,
-  tier: profileTrack.tier
+  tier: profileTrack.tier,
+  pools: Array.isArray(t.pools) ? t.pools : []// <- carry pools exactly as provided
 });
 
 // ============================================================================
@@ -356,93 +357,154 @@ function RadioPuzzleGame() {
   // ============================================================================
 
   const generateMultipleChoice = () => {
-    if (!loadedProfile?.tracks) {
-      console.error('❌ No profile loaded');
-      return;
+  if (!loadedProfile?.tracks?.length) {
+    console.error("❌ No profile loaded");
+    return;
+  }
+  const seed = gameState.state.seed;
+  if (!seed?.id) {
+    console.error("❌ No seed set");
+    return;
+  }
+
+  const difficulty = gameState.state.tier || "medium";
+
+  // local helpers
+  const fyShuffle = (a) => {
+    const x = a.slice();
+    for (let i = x.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [x[i], x[j]] = [x[j], x[i]];
     }
+    return x;
+  };
+  const sampleN = (arr, n) => fyShuffle(arr).slice(0, Math.min(n, arr.length));
 
-    const seed = gameState.state.seed;
-    if (!seed) {
-      console.error('❌ No seed set');
-      return;
-    }
+  // choose how many correct to show; E[k] ≥ 1 in all tiers
+  const pickK = (tier) => {
+    const r = Math.random();
+    if (tier === "easy")   return r < 0.70 ? 1 : r < 0.90 ? 2 : 0;
+    if (tier === "hard")   return r < 0.40 ? 1 : r < 0.90 ? 2 : 0;
+    return r < 0.60 ? 1 : r < 0.85 ? 2 : 0; // medium
+  };
 
-    const availableTracks = loadedProfile.tracks.filter(track => {
-      if (track.id === seed.id) return false;
-      if (gameState.state.guessedTracks.has(makeTrackKey(track))) return false;
-      return true;
-    });
+  // 1) filter strictly by JSON pools
+  const pool = loadedProfile.tracks.filter((t) => {
+    if (!t?.id) return false;
+    if (!Array.isArray(t.pools) || !t.pools.includes(difficulty)) return false;
+    if (t.id === seed.id) return false;
+    if (gameState.state.guessedTracks?.has?.(makeTrackKey(t))) return false;
+    return true;
+  });
 
-    const difficulty = gameState.state.tier || "medium";
+  if (pool.length === 0) {
+    console.error("❌ Empty pool for difficulty:", difficulty);
+    gameState.setMultipleChoice([]);
+    return;
+  }
 
-// small helpers
-const fyShuffle = (a) => { const x = a.slice(); for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
-const sampleN = (arr, n) => fyShuffle(arr).slice(0, Math.min(n, arr.length));
+  // 2) split by JSON's correctness flag
+  const correctPool = pool.filter((t) => t.correct === true);
+  let   wrongPool   = pool.filter((t) => t.correct !== true);
 
-// tier based count of correct answers among 3
-const pickK = (tier) => {
-  const r = Math.random();
-  if (tier === "easy")   return r < 0.70 ? 1 : r < 0.90 ? 2 : 0;
-  if (tier === "hard")   return r < 0.40 ? 1 : r < 0.90 ? 2 : 0;
-  return r < 0.60 ? 1 : r < 0.85 ? 2 : 0; // medium
+  // feel-only ordering; doesn’t change membership
+  if (difficulty === "easy") wrongPool = wrongPool.slice().sort((a, b) => (a.radio_fit ?? 0) - (b.radio_fit ?? 0));
+  if (difficulty === "hard") wrongPool = wrongPool.slice().sort((a, b) => (b.radio_fit ?? 0) - (a.radio_fit ?? 0));
+
+  // 3) pick k correct, fill to 3, degrade gracefully
+  let k = Math.min(pickK(difficulty), 3, correctPool.length);
+  let needWrong = 3 - k;
+
+  if (wrongPool.length < needWrong) {
+    const short = needWrong - wrongPool.length;
+    k = Math.min(k + short, correctPool.length, 3);
+    needWrong = 3 - k;
+  }
+
+  let picks = [
+    ...sampleN(correctPool, k),
+    ...sampleN(wrongPool, needWrong),
+  ];
+
+  if (picks.length < 3) {
+    const remaining = pool.filter((t) => !picks.includes(t));
+    picks.push(...sampleN(remaining, 3 - picks.length));
+  }
+
+  // 4) set the three choices
+  gameState.setMultipleChoice(fyShuffle(picks));
 };
 
-// 1) limit to this difficulty pool
-const pool = loadedProfile.tracks.filter(t => {
-  if (!t?.id) return false;
-  if (t.id === seed.id) return false;
-  if (gameState.state.guessedTracks.has(makeTrackKey(t))) return false;
-  return Array.isArray(t.pools) && t.pools.includes(difficulty);
-});
+//     const difficulty = gameState.state.tier || "medium";
 
-if (pool.length === 0) {
-  console.error("❌ Empty pool for difficulty");
-  return;
-}
+// // small helpers
+// const fyShuffle = (a) => { const x = a.slice(); for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
+// const sampleN = (arr, n) => fyShuffle(arr).slice(0, Math.min(n, arr.length));
 
-// 2) correctness and decoy buckets by tier
-const isCorrect = (t) => t.correct === true || t.tier === 1;
+// // tier based count of correct answers among 3
+// const pickK = (tier) => {
+//   const r = Math.random();
+//   if (tier === "easy")   return r < 0.70 ? 1 : r < 0.90 ? 2 : 0;
+//   if (tier === "hard")   return r < 0.40 ? 1 : r < 0.90 ? 2 : 0;
+//   return r < 0.60 ? 1 : r < 0.85 ? 2 : 0; // medium
+// };
 
-const correctPool = pool.filter(isCorrect);
+// // 1) limit to this difficulty pool
+// const pool = loadedProfile.tracks.filter(t => {
+//   if (!t?.id) return false;
+//   if (t.id === seed.id) return false;
+//   if (gameState.state.guessedTracks.has(makeTrackKey(t))) return false;
+//   return Array.isArray(t.pools) && t.pools.includes(difficulty);
+// });
 
-let wrongPool;
-if (difficulty === "easy") {
-  // obvious wrongs: tiers 4 or 5, prefer low radio_fit
-  wrongPool = pool
-    .filter(t => !isCorrect(t) && (t.tier === 4 || t.tier === 5))
-    .sort((a, b) => (a.radio_fit ?? 0) - (b.radio_fit ?? 0));
-} else if (difficulty === "hard") {
-  // near misses: tier 2, fill with 5, prefer high radio_fit
-  const near = pool.filter(t => !isCorrect(t) && t.tier === 2);
-  const filler = pool.filter(t => !isCorrect(t) && t.tier === 5);
-  wrongPool = near.concat(filler).sort((a, b) => (b.radio_fit ?? 0) - (a.radio_fit ?? 0));
-} else {
-  // medium mixes 2, 3, 5
-  wrongPool = pool.filter(t => !isCorrect(t) && (t.tier === 2 || t.tier === 3 || t.tier === 5));
-}
+// if (pool.length === 0) {
+//   console.error("❌ Empty pool for difficulty");
+//   return;
+// }
 
-// 3) choose k correct and fill to 3
-let k = Math.min(pickK(difficulty), 3, correctPool.length);
-let needWrong = 3 - k;
-if (wrongPool.length < needWrong) {
-  const short = needWrong - wrongPool.length;
-  k = Math.min(k + short, correctPool.length, 3);
-  needWrong = 3 - k;
-}
+// // 2) correctness and decoy buckets by tier
+// const isCorrect = (t) => t.correct === true || t.tier === 1;
 
-let picks = [
-  ...sampleN(correctPool, k),
-  ...sampleN(wrongPool, needWrong)
-];
+// const correctPool = pool.filter(isCorrect);
 
-if (picks.length < 3) {
-  const remaining = pool.filter(t => !picks.includes(t));
-  picks = picks.concat(sampleN(remaining, 3 - picks.length));
-}
+// let wrongPool;
+// if (difficulty === "easy") {
+//   // obvious wrongs: tiers 4 or 5, prefer low radio_fit
+//   wrongPool = pool
+//     .filter(t => !isCorrect(t) && (t.tier === 4 || t.tier === 5))
+//     .sort((a, b) => (a.radio_fit ?? 0) - (b.radio_fit ?? 0));
+// } else if (difficulty === "hard") {
+//   // near misses: tier 2, fill with 5, prefer high radio_fit
+//   const near = pool.filter(t => !isCorrect(t) && t.tier === 2);
+//   const filler = pool.filter(t => !isCorrect(t) && t.tier === 5);
+//   wrongPool = near.concat(filler).sort((a, b) => (b.radio_fit ?? 0) - (a.radio_fit ?? 0));
+// } else {
+//   // medium mixes 2, 3, 5
+//   wrongPool = pool.filter(t => !isCorrect(t) && (t.tier === 2 || t.tier === 3 || t.tier === 5));
+// }
 
-// 4) set the three choices
-gameState.setMultipleChoice(fyShuffle(picks));
-  };
+// // 3) choose k correct and fill to 3
+// let k = Math.min(pickK(difficulty), 3, correctPool.length);
+// let needWrong = 3 - k;
+// if (wrongPool.length < needWrong) {
+//   const short = needWrong - wrongPool.length;
+//   k = Math.min(k + short, correctPool.length, 3);
+//   needWrong = 3 - k;
+// }
+
+// let picks = [
+//   ...sampleN(correctPool, k),
+//   ...sampleN(wrongPool, needWrong)
+// ];
+
+// if (picks.length < 3) {
+//   const remaining = pool.filter(t => !picks.includes(t));
+//   picks = picks.concat(sampleN(remaining, 3 - picks.length));
+// }
+
+// // 4) set the three choices
+// gameState.setMultipleChoice(fyShuffle(picks));
+//   };
 
   //   const correctTracks = availableTracks.filter(t => t.correct);
   //   const incorrectTracks = availableTracks.filter(t => !t.correct);
