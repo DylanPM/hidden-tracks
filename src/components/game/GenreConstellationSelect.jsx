@@ -165,6 +165,10 @@ export function GenreConstellationSelect({ onLaunch }) {
   // How many nodes at this level
   const children = getChildren();
   const seeds = getSeeds();
+  // ADD THESE LINES
+const currentGenre = navigationPath.length
+  ? navigationPath[navigationPath.length - 1]
+  : 'a genre';
 
   // Node sizes
   const genreNodeR = Math.max(48, 90 - (children.length * 1.5)); // parent/subgenre nodes
@@ -185,7 +189,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
 
   // description for SVG ring text (better than your previous “explore the sounds of …”)
-  const genreDescription = getGenreDescriptionBetter(currentGenre);
+  const genreDescription = `${getGenreDescription(currentGenre)} • ${getGenreDescription(currentGenre)}`;
+
 
   // --- Render ---
 
