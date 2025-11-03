@@ -178,12 +178,16 @@ export function GenreConstellationSelect({ onLaunch }) {
     
     // If specific track selected (leaf node), use only that one
     if (selectedTrack) {
+      console.log('[CONSTELLATION launch] if selected track', difficulty);
+
       onLaunch([selectedTrack], difficulty);
       return;
     }
     
     // Otherwise use all seeds from current node
     if (seeds.length > 0) {
+      console.log('[CONSTELLATION launch] seeds.length', difficulty);
+
       onLaunch(seeds, difficulty);
     }
   };

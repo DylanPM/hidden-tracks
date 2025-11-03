@@ -113,7 +113,7 @@ function RadioPuzzleGame() {
   const gameState = useGameState();
 
   useEffect(() => {
-  console.log("[DIFFICULTY_TIER]", gameState.state.difficultyTier);
+  console.log("[STORE DIFFICULTY_TIER]", gameState.state.difficultyTier);
 }, [gameState.state.difficultyTier]);
 
   const guessesLeft = maxGuesses - gameState.state.guesses.length;
@@ -177,6 +177,8 @@ function RadioPuzzleGame() {
 
     setDifficulty(selectedDifficulty);              // local UI, optional
     gameState.setDifficultyTier(selectedDifficulty); // this updates game state
+    console.log('[RP setDifficultyTier]', selectedDifficulty);
+
 
     // Auto-assign seed and challenges
     const randomSeed = convertedTracks[Math.floor(Math.random() * convertedTracks.length)];
