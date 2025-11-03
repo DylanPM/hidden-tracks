@@ -373,64 +373,135 @@ function RadioPuzzleGame() {
       return true;
     });
 
-    const correctTracks = availableTracks.filter(t => t.correct);
-    const incorrectTracks = availableTracks.filter(t => !t.correct);
+    const difficulty = gameState.state.tier || "medium";
 
-    // Weighted random: target 33% correct on average
-    // More correct tracks in pool = higher chance of picking them
-    const totalTracks = correctTracks.length + incorrectTracks.length;
-    const correctRatio = correctTracks.length / totalTracks;
-    
-    // Pick 3 tracks with ~33% chance each is correct
-    const picked = [];
-    const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
-    
-    for (let i = 0; i < 3; i++) {
-      const useCorrect = Math.random() < correctRatio * 0.33 / (1 - correctRatio);
-      if (useCorrect && correctTracks.length > 0) {
-        const track = shuffle(correctTracks)[0];
-        picked.push(track);
-        correctTracks.splice(correctTracks.indexOf(track), 1);
-      } else if (incorrectTracks.length > 0) {
-        const track = shuffle(incorrectTracks)[0];
-        picked.push(track);
-        incorrectTracks.splice(incorrectTracks.indexOf(track), 1);
-      }
-    }
+// small helpers
+const fyShuffle = (a) => { const x = a.slice(); for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
+const sampleN = (arr, n) => fyShuffle(arr).slice(0, Math.min(n, arr.length));
 
-    gameState.setMultipleChoice(shuffle(picked));
+// tier based count of correct answers among 3
+const pickK = (tier) => {
+  const r = Math.random();
+  if (tier === "easy")   return r < 0.70 ? 1 : r < 0.90 ? 2 : 0;
+  if (tier === "hard")   return r < 0.40 ? 1 : r < 0.90 ? 2 : 0;
+  return r < 0.60 ? 1 : r < 0.85 ? 2 : 0; // medium
+};
+
+// 1) limit to this difficulty pool
+const pool = loadedProfile.tracks.filter(t => {
+  if (!t?.id) return false;
+  if (t.id === seed.id) return false;
+  if (gameState.state.guessedTracks.has(makeTrackKey(t))) return false;
+  return Array.isArray(t.pools) && t.pools.includes(difficulty);
+});
+
+if (pool.length === 0) {
+  console.error("❌ Empty pool for difficulty");
+  return;
+}
+
+// 2) correctness and decoy buckets by tier
+const isCorrect = (t) => t.correct === true || t.tier === 1;
+
+const correctPool = pool.filter(isCorrect);
+
+let wrongPool;
+if (difficulty === "easy") {
+  // obvious wrongs: tiers 4 or 5, prefer low radio_fit
+  wrongPool = pool
+    .filter(t => !isCorrect(t) && (t.tier === 4 || t.tier === 5))
+    .sort((a, b) => (a.radio_fit ?? 0) - (b.radio_fit ?? 0));
+} else if (difficulty === "hard") {
+  // near misses: tier 2, fill with 5, prefer high radio_fit
+  const near = pool.filter(t => !isCorrect(t) && t.tier === 2);
+  const filler = pool.filter(t => !isCorrect(t) && t.tier === 5);
+  wrongPool = near.concat(filler).sort((a, b) => (b.radio_fit ?? 0) - (a.radio_fit ?? 0));
+} else {
+  // medium mixes 2, 3, 5
+  wrongPool = pool.filter(t => !isCorrect(t) && (t.tier === 2 || t.tier === 3 || t.tier === 5));
+}
+
+// 3) choose k correct and fill to 3
+let k = Math.min(pickK(difficulty), 3, correctPool.length);
+let needWrong = 3 - k;
+if (wrongPool.length < needWrong) {
+  const short = needWrong - wrongPool.length;
+  k = Math.min(k + short, correctPool.length, 3);
+  needWrong = 3 - k;
+}
+
+let picks = [
+  ...sampleN(correctPool, k),
+  ...sampleN(wrongPool, needWrong)
+];
+
+if (picks.length < 3) {
+  const remaining = pool.filter(t => !picks.includes(t));
+  picks = picks.concat(sampleN(remaining, 3 - picks.length));
+}
+
+// 4) set the three choices
+gameState.setMultipleChoice(fyShuffle(picks));
   };
 
-  const generateFeedback = (song, seed) => {
-    const feedback = [];
+  //   const correctTracks = availableTracks.filter(t => t.correct);
+  //   const incorrectTracks = availableTracks.filter(t => !t.correct);
+
+  //   // Weighted random: target 33% correct on average
+  //   // More correct tracks in pool = higher chance of picking them
+  //   const totalTracks = correctTracks.length + incorrectTracks.length;
+  //   const correctRatio = correctTracks.length / totalTracks;
     
-    // Check audio similarity
-    if (song.audio_sim !== undefined && song.audio_sim < 0.7) {
-      feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}% vs seed)`);
-    }
+  //   // Pick 3 tracks with ~33% chance each is correct
+  //   const picked = [];
+  //   const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
     
-    // Genre similarity - commented out 0% issue
-    // if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
-    //   feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
-    // }
+  //   for (let i = 0; i < 3; i++) {
+  //     const useCorrect = Math.random() < correctRatio * 0.33 / (1 - correctRatio);
+  //     if (useCorrect && correctTracks.length > 0) {
+  //       const track = shuffle(correctTracks)[0];
+  //       picked.push(track);
+  //       correctTracks.splice(correctTracks.indexOf(track), 1);
+  //     } else if (incorrectTracks.length > 0) {
+  //       const track = shuffle(incorrectTracks)[0];
+  //       picked.push(track);
+  //       incorrectTracks.splice(incorrectTracks.indexOf(track), 1);
+  //     }
+  //   }
+
+  //   gameState.setMultipleChoice(shuffle(picked));
+  // };
+
+  // const generateFeedback = (song, seed) => {
+  //   const feedback = [];
     
-    // Check era distance
-    if (song.era_dist !== undefined && song.era_dist > 10) {
-      feedback.push(`Different era (${song.era_dist} years apart)`);
-    }
+  //   // Check audio similarity
+  //   if (song.audio_sim !== undefined && song.audio_sim < 0.7) {
+  //     feedback.push(`Low audio similarity (${(song.audio_sim * 100).toFixed(0)}% vs seed)`);
+  //   }
     
-    // Tier feedback - commented out (not about vibe, just difficulty sorting)
-    // if (song.tier !== undefined && song.tier >= 4) {
-    //   feedback.push(`Very different vibe (tier ${song.tier})`);
-    // }
+  //   // Genre similarity - commented out 0% issue
+  //   // if (song.genre_sim !== undefined && song.genre_sim < 0.5) {
+  //   //   feedback.push(`Different genres (${(song.genre_sim * 100).toFixed(0)}% overlap)`);
+  //   // }
     
-    // If no specific feedback, use generic message
-    if (feedback.length === 0) {
-      feedback.push('Doesn\'t fit the radio station\'s vibe');
-    }
+  //   // Check era distance
+  //   if (song.era_dist !== undefined && song.era_dist > 10) {
+  //     feedback.push(`Different era (${song.era_dist} years apart)`);
+  //   }
     
-    return feedback;
-  };
+  //   // Tier feedback - commented out (not about vibe, just difficulty sorting)
+  //   // if (song.tier !== undefined && song.tier >= 4) {
+  //   //   feedback.push(`Very different vibe (tier ${song.tier})`);
+  //   // }
+    
+  //   // If no specific feedback, use generic message
+  //   if (feedback.length === 0) {
+  //     feedback.push('Doesn\'t fit the radio station\'s vibe');
+  //   }
+    
+  //   return feedback;
+  // };
 
   const handleGuess = (song) => {
     if (!song?.artists || !song?.name) {
