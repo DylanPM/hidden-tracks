@@ -196,14 +196,14 @@ const currentGenre = navigationPath.length
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center font-spotify">
         <div className="text-zinc-400">Loading genres...</div>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center font-spotify">
         <div className="text-red-400">Error: {error}</div>
       </div>
     );
@@ -222,7 +222,7 @@ const currentGenre = navigationPath.length
                 guess the other songs the machine would queue up next.
               </p>
               <p className="text-zinc-400 mb-4">
-                Pick a genre, sub-genre, or song you love, set a difficulty, then launch your mix.
+                Pick a genre, sub-genre, or song you love then launch your mix.
               </p>
               <p className="text-zinc-500 text-xs mb-6">Built with the help of Anthropic’s Claude.</p>
               <button
@@ -280,10 +280,10 @@ const currentGenre = navigationPath.length
               />
 
               {/* animated ticker description */}
-              <text className="fill-green-200" style={{ fontSize: 10, letterSpacing: 0.5 }}>
+              <text className="fill-green-200" style={{ fontSize: 15, letterSpacing: 0.5 }}>
                 <textPath href="#ringPath" startOffset="0%">
-                  <animate attributeName="startOffset" from="0%" to="100%" dur="10s" repeatCount="indefinite" />
-                  {genreDescription}
+                  <animate attributeName="startOffset" from="0%" to="100%" dur="15s" repeatCount="indefinite" />
+                   {`${genreDescription}  •  ${genreDescription}`}
                 </textPath>
               </text>
 
@@ -328,9 +328,9 @@ const currentGenre = navigationPath.length
               </text>
 
               {/* orbiting difficulty chips (bottom half) */}
-              {renderDifficultyChip(400 - 120, 360, 'easy', difficulty, setDifficulty)}
+              {/* {renderDifficultyChip(400 - 120, 360, 'easy', difficulty, setDifficulty)}
               {renderDifficultyChip(400,       390, 'medium', difficulty, setDifficulty)}
-              {renderDifficultyChip(400 + 120, 360, 'hard', difficulty, setDifficulty)}
+              {renderDifficultyChip(400 + 120, 360, 'hard', difficulty, setDifficulty)} */}
             </g>
 
             {/* --- GENRE / SUBGENRE ORBIT --- */}

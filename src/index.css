@@ -4,3 +4,15 @@
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+
+:root {
+  /* Best-effort Spotify/Circular stack with safe fallbacks */
+  --spotify-font: "Circular", "Circular Std", "CircularSpotifyText", "Inter",
+                  "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Use on any wrapper to enforce the stack */
+.font-spotify, .font-spotify * {
+  font-family: var(--spotify-font) !important;
+}
+
