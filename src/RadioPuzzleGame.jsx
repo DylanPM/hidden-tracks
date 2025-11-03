@@ -378,7 +378,7 @@ function RadioPuzzleGame() {
 // const difficulty = gameState.state.tier || "medium";
 
 // AFTER
-const currentDifficulty = gameState.state.difficultyTier || difficulty || "medium";
+const currentDifficulty = gameState.state.difficultyTier || "medium";
 
   
 
