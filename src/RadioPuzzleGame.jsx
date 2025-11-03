@@ -98,6 +98,9 @@ function RadioPuzzleGame() {
 
   // Game settings
   const [maxGuesses, setMaxGuesses] = useState(6);
+  
+  // Game over state
+  const [gameOver, setGameOver] = useState(false);
 
   // UI state
   const [currentChoice, setCurrentChoice] = useState(null);
@@ -165,16 +168,21 @@ function RadioPuzzleGame() {
       filename: track.filename
     }));
 
-    setSelectedTracks(convertedTracks);
     setDifficulty(selectedDifficulty);
 
-    if (tracks.length === 1) {
-      localStorage.setItem('seedIsLocked', 'true');
-    } else {
-      localStorage.removeItem('seedIsLocked');
-    }
+    // Auto-assign seed and challenges
+    const randomSeed = convertedTracks[Math.floor(Math.random() * convertedTracks.length)];
+    const randomChallenges = [...CHALLENGES]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3);
 
-    setPhase('draft');
+    gameState.setSeed(randomSeed);
+    randomChallenges.forEach((challenge, idx) => {
+      gameState.setChallenge(idx, challenge);
+    });
+
+    // Go straight to loading
+    loadProfileForSeed(randomSeed);
   };
 
   // ============================================================================
