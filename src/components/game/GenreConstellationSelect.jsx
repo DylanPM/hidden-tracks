@@ -371,11 +371,10 @@ export function GenreConstellationSelect({ onLaunch }) {
             <div className="p-6 text-center">
               <h2 className="text-2xl font-bold text-white mb-3">Welcome to Hidden Tracks</h2>
               <p className="text-zinc-300 mb-2">
-                See how recommendation systems think. Explore the logic behind algorithmic playlists and
-                guess the other songs the model would queue next.
+                Explore how algorithmic recommendation systems curate music.
               </p>
               <p className="text-zinc-400 mb-4">
-                Pick a genre, sub-genre, or a song you love, then launch your mix.
+                Pick a genre, sub-genre, or a song, hit LAUNCH, then try to guess which songs would be recommended for a playlist.
               </p>
               <p className="text-zinc-500 text-xs mb-6">
                 Built with help from Anthropic’s Claude.
@@ -436,7 +435,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 fill={canLaunch() ? 'black' : '#a1a1aa'}
                 fontSize="32"
                 fontWeight="900"
-                style={{ letterSpacing: '0.5px' }}
+                style={{ letterSpacing: '0.5px', pointerEvents: 'none' }}
               >
                 LAUNCH
               </text>
@@ -448,6 +447,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 fill={canLaunch() ? 'black' : '#a1a1aa'}
                 fontSize="18"
                 fontWeight="600"
+                style={{ pointerEvents: 'none' }}
               >
                 {currentGenre.charAt(0).toUpperCase() + currentGenre.slice(1)}
               </text>
@@ -570,6 +570,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         @keyframes orbit {
           from { transform: rotate(360deg); }
           to   { transform: rotate(0deg); }
+          //was 0 to 360
         }
       `}</style>
     </div>
