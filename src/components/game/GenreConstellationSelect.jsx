@@ -33,29 +33,180 @@ export function GenreConstellationSelect({ onLaunch }) {
   // ------------------------------------------
   // descriptions
   // ------------------------------------------
-  const getGenreDescription = (name) => {
-    const d = {
-      rock: 'Guitars in front. Riffs, choruses, amps on the edge.',
-      electronic: 'Machines on pulse. Drum programming, synth color, grid tightness.',
-      'hip hop': 'Flow over drums. Sample craft, 808 weight, hook logic.',
-      'r&b': 'Smooth vocals over pocketed drums and warm chords.',
-      soul: 'Belting, call and response, church in the DNA.',
-      funk: 'Syncopation and space. Bass leads, drums speak.',
-      jazz: 'Improvisation over harmony. Swing feel, chord color.',
-      country: 'Story first. Harmony vocals, twang, clean rhythm sections.',
-      folk: 'Acoustic storytelling. Intimate delivery, lyric focus.',
-      latin: 'Clave, dance, and melody from many regional traditions.',
-      reggae: 'Laid-back groove, off-beat guitar, deep bass.',
-      afrobeat: 'Polyrhythms, long vamps, call and response.',
-      classical: 'Orchestral scale, written forms, dynamic shape.',
-      experimental: 'Texture and process at the center. Form in flux.',
-      // a few common subs (safe fallback)
-      trap: '808s, stuttering hats, melodic minor motifs.',
-      'boom bap': 'Swinging kicks and snares, chopped samples.',
-      'neo soul': 'Modern soul harmony and hip hop pocket.'
-    };
-    return d[name?.toLowerCase?.()] ?? `A distinct palette of rhythm, timbre, and structure.`;
+  // const getGenreDescription = (name) => {
+  //   const d = {
+  //     rock: 'Guitars in front. Riffs, choruses, amps on the edge.',
+  //     electronic: 'Machines on pulse. Drum programming, synth color, grid tightness.',
+  //     'hip hop': 'Flow over drums. Sample craft, 808 weight, hook logic.',
+  //     'r&b': 'Smooth vocals over pocketed drums and warm chords.',
+  //     soul: 'Belting, call and response, church in the DNA.',
+  //     funk: 'Syncopation and space. Bass leads, drums speak.',
+  //     jazz: 'Improvisation over harmony. Swing feel, chord color.',
+  //     country: 'Story first. Harmony vocals, twang, clean rhythm sections.',
+  //     folk: 'Acoustic storytelling. Intimate delivery, lyric focus.',
+  //     latin: 'Clave, dance, and melody from many regional traditions.',
+  //     reggae: 'Laid-back groove, off-beat guitar, deep bass.',
+  //     afrobeat: 'Polyrhythms, long vamps, call and response.',
+  //     classical: 'Orchestral scale, written forms, dynamic shape.',
+  //     experimental: 'Texture and process at the center. Form in flux.',
+  //     // a few common subs (safe fallback)
+  //     trap: '808s, stuttering hats, melodic minor motifs.',
+  //     'boom bap': 'Swinging kicks and snares, chopped samples.',
+  //     'neo soul': 'Modern soul harmony and hip hop pocket.'
+  //   };
+  //   return d[name?.toLowerCase?.()] ?? `A distinct palette of rhythm, timbre, and structure.`;
+  // };
+
+  function getGenreDescription(genreName) {
+  const map = {
+  // Roots
+    rock: 'Guitars forward, live drum feel, verse–chorus lift. Expect riffs, backbeat, and amp grit.',
+    electronic: 'Synths, drum machines, and grid-tight rhythm. Texture and pulse drive the form.',
+    'hip hop': 'Drum patterns and vocal rhythm lead. Kicks, snares, and flow sit in the pocket.',
+    'r&b': 'Smooth vocals over pocketed drums and warm chords. Melody glides and bass sings.',
+    soul: 'Powerful vocals, rich harmony, and groove-led rhythm sections.',
+    funk: 'Syncopated bass, clipped guitars, tight drums. The pocket is the hook.',
+    jazz: 'Improvisation, extended harmony, acoustic or electric ensembles, swing or straight.',
+    country: 'Story-first songs, steady backbeat, twang color. Choruses land clean.',
+    folk: 'Acoustic instruments, intimate vocals, lyric focus, simple harmonic movement.',
+    latin: 'Percussive rhythm languages, clave patterns, dance forms, bright hooks.',
+    reggae: 'Off-beat skank guitar, deep bass, laid-back groove, spacious mix.',
+    afrobeat: 'Polyrhythms, long vamps, horn punches, call and response.',
+    classical: 'Orchestral or chamber instruments, formal structures, dynamic range.',
+    experimental: 'Form and timbre as a playground. Expect rule-bending structures.',
+
+    // Rock subs
+    metal: 'High-gain guitars, aggressive drums, extended techniques, darker harmony.',
+    'thrash metal': 'Fast tempos, palm-muted riffs, double kick, shouted vocals.',
+    'doom metal': 'Slow, heavy, sustained chords, bleak atmosphere.',
+    'sludge metal': 'Thick, dirty tones, hardcore energy, dragging groove.',
+    'black metal': 'Tremolo picking, blast beats, raw textures, icy harmony.',
+    'death metal': 'Low tunings, complex riffing, growled vocals, relentless drums.',
+    'progressive metal': 'Odd meters, long forms, technical playing, melodic complexity.',
+    'nu metal': 'Down-tuned riffs, hip hop influence, simple grooves, angst-driven hooks.',
+    punk: 'Fast, raw, direct. Power chords, shouted hooks, minimal ornament.',
+    'post-punk': 'Angular guitars, groove-led bass, moody vocals, experimental edges.',
+    emo: 'Melodic guitars, dynamic swings, confessional vocals.',
+    'alternative rock': 'Guitar rock with left-field choices, off-center hooks.',
+    'indie rock': 'Looser feel, character vocals, textural guitars, DIY polish.',
+    shoegaze: 'Wall of guitars, heavy reverb, buried vocals, floating harmony.',
+    grunge: 'Thick distortion, mid-tempo grind, dynamic quiet–loud forms.',
+    'post-rock': 'Crescendo architecture, repetitive motifs, timbre-as-melody.',
+    'classic rock': 'Blues-based riffs, big choruses, radio-ready structures.',
+    'garage rock': 'Raw takes, energetic tempos, simple changes, live feel.',
+    'psychedelic rock': 'Extended jams, swirling effects, modal or droning harmony.',
+    'hard rock': 'Big amps, tight grooves, soaring vocals, riff-forward writing.',
+
+    // Electronic subs
+    house: 'Four-on-the-floor, warm bass, looped chords, long builds.',
+    'deep house': 'Subtle grooves, jazzy chords, smooth vocals, late-night feel.',
+    'tech house': 'Minimal harmony, punchy drums, techy textures, steady drive.',
+    'progressive house': 'Melodic arcs, evolving layers, long tension and release.',
+    'acid house': 'Squelchy 303 lines, repetitive patterns, hypnotic drums.',
+    techno: 'Machine pulse and evolving timbre. Functional rhythm for movement.',
+    'minimal techno': 'Sparse elements, micro-variation, surgical low end.',
+    trance: 'Big melodic leads, saw stacks, euphoric drops, long phrases.',
+    'progressive trance': 'Smoother leads, deeper builds, patient phrasing.',
+    psytrance: 'Psychedelic textures, fast tempos, rolling basslines.',
+    'drum and bass': 'Fast breakbeats, deep subs, chopped samples, fierce momentum.',
+    jungle: 'Amen breaks, ragga influence, raw sampling, swingy chaos.',
+    dubstep: 'Half-time lurch, wobble bass, stark space between hits.',
+    brostep: 'Maximalist sound design, heavy drops, midrange aggression.',
+    'melodic dubstep': 'Lyrical leads, cinematic chords, gentle drops.',
+    edm: 'Festival-scale builds, big drops, high-impact hooks.',
+    electro: 'Syncopated synth bass, robotic hits, tight grooves.',
+    synthwave: 'Retro synth tones, 80s drum machines, neon mood.',
+    ambient: 'Beatless or soft pulse, long sustains, atmosphere first.',
+
+    // Hip hop subs
+    rap: 'Bars over drums, cadence and rhyme carry the hook.',
+    trap: 'Fast hats, 808 subs, sparse melodies, minor-key pads.',
+    drill: 'Sliding 808s, triplet hats, gritty narratives.',
+    'gangsta rap': 'Street narratives, heavy low end, blunt delivery.',
+    'boom bap': 'Dusty breaks, chopped samples, head-nod swing.',
+    'east coast hip hop': 'Sample-heavy beats, lyrical density, tight snares.',
+    'west coast rap': 'Laid-back swing, sine bass, talkbox or synth color.',
+    'southern hip hop': 'Club bounce, sub pressure, chant hooks.',
+    'conscious hip hop': 'Lyric focus, social commentary, soulful backdrops.',
+    'alternative hip hop': 'Left-field production, genre blends, experimental forms.',
+    'underground hip hop': 'Lo-fi grit, crate-dig aesthetics, bar focus.',
+    phonk: 'Memphis tape grit, cowbells, distorted 808s.',
+    'cloud rap': 'Airy pads, reverb-washed drums, floaty vocals.',
+
+    // R&B subs
+    'contemporary r&b': 'Modern drums, glossy layers, melisma and tight stacks.',
+    'neo soul': 'Organic grooves, jazz harmony, intimate delivery.',
+    'quiet storm': 'Slow tempo, lush arrangements, late-night mood.',
+
+    // Soul subs
+    motown: 'Tight rhythm section, string sweetening, call-and-response hooks.',
+    disco: 'Four-on-the-floor, octave bass, string lines, party focus.',
+
+    // Funk subs
+    'funk rock': 'Rock guitars over syncopated funk rhythm sections.',
+    boogie: 'Early 80s drum machines, slap bass, glossy synths.',
+
+    // Jazz subs
+    bebop: 'Fast tempos, complex changes, agile lines.',
+    'cool jazz': 'Relaxed tempos, soft timbre, arranged interplay.',
+    'hard bop': 'Blues influence, punchy drums, soulful heads.',
+    swing: 'Walking bass, ride cymbal swing, horn sections.',
+    'jazz fusion': 'Electric instruments, rock energy, odd meters.',
+    'smooth jazz': 'Polished tone, gentle grooves, melody first.',
+    'vocal jazz': 'Standards, close mic, phrasing and nuance.',
+    'nu jazz': 'Electronic textures with jazz harmony and rhythm.',
+    'avant-garde jazz': 'Free rhythm, extended techniques, open forms.',
+
+    // Country subs
+    'classic country': 'Two-step rhythms, pedal steel, narrative lyrics.',
+    'outlaw country': 'Rough edges, bar band swing, anti-Nashville stance.',
+    bluegrass: 'Acoustic speed, banjo and fiddle leads, tight harmonies.',
+    'country rock': 'Rock backbeat, twang guitars, road-song feel.',
+    'southern rock': 'Dual leads, blues harmony, swaggering grooves.',
+    'roots rock': 'American folk and country influences in a rock frame.',
+
+    // Folk subs
+    americana: 'Roots palette, lyrical storytelling, band-in-a-room feel.',
+
+    // Latin subs
+    reggaeton: 'Dembow groove, synth hooks, call-and-response vocals.',
+    'latin pop': 'Bright melodies, modern production, crossover hooks.',
+    salsa: 'Clave-driven percussion, horn stabs, montuno piano.',
+    bachata: 'Guitar arpeggios, romantic vocals, syncopated step.',
+    cumbia: 'Shuffle feel, accordion or synth leads, communal dance.',
+    merengue: 'Fast two-beat, horns and tambora, party energy.',
+    tropical: 'Caribbean rhythm blends, bright percussion, festive tone.',
+    mambo: 'Big band horns, syncopated riffs, dance-floor drive.',
+    'bossa nova': 'Soft swing, jazz chords on nylon guitar, intimate vocals.',
+
+    // Reggae subs
+    dub: 'Stripped mixes, heavy delay and reverb, bass as lead.',
+    ska: 'Upstroke guitars on the off-beat, brisk tempos, horn lines.',
+    dancehall: 'Digital riddims, toasting vocals, club focus.',
+
+    // Afrobeat subs
+    afropop: 'Modern pop forms with African rhythm and melody shapes.',
+    amapiano: 'Log drum bass, relaxed tempo, piano riffs, SA groove.',
+    soca: 'Carnival energy, bright percussion, chantable hooks.',
+
+    // Classical subs
+    baroque: 'Figured bass, counterpoint, ornate lines.',
+    romantic: 'Expansive themes, rich harmony, dramatic dynamics.',
+    'modern classical': '20th-century language, new textures and forms.',
+    soundtrack: 'Cinematic themes, leitmotifs, orchestration for scene.',
+    'new age': 'Meditative textures, slow evolution, soothing harmonies.',
+    minimalism: 'Repetition, phase shifts, gradual change.',
+    drone: 'Sustained tones, harmonic stasis, focus on timbre.',
+
+    // Experimental subs
+    'avant-garde': 'Rule-breaking form, extended techniques, concept focus.',
+    noise: 'Distortion, feedback, texture as primary material.',
+    glitch: 'Digital artifacts as rhythm and color, micro-edits.',
+    'lo-fi': 'Intentional roughness, tape hiss, intimate immediacy.',
   };
+  const key = String(genreName || '').toLowerCase();
+  return map[key] || 'Choose a genre, subgenre, or track to explore its hidden patterns';
+}
 
   // ------------------------------------------
   // load manifest
@@ -169,7 +320,8 @@ export function GenreConstellationSelect({ onLaunch }) {
   // description ring
   const TEXT_RING_R = LAUNCH_R + 18;  // centerline radius for the ring
   const TEXT_RING_STROKE = 14;        // keep this synced with the ring strokeWidth
-  const TEXT_RING_OUTER_R = TEXT_RING_R + TEXT_RING_STROKE / 2;
+  const TEXT_RING_OUTER_R = TEXT_RING_R + 4 + TEXT_RING_STROKE / 2;
+  //added four to see if that pushes circles out a bit more
 
   // node sizes adapt to count
   const count = children.length > 0 ? children.length : seeds.length;
@@ -187,8 +339,9 @@ export function GenreConstellationSelect({ onLaunch }) {
   const leftStopPx = Math.max(0, CENTER_X - (baseRadius + circleRadius + 12));
 
   // orbiting text content and speed (slowed ~33%)
-  const genreDescription = `${getGenreDescription(currentGenre)} • ${getGenreDescription(currentGenre)}`;
-  const TICKER_MS = 18000;
+  const genreDescription = `${getGenreDescription(currentGenre)}`; 
+  // took the loop out to see how it looks • ${getGenreDescription(currentGenre)}`;
+  const TICKER_MS = 24000;
 
   // precompute positions
   const items = useMemo(() => {
