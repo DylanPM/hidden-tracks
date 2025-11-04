@@ -302,7 +302,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const TEXT_RING_R = LAUNCH_R + 18;  // centerline radius for the ring
   const TEXT_RING_STROKE = 14;        // keep this synced with the ring strokeWidth
   const TEXT_RING_OUTER_R = TEXT_RING_R + 8 + TEXT_RING_STROKE / 2;
-  //added four to see if that pushes circles out a bit more
+  //added four (and then 8) to see if that pushes circles out a bit more
 
   // node sizes adapt to count
   const count = children.length > 0 ? children.length : seeds.length;
@@ -322,7 +322,8 @@ export function GenreConstellationSelect({ onLaunch }) {
   // orbiting text content and speed (slowed ~33%)
   const genreDescription = `${getGenreDescription(currentGenre)}`; 
   // took the loop out to see how it looks • ${getGenreDescription(currentGenre)}`;
-  const TICKER_MS = 24000;
+  const TICKER_MS = 20000;
+  // was 24000 and before that 18000. 
 
   // precompute positions
   const items = useMemo(() => {
@@ -567,8 +568,8 @@ export function GenreConstellationSelect({ onLaunch }) {
       {/* ticker animation keyframes */}
       <style>{`
         @keyframes orbit {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
+          from { transform: rotate(360deg); }
+          to   { transform: rotate(0deg); }
         }
       `}</style>
     </div>
