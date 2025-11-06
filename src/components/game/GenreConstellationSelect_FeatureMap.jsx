@@ -713,29 +713,47 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Subtle background floor coloring - always visible, shows feature colors */}
+          {/* Subtle background floor coloring - 16 segments matching ring */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
-            const angleStep = (Math.PI * 2) / 8;
-            const angle = i * angleStep;
-            const nextAngle = ((i + 1) % 8) * angleStep;
-            const featureColor = FEATURE_CONFIG[feature]?.color || '#22c55e';
+            const segmentAngleStep = (Math.PI * 2) / 16;
+            const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
+            // High end segment
+            const highAngle = i * segmentAngleStep;
+            const highNextAngle = highAngle + segmentAngleStep;
+
+            // Low end segment (8 segments away)
+            const lowAngle = (i + 8) * segmentAngleStep;
+            const lowNextAngle = lowAngle + segmentAngleStep;
+
             return (
-              <path
-                key={`floor-bg-${feature}`}
-                d={`
-                  M ${CENTER_X} ${CENTER_Y}
-                  L ${CENTER_X + Math.cos(angle) * radius} ${CENTER_Y + Math.sin(angle) * radius}
-                  L ${CENTER_X + Math.cos(nextAngle) * radius} ${CENTER_Y + Math.sin(nextAngle) * radius}
-                  Z
-                `}
-                fill={featureColor}
-                opacity={0.08}
-                style={{
-                  pointerEvents: 'none'
-                }}
-              />
+              <g key={`floor-bg-${feature}`}>
+                {/* High end segment */}
+                <path
+                  d={`
+                    M ${CENTER_X} ${CENTER_Y}
+                    L ${CENTER_X + Math.cos(highAngle) * radius} ${CENTER_Y + Math.sin(highAngle) * radius}
+                    L ${CENTER_X + Math.cos(highNextAngle) * radius} ${CENTER_Y + Math.sin(highNextAngle) * radius}
+                    Z
+                  `}
+                  fill={featureColor}
+                  opacity={0.08}
+                  style={{ pointerEvents: 'none' }}
+                />
+                {/* Low end segment */}
+                <path
+                  d={`
+                    M ${CENTER_X} ${CENTER_Y}
+                    L ${CENTER_X + Math.cos(lowAngle) * radius} ${CENTER_Y + Math.sin(lowAngle) * radius}
+                    L ${CENTER_X + Math.cos(lowNextAngle) * radius} ${CENTER_Y + Math.sin(lowNextAngle) * radius}
+                    Z
+                  `}
+                  fill={featureColor}
+                  opacity={0.08}
+                  style={{ pointerEvents: 'none' }}
+                />
+              </g>
             );
           })}
 
@@ -802,7 +820,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               }
             });
 
-            const color = FEATURE_CONFIG[dominantFeature]?.color || '#22c55e';
+            const color = FEATURE_CONFIG[dominantFeature]?.color || '#1DB954';
             const avgStrength = points.reduce((sum, p) => sum + p.strength, 0) / points.length;
             const opacity = 0.2 + (avgStrength * 0.3);
 
@@ -833,8 +851,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
 
             // Hover pushes segment outward by 30px
-            const outerRadius = isHovered ? 310 : 280;
-            const innerRadius = 260;
+            const outerRadius = isHovered ? 315 : 285;
+            const innerRadius = 245;
 
             // Calculate arc angles for this segment
             const angleStep = (Math.PI * 2) / 16; // 16 segments total
@@ -912,7 +930,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Title text */}
                 <text
                   fill="white"
-                  fontSize={isHovered ? "11" : "10"}
+                  fontSize={isHovered ? "12" : "11"}
                   fontWeight="700"
                   className="transition-all duration-200"
                   style={{ pointerEvents: 'none' }}
@@ -925,7 +943,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {isHovered && (
                   <text
                     fill="white"
-                    fontSize="7"
+                    fontSize="8"
                     fontWeight="400"
                     opacity="0.8"
                     style={{ pointerEvents: 'none' }}
@@ -951,14 +969,14 @@ export function GenreConstellationSelect({ onLaunch }) {
               const x = CENTER_X + Math.cos(angle) * arrowRadius;
               const y = CENTER_Y + Math.sin(angle) * arrowRadius;
 
-              // Create arrow path pointing outward (chevron style: >>)
+              // Create arrow path pointing outward (thin point outward)
               const arrowSize = 10;
               const arrowAngle = 0.35; // Angle spread for arrow lines
               const arrowPath = `
-                M ${x + Math.cos(angle) * -2} ${y + Math.sin(angle) * -2}
-                L ${x + Math.cos(angle - arrowAngle) * arrowSize} ${y + Math.sin(angle - arrowAngle) * arrowSize}
-                M ${x + Math.cos(angle) * -2} ${y + Math.sin(angle) * -2}
-                L ${x + Math.cos(angle + arrowAngle) * arrowSize} ${y + Math.sin(angle + arrowAngle) * arrowSize}
+                M ${x + Math.cos(angle - arrowAngle) * -arrowSize} ${y + Math.sin(angle - arrowAngle) * -arrowSize}
+                L ${x + Math.cos(angle) * 2} ${y + Math.sin(angle) * 2}
+                M ${x + Math.cos(angle + arrowAngle) * -arrowSize} ${y + Math.sin(angle + arrowAngle) * -arrowSize}
+                L ${x + Math.cos(angle) * 2} ${y + Math.sin(angle) * 2}
               `;
 
               return (
@@ -1011,7 +1029,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               y1={CENTER_Y + selectedNodePos.y}
               x2={CENTER_X + item.x}
               y2={CENTER_Y + item.y}
-              stroke="#22c55e"
+              stroke="#1DB954"
               strokeWidth={hoveredItem?.key === item.key ? "3" : "1"}
               opacity={hoveredItem?.key === item.key ? 0.8 : 0.2}
               strokeDasharray={hoveredItem?.key === item.key ? "0" : "2 2"}
@@ -1036,13 +1054,13 @@ export function GenreConstellationSelect({ onLaunch }) {
                 className="cursor-pointer"
                 transform={`translate(${CENTER_X + item.x}, ${CENTER_Y + item.y})`}
               >
-                {/* LAUNCH overlay ring (if selected or hovered) */}
-                {(isSelected || isHovered) && canLaunch() && (
+                {/* LAUNCH overlay ring (only on hover) */}
+                {isHovered && canLaunch() && (
                   <>
                     {/* Clickable launch ring (between node and outer ring) */}
                     <circle
                       r={launchRingRadius}
-                      fill="#22c55e"
+                      fill="#1DB954"
                       opacity="0.15"
                       className="cursor-pointer hover:opacity-30 transition-opacity"
                       style={{
@@ -1057,7 +1075,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     <circle
                       r={launchRingRadius}
                       fill="none"
-                      stroke="#22c55e"
+                      stroke="#1DB954"
                       strokeWidth="2"
                       opacity="0.6"
                       style={{ pointerEvents: 'none' }}
@@ -1066,7 +1084,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     <text
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fill="#22c55e"
+                      fill="#1DB954"
                       fontSize="16"
                       fontWeight="900"
                       style={{ pointerEvents: 'none' }}
@@ -1082,9 +1100,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Main node circle */}
                 <circle
                   r={nodeRadius}
-                  fill={isSelected ? '#22c55e' : '#18181b'}
+                  fill={isSelected ? '#1DB954' : '#18181b'}
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  stroke={isSelected ? '#22c55e' : item.isSelected ? '#eab308' : isHovered ? '#16a34a' : '#22c55e'}
+                  stroke={isSelected ? '#1DB954' : item.isSelected ? '#eab308' : isHovered ? '#1DB954' : '#1DB954'}
                   strokeWidth={isSelected ? '4' : item.isSelected ? '4' : isHovered ? '3' : '2'}
                   strokeOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   className="hover:fill-zinc-800 transition-all"
@@ -1107,7 +1125,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <text
                   fill="white"
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  fontSize={isHovered ? (item.type === 'track' ? 13.2 : 15.6) : (item.type === 'track' ? 9.6 : 12)}
+                  fontSize={isHovered ? 13 : 11}
                   fontWeight="600"
                   filter={isHovered ? 'url(#textGlow)' : undefined}
                   style={{
@@ -1115,13 +1133,13 @@ export function GenreConstellationSelect({ onLaunch }) {
                     transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
                   }}
                 >
-                  <textPath href={`#nodePath-${item.key}`} startOffset="0%">
+                  <textPath href={`#nodePath-${item.key}`} startOffset="75%" textAnchor="middle">
                     {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
                   </textPath>
                 </text>
 
-                {/* Go! text in center (follows hover) */}
-                {(isSelected || isHovered) && (
+                {/* Go! text in center (only on hover) */}
+                {isHovered && (
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -1217,14 +1235,14 @@ export function GenreConstellationSelect({ onLaunch }) {
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize="14" fill="#71717a" fontWeight="900" letterSpacing="1px">
+                <text fontSize="16" fill="#a1a1aa" fontWeight="900" letterSpacing="1.5px">
                   <textPath href="#backPath" startOffset="0%">
-                    ▷ Tap outside the ring to go back a level
+                    ◁ Click outside to go back ◁
                   </textPath>
                 </text>
-                <text fontSize="14" fill="#71717a" fontWeight="900" letterSpacing="1px">
+                <text fontSize="16" fill="#a1a1aa" fontWeight="900" letterSpacing="1.5px">
                   <textPath href="#backPath" startOffset="50%">
-                    ▷ Tap outside the ring to go back a level
+                    ◁ Click outside to go back ◁
                   </textPath>
                 </text>
               </g>
