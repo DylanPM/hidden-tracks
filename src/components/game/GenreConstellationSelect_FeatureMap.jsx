@@ -194,12 +194,6 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   // Handle clicks
   const handleGenreClick = async (key) => {
-    // At root level, first click selects (shows LAUNCH ring), second click navigates
-    if (viewStack.length === 0 && selectedNodeKey !== key) {
-      setSelectedNodeKey(key);
-      return;
-    }
-
     const newStack = [...viewStack, key];
     setViewStack(newStack);
     setSelectedTrack(null);
@@ -476,44 +470,44 @@ export function GenreConstellationSelect({ onLaunch }) {
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
 
-  // Axis configuration (bidirectional labels)
+  // Axis configuration (bidirectional labels) - 16 evenly spaced segments
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
     const { feature_angles } = manifest.global.display;
-    const angleStep = (Math.PI * 2) / feature_angles.length;
+    const segmentAngleStep = (Math.PI * 2) / 16; // 16 segments = 22.5° each
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
 
     feature_angles.forEach((feature, i) => {
-      const angle = i * angleStep;
       const config = FEATURE_CONFIG[feature];
       const enabled = activeFeatures[feature] !== false;
 
       if (!config) return;
 
-      // High end (at the axis direction)
+      // High end at position i*2 (even segments: 0, 2, 4, 6...)
+      const highAngle = i * 2 * segmentAngleStep;
       labels.push({
         feature,
         end: 'high',
-        angle,
-        x: Math.cos(angle) * axisRadius,
-        y: Math.sin(angle) * axisRadius,
+        angle: highAngle,
+        x: Math.cos(highAngle) * axisRadius,
+        y: Math.sin(highAngle) * axisRadius,
         emoji: config.high.emoji,
         name: config.high.name,
         desc: config.high.desc,
         enabled
       });
 
-      // Low end (opposite direction, 180° away)
-      const oppositeAngle = angle + Math.PI;
+      // Low end at position (i*2 + 8) - opposite side (8 segments away = 180°)
+      const lowAngle = (i * 2 + 8) * segmentAngleStep;
       labels.push({
         feature,
         end: 'low',
-        angle: oppositeAngle,
-        x: Math.cos(oppositeAngle) * axisRadius,
-        y: Math.sin(oppositeAngle) * axisRadius,
+        angle: lowAngle,
+        x: Math.cos(lowAngle) * axisRadius,
+        y: Math.sin(lowAngle) * axisRadius,
         emoji: config.low.emoji,
         name: config.low.name,
         desc: config.low.desc,
@@ -805,6 +799,12 @@ export function GenreConstellationSelect({ onLaunch }) {
           })()}
 
           {/* Circular ring with embedded 16 axis label segments (Trivial Pursuit style) */}
+          <g
+            style={{
+              transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+              animation: viewStack.length > 0 ? 'breathe 3.5s ease-in-out infinite' : 'none'
+            }}
+          >
           {axisConfig.map((label, idx) => {
             const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
 
@@ -914,6 +914,48 @@ export function GenreConstellationSelect({ onLaunch }) {
               </g>
             );
           })}
+          </g>
+
+          {/* Outward arrows around ring (clickability indicator) */}
+          {viewStack.length > 0 && (() => {
+            const arrowCount = 8;
+            const arrowRadius = 295; // Between ring segments
+            const arrowAngleStep = (Math.PI * 2) / arrowCount;
+
+            return Array.from({ length: arrowCount }).map((_, i) => {
+              const angle = i * arrowAngleStep;
+              const x = CENTER_X + Math.cos(angle) * arrowRadius;
+              const y = CENTER_Y + Math.sin(angle) * arrowRadius;
+
+              // Create arrow path pointing outward
+              const arrowSize = 8;
+              const arrowPath = `
+                M ${x} ${y}
+                L ${x + Math.cos(angle - 0.4) * arrowSize} ${y + Math.sin(angle - 0.4) * arrowSize}
+                M ${x} ${y}
+                L ${x + Math.cos(angle + 0.4) * arrowSize} ${y + Math.sin(angle + 0.4) * arrowSize}
+              `;
+
+              return (
+                <g
+                  key={`arrow-${i}`}
+                  style={{
+                    animation: 'arrowPulse 3.5s ease-in-out infinite',
+                    animationDelay: `${i * 0.1}s`
+                  }}
+                >
+                  <path
+                    d={arrowPath}
+                    stroke="#71717a"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    fill="none"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </g>
+              );
+            });
+          })()}
 
           {/* Axis lines (8 total) - point to center of ring segments */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
@@ -969,8 +1011,8 @@ export function GenreConstellationSelect({ onLaunch }) {
                 className="cursor-pointer"
                 transform={`translate(${CENTER_X + item.x}, ${CENTER_Y + item.y})`}
               >
-                {/* LAUNCH overlay ring (if selected) */}
-                {isSelected && canLaunch() && (
+                {/* LAUNCH overlay ring (if selected or hovered) */}
+                {(isSelected || isHovered) && canLaunch() && (
                   <>
                     {/* Clickable launch ring (between node and outer ring) */}
                     <circle
@@ -1196,6 +1238,14 @@ export function GenreConstellationSelect({ onLaunch }) {
         @keyframes backPulse {
           0%, 100% { fill-opacity: 0.2; }
           50% { fill-opacity: 0.35; }
+        }
+        @keyframes breathe {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.025); }
+        }
+        @keyframes arrowPulse {
+          0%, 100% { opacity: 0.3; transform: translateX(0px); }
+          50% { opacity: 0.6; transform: translateX(3px); }
         }
       `}</style>
     </div>
