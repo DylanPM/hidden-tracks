@@ -69,7 +69,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [exaggeration, setExaggeration] = useState(1.2);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [hoveredAxisLabel, setHoveredAxisLabel] = useState(null);
-  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [zoomLevel, setZoomLevel] = useState(0.85); // Start zoomed out to prevent clipping
 
   // Active features (all enabled by default)
   const [activeFeatures, setActiveFeatures] = useState({
@@ -190,8 +190,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setHoveredItem(null); // Reset hover to prevent ghosting
     // Set LAUNCH overlay on parent node (which will appear in new view)
     setSelectedNodeKey(`parent-${key}`);
-    // Progressive zoom: 20% more for each level
-    setZoomLevel(1.0 + (newStack.length * 0.2));
+    // Progressive zoom: 20% more for each level from 0.85 base
+    setZoomLevel(0.85 + (newStack.length * 0.2));
   };
 
   const handleTrackClick = async (track) => {
@@ -207,8 +207,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setLoadedTracks([]);
     setHoveredItem(null); // Reset hover to prevent ghosting
 
-    // Progressive zoom: reduce by 20% for each level back
-    setZoomLevel(1.0 + (newStack.length * 0.2));
+    // Progressive zoom: reduce by 20% for each level back from 0.85 base
+    setZoomLevel(0.85 + (newStack.length * 0.2));
 
     // Clear LAUNCH overlay when going back to root
     if (newStack.length === 0) {
@@ -419,7 +419,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     const { feature_angles } = manifest.global.display;
     const angleStep = (Math.PI * 2) / feature_angles.length;
-    const axisRadius = 310; // Distance from center to axis label (outside octagon ring)
+    const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
 
@@ -463,6 +463,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   // Compute feature weights for focused node (for disco floor effect)
   // Uses hovered item if available, otherwise selected node
+  // For tracks, use parent node since we don't have track-level data in manifest
   const focusedNodeFeatureWeights = useMemo(() => {
     const focusedNode = hoveredItem || selectedNode;
     if (!focusedNode || !manifest?.global) return null;
@@ -482,8 +483,17 @@ export function GenreConstellationSelect({ onLaunch }) {
       }
       nodeFeatures = node?.features;
     } else if (focusedNode.track) {
-      // Track node - use track features
-      nodeFeatures = focusedNode.track.features || focusedNode.track;
+      // Track node - use parent (subgenre) features instead
+      // We don't have track-level feature data in the manifest
+      const path = viewStack.join('.');
+      const parts = path.split('.');
+      let node = manifest;
+      for (const part of parts) {
+        if (node[part]) node = node[part];
+        else if (node.subgenres?.[part]) node = node.subgenres[part];
+        else break;
+      }
+      nodeFeatures = node?.features;
     } else {
       // Regular genre/subgenre node
       const path = [...viewStack, focusedNode.key].join('.');
@@ -633,8 +643,9 @@ export function GenreConstellationSelect({ onLaunch }) {
           viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
           className="select-none"
           style={{
+            transformOrigin: `${CENTER_X + selectedNodePos.x}px ${CENTER_Y + selectedNodePos.y}px`,
             transform: `scale(${zoomLevel})`,
-            transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform-origin 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
           <defs>
@@ -671,51 +682,56 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Disco floor - radial spikes based on feature weights */}
-          {focusedNodeFeatureWeights && manifest?.global?.display?.feature_angles.map((feature, i) => {
+          {/* Disco floor - connected polygon based on feature weights */}
+          {focusedNodeFeatureWeights && (() => {
+            const feature_angles = manifest?.global?.display?.feature_angles;
+            if (!feature_angles) return null;
+
             const angleStep = (Math.PI * 2) / 8;
-            const angle = i * angleStep;
-            const weight = focusedNodeFeatureWeights[feature];
             const maxRadius = 250;
+            const minRadius = 50;
 
-            // Spike length based on distance from median (0.5)
-            // 0.5 (median) = minimal radius, 0 or 1 = full radius
-            const strength = Math.abs(weight - 0.5) * 2; // 0 to 1
-            const minRadius = 50; // Start spikes at 50px from center
-            const spikeRadius = minRadius + (strength * (maxRadius - minRadius));
+            // Calculate spike endpoints
+            const points = feature_angles.map((feature, i) => {
+              const angle = i * angleStep;
+              const weight = focusedNodeFeatureWeights[feature];
+              const strength = Math.abs(weight - 0.5) * 2;
+              const spikeRadius = minRadius + (strength * (maxRadius - minRadius));
 
-            // Color: green for high values (>0.5), blue for low values (<0.5)
-            const color = weight > 0.5 ? '#22c55e' : '#3b82f6';
+              return {
+                x: CENTER_X + Math.cos(angle) * spikeRadius,
+                y: CENTER_Y + Math.sin(angle) * spikeRadius,
+                weight,
+                strength
+              };
+            });
 
-            // More opaque for histogram effect
-            const opacity = 0.3 + (strength * 0.4); // 0.3 to 0.7 opacity range
+            // Create path connecting all points
+            const pathData = points.map((p, i) =>
+              `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+            ).join(' ') + ' Z';
 
-            if (strength < 0.05) return null; // Don't render if too close to median
-
-            // Draw a thick line from center along the axis direction
-            const spikeWidth = 12; // Width of the spike
-            const perpAngle1 = angle + Math.PI / 2;
-            const perpAngle2 = angle - Math.PI / 2;
+            // Calculate average weight to determine color
+            const avgWeight = points.reduce((sum, p) => sum + p.weight, 0) / points.length;
+            const color = avgWeight > 0.5 ? '#22c55e' : '#3b82f6';
+            const avgStrength = points.reduce((sum, p) => sum + p.strength, 0) / points.length;
+            const opacity = 0.2 + (avgStrength * 0.3);
 
             return (
               <path
-                key={`disco-${feature}`}
-                d={`
-                  M ${CENTER_X + Math.cos(perpAngle1) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(perpAngle1) * (spikeWidth / 2)}
-                  L ${CENTER_X + Math.cos(angle) * spikeRadius + Math.cos(perpAngle1) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(angle) * spikeRadius + Math.sin(perpAngle1) * (spikeWidth / 2)}
-                  L ${CENTER_X + Math.cos(angle) * spikeRadius + Math.cos(perpAngle2) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(angle) * spikeRadius + Math.sin(perpAngle2) * (spikeWidth / 2)}
-                  L ${CENTER_X + Math.cos(perpAngle2) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(perpAngle2) * (spikeWidth / 2)}
-                  Z
-                `}
+                d={pathData}
                 fill={color}
                 opacity={opacity}
+                stroke={color}
+                strokeWidth="2"
+                strokeOpacity={opacity * 1.5}
                 style={{
                   transition: 'opacity 0.5s ease, fill 0.5s ease, d 0.5s ease',
                   pointerEvents: 'none'
                 }}
               />
             );
-          })}
+          })()}
 
           {/* Octagon back button (outer ring) - green with outward arrows */}
           {viewStack.length > 0 && (() => {
@@ -798,8 +814,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           {/* Axis labels (16 total - both ends) */}
           {axisConfig.map((label, idx) => {
             const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
-            const boxWidth = isHovered ? 120 : 56;
-            const boxHeight = isHovered ? 50 : 28;
+            const boxWidth = isHovered ? 160 : 56;
+            const boxHeight = isHovered ? 70 : 28;
 
             return (
               <g
@@ -958,63 +974,48 @@ export function GenreConstellationSelect({ onLaunch }) {
                   onClick={item.onClick}
                 />
 
-                {/* Node label - circular text by default, inner text when focused */}
-                {isSelected ? (
-                  // Focused: show inner text
+                {/* Node label - always show circular text around edge */}
+                <defs>
+                  <path
+                    id={`nodePath-${item.key}`}
+                    d={`
+                      M 0 0
+                      m -${nodeRadius}, 0
+                      a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
+                      a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
+                    `}
+                  />
+                </defs>
+                <text
+                  fill="white"
+                  fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
+                  fontSize={isHovered ? (item.type === 'track' ? 24 : 28) : (item.type === 'track' ? 17.5 : 22.5)}
+                  fontWeight="600"
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
+                  }}
+                >
+                  <textPath href={`#nodePath-${item.key}`} startOffset="75%">
+                    {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
+                  </textPath>
+                </text>
+
+                {/* LAUNCH text in center (only when selected) */}
+                {isSelected && (
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="white"
-                    fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                    fontSize={item.type === 'track' ? 9 : 11}
-                    fontWeight="700"
-                    style={{
-                      pointerEvents: 'none',
-                      transition: 'font-size 0.15s ease'
-                    }}
+                    fill="#22c55e"
+                    fontSize="14"
+                    fontWeight="900"
+                    style={{ pointerEvents: 'none' }}
+                    stroke="#18181b"
+                    strokeWidth="2"
+                    paintOrder="stroke"
                   >
-                    {(() => {
-                      const label = item.label.length > 15 ? item.label.slice(0, 15) + '…' : item.label;
-                      const lines = label.split('\n');
-                      if (lines.length > 1) {
-                        return lines.map((line, i) => (
-                          <tspan key={i} x="0" dy={i === 0 ? "-0.3em" : "1em"}>
-                            {line}
-                          </tspan>
-                        ));
-                      }
-                      return label;
-                    })()}
+                    LAUNCH
                   </text>
-                ) : (
-                  // Not focused: show circular text around edge
-                  <>
-                    <defs>
-                      <path
-                        id={`nodePath-${item.key}`}
-                        d={`
-                          M 0 0
-                          m -${nodeRadius}, 0
-                          a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
-                          a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
-                        `}
-                      />
-                    </defs>
-                    <text
-                      fill="white"
-                      fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                      fontSize={isHovered ? (item.type === 'track' ? 44 : 56) : (item.type === 'track' ? 17.5 : 22.5)}
-                      fontWeight="600"
-                      style={{
-                        pointerEvents: 'none',
-                        transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
-                      }}
-                    >
-                      <textPath href={`#nodePath-${item.key}`} startOffset="75%">
-                        {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
-                      </textPath>
-                    </text>
-                  </>
                 )}
               </g>
             );
