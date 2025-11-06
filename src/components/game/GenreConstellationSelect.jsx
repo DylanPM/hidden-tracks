@@ -33,6 +33,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   // ------------------------------------------
   // descriptions
   // ------------------------------------------
+  
   function getGenreDescription(genreName) {
   const map = {
   // Roots
@@ -184,6 +185,9 @@ export function GenreConstellationSelect({ onLaunch }) {
   return map[key] || 'Choose a genre, subgenre, or track to explore its hidden patterns';
 }
 
+//Don't show these genres
+const HIDDEN_GENRES = ['folk', 'brostep', 'spoken-word', 'audiobook'];
+
   // ------------------------------------------
   // load manifest
   // ------------------------------------------
@@ -322,7 +326,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   // orbiting text content and speed (slowed ~33%)
   const genreDescription = `${getGenreDescription(currentGenre)}`; 
   // took the loop out to see how it looks • ${getGenreDescription(currentGenre)}`;
-  const TICKER_MS = 20000;
+  const TICKER_MS = 11000;
   // was 24000 and before that 18000. 
 
   // precompute positions
