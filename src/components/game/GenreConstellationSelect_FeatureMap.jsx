@@ -68,6 +68,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Visual state
   const [exaggeration, setExaggeration] = useState(1.2);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [hoveredAxisLabel, setHoveredAxisLabel] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(1.0);
 
   // Active features (all enabled by default)
@@ -189,7 +190,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setHoveredItem(null); // Reset hover to prevent ghosting
     // Set LAUNCH overlay on parent node (which will appear in new view)
     setSelectedNodeKey(`parent-${key}`);
-    setZoomLevel(1.15); // 15% zoom when focusing
+    // Progressive zoom: 20% more for each level
+    setZoomLevel(1.0 + (newStack.length * 0.2));
   };
 
   const handleTrackClick = async (track) => {
@@ -205,10 +207,12 @@ export function GenreConstellationSelect({ onLaunch }) {
     setLoadedTracks([]);
     setHoveredItem(null); // Reset hover to prevent ghosting
 
+    // Progressive zoom: reduce by 20% for each level back
+    setZoomLevel(1.0 + (newStack.length * 0.2));
+
     // Clear LAUNCH overlay when going back to root
     if (newStack.length === 0) {
       setSelectedNodeKey(null);
-      setZoomLevel(1.0);
     } else {
       // Keep LAUNCH on the parent node
       setSelectedNodeKey(`parent-${newStack[newStack.length - 1]}`);
@@ -340,24 +344,64 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       // Arrange tracks in circle around parent
       const circleRadius = 120;
-      const angleStep = (Math.PI * 2) / loadedTracks.length;
+      const MAX_DISTANCE = 190; // Octagon boundary
+      const parentDistance = Math.sqrt(parentPos.x * parentPos.x + parentPos.y * parentPos.y);
 
-      loadedTracks.forEach((track, i) => {
-        const angle = i * angleStep;
-        const x = parentPos.x + Math.cos(angle) * circleRadius;
-        const y = parentPos.y + Math.sin(angle) * circleRadius;
+      // If parent is near edge, arrange tracks in an arc facing inward
+      if (parentDistance > 50) {
+        // Calculate angle from center to parent
+        const parentAngle = Math.atan2(parentPos.y, parentPos.x);
+        // Arrange tracks in a 240-degree arc facing toward center (away from edge)
+        const arcStart = parentAngle + Math.PI - (Math.PI * 2 / 3); // 120 degrees before opposite
+        const arcEnd = parentAngle + Math.PI + (Math.PI * 2 / 3); // 120 degrees after opposite
+        const arcSpan = arcEnd - arcStart;
+        const angleStep = arcSpan / (loadedTracks.length > 1 ? loadedTracks.length - 1 : 1);
 
-        items.push({
-          key: track.uri || i,
-          label: `${track.artist}\n- ${track.name}`,
-          x,
-          y,
-          type: 'track',
-          track: track, // Store full track data for orbiting text
-          onClick: () => handleTrackClick(track),
-          isSelected: selectedTrack?.uri === track.uri
+        loadedTracks.forEach((track, i) => {
+          const angle = arcStart + (i * angleStep);
+          let x = parentPos.x + Math.cos(angle) * circleRadius;
+          let y = parentPos.y + Math.sin(angle) * circleRadius;
+
+          // Clamp to octagon if still outside
+          const trackDistance = Math.sqrt(x * x + y * y);
+          if (trackDistance > MAX_DISTANCE) {
+            const scale = MAX_DISTANCE / trackDistance;
+            x *= scale;
+            y *= scale;
+          }
+
+          items.push({
+            key: track.uri || i,
+            label: `${track.artist}\n- ${track.name}`,
+            x,
+            y,
+            type: 'track',
+            track: track,
+            onClick: () => handleTrackClick(track),
+            isSelected: selectedTrack?.uri === track.uri
+          });
         });
-      });
+      } else {
+        // Parent near center, use full circle
+        const angleStep = (Math.PI * 2) / loadedTracks.length;
+
+        loadedTracks.forEach((track, i) => {
+          const angle = i * angleStep;
+          const x = parentPos.x + Math.cos(angle) * circleRadius;
+          const y = parentPos.y + Math.sin(angle) * circleRadius;
+
+          items.push({
+            key: track.uri || i,
+            label: `${track.artist}\n- ${track.name}`,
+            x,
+            y,
+            type: 'track',
+            track: track,
+            onClick: () => handleTrackClick(track),
+            isSelected: selectedTrack?.uri === track.uri
+          });
+        });
+      }
     }
 
     return items;
@@ -375,7 +419,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     const { feature_angles } = manifest.global.display;
     const angleStep = (Math.PI * 2) / feature_angles.length;
-    const axisRadius = 250; // Distance from center to axis label
+    const axisRadius = 310; // Distance from center to axis label (outside octagon ring)
 
     const labels = [];
 
@@ -627,35 +671,40 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Disco floor - histogram-like colored segments based on feature weights */}
+          {/* Disco floor - radial spikes based on feature weights */}
           {focusedNodeFeatureWeights && manifest?.global?.display?.feature_angles.map((feature, i) => {
             const angleStep = (Math.PI * 2) / 8;
             const angle = i * angleStep;
-            const nextAngle = ((i + 1) % 8) * angleStep;
             const weight = focusedNodeFeatureWeights[feature];
             const maxRadius = 250;
 
-            // Histogram-like: radius varies based on distance from median
+            // Spike length based on distance from median (0.5)
             // 0.5 (median) = minimal radius, 0 or 1 = full radius
             const strength = Math.abs(weight - 0.5) * 2; // 0 to 1
-            const minRadius = 50; // Start segments at 50px from center
-            const segmentRadius = minRadius + (strength * (maxRadius - minRadius));
+            const minRadius = 50; // Start spikes at 50px from center
+            const spikeRadius = minRadius + (strength * (maxRadius - minRadius));
 
             // Color: green for high values (>0.5), blue for low values (<0.5)
             const color = weight > 0.5 ? '#22c55e' : '#3b82f6';
 
             // More opaque for histogram effect
-            const opacity = 0.2 + (strength * 0.3); // 0.2 to 0.5 opacity range
+            const opacity = 0.3 + (strength * 0.4); // 0.3 to 0.7 opacity range
 
             if (strength < 0.05) return null; // Don't render if too close to median
+
+            // Draw a thick line from center along the axis direction
+            const spikeWidth = 12; // Width of the spike
+            const perpAngle1 = angle + Math.PI / 2;
+            const perpAngle2 = angle - Math.PI / 2;
 
             return (
               <path
                 key={`disco-${feature}`}
                 d={`
-                  M ${CENTER_X} ${CENTER_Y}
-                  L ${CENTER_X + Math.cos(angle) * segmentRadius} ${CENTER_Y + Math.sin(angle) * segmentRadius}
-                  L ${CENTER_X + Math.cos(nextAngle) * segmentRadius} ${CENTER_Y + Math.sin(nextAngle) * segmentRadius}
+                  M ${CENTER_X + Math.cos(perpAngle1) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(perpAngle1) * (spikeWidth / 2)}
+                  L ${CENTER_X + Math.cos(angle) * spikeRadius + Math.cos(perpAngle1) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(angle) * spikeRadius + Math.sin(perpAngle1) * (spikeWidth / 2)}
+                  L ${CENTER_X + Math.cos(angle) * spikeRadius + Math.cos(perpAngle2) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(angle) * spikeRadius + Math.sin(perpAngle2) * (spikeWidth / 2)}
+                  L ${CENTER_X + Math.cos(perpAngle2) * (spikeWidth / 2)} ${CENTER_Y + Math.sin(perpAngle2) * (spikeWidth / 2)}
                   Z
                 `}
                 fill={color}
@@ -725,7 +774,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })()}
 
-          {/* Axis lines (8 total) */}
+          {/* Axis lines (8 total) - extended beyond octagon */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
             const angleStep = (Math.PI * 2) / 8;
             const angle = i * angleStep;
@@ -736,47 +785,89 @@ export function GenreConstellationSelect({ onLaunch }) {
                 key={`axis-${feature}`}
                 x1={CENTER_X}
                 y1={CENTER_Y}
-                x2={CENTER_X + Math.cos(angle) * 250}
-                y2={CENTER_Y + Math.sin(angle) * 250}
+                x2={CENTER_X + Math.cos(angle) * 305}
+                y2={CENTER_Y + Math.sin(angle) * 305}
                 stroke="#3f3f46"
                 strokeWidth="1"
+                strokeDasharray="4 4"
                 opacity={enabled ? 0.3 : 0.1}
               />
             );
           })}
 
           {/* Axis labels (16 total - both ends) */}
-          {axisConfig.map((label, idx) => (
-            <g key={`label-${label.feature}-${label.end}`} transform={`translate(${CENTER_X + label.x}, ${CENTER_Y + label.y})`}>
-              <rect
-                x="-28"
-                y="-14"
-                width="56"
-                height="28"
-                fill="#18181b"
-                stroke={label.enabled ? '#22c55e' : '#3f3f46'}
-                strokeWidth="1.5"
-                rx="4"
-              />
-              <text
-                textAnchor="middle"
-                fill={label.enabled ? 'white' : '#71717a'}
-                fontSize="14"
-                fontWeight="600"
+          {axisConfig.map((label, idx) => {
+            const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
+            const boxWidth = isHovered ? 120 : 56;
+            const boxHeight = isHovered ? 50 : 28;
+
+            return (
+              <g
+                key={`label-${label.feature}-${label.end}`}
+                transform={`translate(${CENTER_X + label.x}, ${CENTER_Y + label.y})`}
+                onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
+                onMouseLeave={() => setHoveredAxisLabel(null)}
+                className="cursor-pointer"
               >
-                <tspan x="0" dy="-2">{label.emoji}</tspan>
-              </text>
-              <text
-                textAnchor="middle"
-                fill={label.enabled ? '#a1a1aa' : '#52525b'}
-                fontSize="8"
-                fontWeight="600"
-                y="12"
-              >
-                {label.name}
-              </text>
-            </g>
-          ))}
+                <rect
+                  x={-boxWidth / 2}
+                  y={-boxHeight / 2}
+                  width={boxWidth}
+                  height={boxHeight}
+                  fill="#18181b"
+                  stroke={label.enabled ? '#22c55e' : '#3f3f46'}
+                  strokeWidth="1.5"
+                  rx="4"
+                  className="transition-all duration-200"
+                />
+                {isHovered ? (
+                  // Expanded: show description
+                  <>
+                    <text
+                      textAnchor="middle"
+                      fill={label.enabled ? 'white' : '#71717a'}
+                      fontSize="12"
+                      fontWeight="600"
+                      y="-10"
+                    >
+                      {label.emoji} {label.name}
+                    </text>
+                    <text
+                      textAnchor="middle"
+                      fill={label.enabled ? '#a1a1aa' : '#52525b'}
+                      fontSize="8"
+                      fontWeight="400"
+                      y="5"
+                    >
+                      <tspan x="0" dy="0">{label.desc.slice(0, 30)}</tspan>
+                      {label.desc.length > 30 && <tspan x="0" dy="10">{label.desc.slice(30)}</tspan>}
+                    </text>
+                  </>
+                ) : (
+                  // Collapsed: show emoji and name
+                  <>
+                    <text
+                      textAnchor="middle"
+                      fill={label.enabled ? 'white' : '#71717a'}
+                      fontSize="14"
+                      fontWeight="600"
+                    >
+                      <tspan x="0" dy="-2">{label.emoji}</tspan>
+                    </text>
+                    <text
+                      textAnchor="middle"
+                      fill={label.enabled ? '#a1a1aa' : '#52525b'}
+                      fontSize="8"
+                      fontWeight="600"
+                      y="12"
+                    >
+                      {label.name}
+                    </text>
+                  </>
+                )}
+              </g>
+            );
+          })}
 
           {/* Connection lines from selected node to children (always visible) */}
           {selectedNodeKey && items.map(item => (
@@ -814,13 +905,18 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* LAUNCH overlay ring (if selected) */}
                 {isSelected && canLaunch() && (
                   <>
-                    {/* Fill between node and text ring */}
+                    {/* Clickable launch ring (between node and outer ring) */}
                     <circle
                       r={launchRingRadius}
                       fill="#22c55e"
                       opacity="0.15"
+                      className="cursor-pointer hover:opacity-30 transition-opacity"
                       style={{
                         animation: 'pulse 2s ease-in-out infinite'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLaunch();
                       }}
                     />
                     {/* Outer stroke for text ring */}
@@ -830,6 +926,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                       stroke="#22c55e"
                       strokeWidth="2"
                       opacity="0.6"
+                      style={{ pointerEvents: 'none' }}
                     />
                     {/* LAUNCH text centered */}
                     <text
@@ -858,7 +955,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   strokeOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   className="hover:fill-zinc-800 transition-all"
                   filter={isHovered ? 'url(#glow)' : undefined}
-                  onClick={isSelected && canLaunch() ? handleLaunch : item.onClick}
+                  onClick={item.onClick}
                 />
 
                 {/* Node label - circular text by default, inner text when focused */}
@@ -906,7 +1003,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     <text
                       fill="white"
                       fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                      fontSize={isHovered ? (item.type === 'track' ? 87.5 : 112.5) : (item.type === 'track' ? 17.5 : 22.5)}
+                      fontSize={isHovered ? (item.type === 'track' ? 44 : 56) : (item.type === 'track' ? 17.5 : 22.5)}
                       fontWeight="600"
                       style={{
                         pointerEvents: 'none',
