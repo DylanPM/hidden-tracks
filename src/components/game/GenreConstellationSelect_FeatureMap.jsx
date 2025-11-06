@@ -739,42 +739,66 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Disco floor - connected polygon based on feature weights */}
+          {/* Disco floor - connected 16-point polygon based on feature weights */}
           {focusedNodeFeatureWeights && (() => {
             const feature_angles = manifest?.global?.display?.feature_angles;
             if (!feature_angles) return null;
 
-            const angleStep = (Math.PI * 2) / 8;
+            const segmentAngleStep = (Math.PI * 2) / 16; // Same as ring segments
             const maxRadius = 250;
             const minRadius = 50;
 
-            // Calculate spike endpoints
-            const points = feature_angles.map((feature, i) => {
-              const angle = i * angleStep;
-              const weight = focusedNodeFeatureWeights[feature];
-              const strength = Math.abs(weight - 0.5) * 2;
-              const spikeRadius = minRadius + (strength * (maxRadius - minRadius));
+            // Create 16 points: high ends at segments 0-7, low ends at segments 8-15
+            const points = [];
 
-              return {
-                x: CENTER_X + Math.cos(angle) * spikeRadius,
-                y: CENTER_Y + Math.sin(angle) * spikeRadius,
+            feature_angles.forEach((feature, i) => {
+              const weight = focusedNodeFeatureWeights[feature];
+
+              // High end point: radius increases with weight (0.0 → minRadius, 1.0 → maxRadius)
+              const highAngle = i * segmentAngleStep;
+              const highRadius = minRadius + (weight * (maxRadius - minRadius));
+              points.push({
+                x: CENTER_X + Math.cos(highAngle) * highRadius,
+                y: CENTER_Y + Math.sin(highAngle) * highRadius,
                 weight,
-                strength
-              };
+                strength: weight
+              });
             });
 
-            // Create path connecting all points
+            feature_angles.forEach((feature, i) => {
+              const weight = focusedNodeFeatureWeights[feature];
+
+              // Low end point: radius increases with inverse weight (1.0 → minRadius, 0.0 → maxRadius)
+              const lowAngle = (i + 8) * segmentAngleStep;
+              const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
+              points.push({
+                x: CENTER_X + Math.cos(lowAngle) * lowRadius,
+                y: CENTER_Y + Math.sin(lowAngle) * lowRadius,
+                weight: 1 - weight,
+                strength: 1 - weight
+              });
+            });
+
+            // Create path connecting all 16 points in order
             const pathData = points.map((p, i) =>
               `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
             ).join(' ') + ' Z';
 
-            // Find dominant feature (highest strength) and use its color
+            // Find dominant feature (highest strength from either high or low)
             let dominantFeature = feature_angles[0];
-            let maxStrength = points[0].strength;
-            points.forEach((p, i) => {
-              if (p.strength > maxStrength) {
-                maxStrength = p.strength;
-                dominantFeature = feature_angles[i];
+            let maxStrength = 0;
+            feature_angles.forEach((feature, i) => {
+              const weight = focusedNodeFeatureWeights[feature];
+              const highStrength = weight;
+              const lowStrength = 1 - weight;
+
+              if (highStrength > maxStrength) {
+                maxStrength = highStrength;
+                dominantFeature = feature;
+              }
+              if (lowStrength > maxStrength) {
+                maxStrength = lowStrength;
+                dominantFeature = feature;
               }
             });
 
