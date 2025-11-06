@@ -2,6 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useFeatureMap, computeTrackPosition } from '../../hooks/useFeatureMap';
 
+// Human-friendly feature labels
+const FEATURE_CONFIG = {
+  danceability: { emoji: '💃', name: 'Dance', desc: 'How suitable for dancing' },
+  energy: { emoji: '⚡', name: 'Energy', desc: 'Intensity and activity level' },
+  speechiness: { emoji: '🗣️', name: 'Words', desc: 'How much talking/rapping' },
+  acousticness: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments vs electronic' },
+  valence: { emoji: '😊', name: 'Mood', desc: 'Happy vs sad feeling' },
+  tempo_norm: { emoji: '🥁', name: 'Speed', desc: 'Fast vs slow tempo' },
+  popularity: { emoji: '🔥', name: 'Popular', desc: 'How mainstream/well-known' },
+  instrumentalness: { emoji: '🎹', name: 'Instrumental', desc: 'Music without vocals' }
+};
+
 /**
  * GenreConstellationSelect - Feature Map Version
  *
@@ -28,11 +40,23 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [viewStack, setViewStack] = useState([]); // e.g. [], ['rock'], ['rock', 'metal']
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [loadedTracks, setLoadedTracks] = useState([]); // Actual track data with features
+  const [launchPosition, setLaunchPosition] = useState({ x: 0, y: 0 }); // LAUNCH button position
 
   // Visual state
   const [exaggeration, setExaggeration] = useState(1.2);
-  const [cameraPosition, setCameraPosition] = useState({ x: 0, y: 0 });
-  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [hoveredItem, setHoveredItem] = useState(null);
+
+  // Active features (all enabled by default)
+  const [activeFeatures, setActiveFeatures] = useState({
+    danceability: true,
+    energy: true,
+    speechiness: true,
+    acousticness: true,
+    valence: true,
+    tempo_norm: true,
+    popularity: true,
+    instrumentalness: true
+  });
 
   // Difficulty (kept for compatibility)
   const [difficulty] = useState('medium');
@@ -54,7 +78,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   }, []);
 
   // Compute positions
-  const { positions } = useFeatureMap(manifest, exaggeration);
+  const { positions } = useFeatureMap(manifest, exaggeration, activeFeatures);
 
   // Get current node in the tree
   const getCurrentNode = () => {
@@ -92,10 +116,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const getSeeds = () => {
     const node = getCurrentNode();
     if (!node) return [];
-
-    // At root level, no seeds shown
     if (viewStack.length === 0) return [];
-
     return node?.seeds || node?._seeds || [];
   };
 
@@ -113,11 +134,10 @@ export function GenreConstellationSelect({ onLaunch }) {
     setSelectedTrack(null);
     setLoadedTracks([]);
 
-    // Move camera to this genre's position
+    // Move LAUNCH button to this genre's position
     const path = newStack.join('.');
     const pos = positions[path] || { x: 0, y: 0 };
-    setCameraPosition(pos);
-    setZoomLevel(2.0); // Zoom in when focusing
+    setLaunchPosition(pos);
   };
 
   const handleTrackClick = async (track) => {
@@ -131,15 +151,13 @@ export function GenreConstellationSelect({ onLaunch }) {
     setSelectedTrack(null);
     setLoadedTracks([]);
 
-    // Move camera back
+    // Move LAUNCH back
     if (newStack.length === 0) {
-      setCameraPosition({ x: 0, y: 0 });
-      setZoomLevel(1.0);
+      setLaunchPosition({ x: 0, y: 0 });
     } else {
       const path = newStack.join('.');
       const pos = positions[path] || { x: 0, y: 0 };
-      setCameraPosition(pos);
-      setZoomLevel(2.0);
+      setLaunchPosition(pos);
     }
   };
 
@@ -170,7 +188,6 @@ export function GenreConstellationSelect({ onLaunch }) {
               const res = await fetch(`/profiles/${seed.filename}`);
               if (!res.ok) return null;
               const profile = await res.json();
-              // Return track with features from profile
               return {
                 ...seed,
                 features: {
@@ -217,8 +234,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         items.push({
           key: child.key,
           label: child.key,
-          x: pos.x,
-          y: pos.y,
+          x: pos.x - launchPosition.x, // Relative to LAUNCH
+          y: pos.y - launchPosition.y,
           type: child.type,
           onClick: () => handleGenreClick(child.key)
         });
@@ -228,13 +245,13 @@ export function GenreConstellationSelect({ onLaunch }) {
       loadedTracks.forEach((track, i) => {
         if (!track.features) return;
 
-        const pos = computeTrackPosition(track.features, manifest, exaggeration);
+        const pos = computeTrackPosition(track.features, manifest, exaggeration, activeFeatures);
 
         items.push({
           key: track.uri || i,
           label: `${track.artist} - ${track.name}`,
-          x: pos.x,
-          y: pos.y,
+          x: pos.x - launchPosition.x, // Relative to LAUNCH
+          y: pos.y - launchPosition.y,
           type: 'track',
           onClick: () => handleTrackClick(track),
           isSelected: selectedTrack?.uri === track.uri
@@ -257,14 +274,31 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     return feature_angles.map((feature, i) => {
       const angle = i * angleStep;
+      const config = FEATURE_CONFIG[feature] || { emoji: '?', name: feature, desc: '' };
       return {
         feature,
         angle,
         x: Math.cos(angle) * axisRadius,
-        y: Math.sin(angle) * axisRadius
+        y: Math.sin(angle) * axisRadius,
+        ...config,
+        enabled: activeFeatures[feature] !== false
       };
     });
-  }, [manifest]);
+  }, [manifest, activeFeatures]);
+
+  // Toggle feature
+  const toggleFeature = (feature) => {
+    setActiveFeatures(prev => ({ ...prev, [feature]: !prev[feature] }));
+  };
+
+  // Enable only one feature
+  const enableOnly = (feature) => {
+    const newFeatures = {};
+    Object.keys(activeFeatures).forEach(f => {
+      newFeatures[f] = f === feature;
+    });
+    setActiveFeatures(newFeatures);
+  };
 
   // Loading / error states
   if (loading) {
@@ -321,6 +355,34 @@ export function GenreConstellationSelect({ onLaunch }) {
         </button>
       )}
 
+      {/* Feature toggles */}
+      <div className="fixed right-4 top-4 z-20 bg-zinc-900/90 rounded-lg p-3 max-w-xs border border-zinc-700">
+        <div className="text-xs font-bold text-zinc-400 mb-2">FEATURES</div>
+        <div className="space-y-1">
+          {axisConfig.map(axis => (
+            <div key={axis.feature} className="flex items-center gap-2 group">
+              <input
+                type="checkbox"
+                checked={axis.enabled}
+                onChange={() => toggleFeature(axis.feature)}
+                className="w-3 h-3"
+              />
+              <span className="text-sm cursor-pointer flex-1" title={axis.desc} onClick={() => toggleFeature(axis.feature)}>
+                <span className="mr-1">{axis.emoji}</span>
+                <span className={axis.enabled ? 'text-white' : 'text-zinc-600'}>{axis.name}</span>
+              </span>
+              <button
+                onClick={() => enableOnly(axis.feature)}
+                className="text-xs px-1 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 opacity-0 group-hover:opacity-100 transition"
+                title="Only this one"
+              >
+                only
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Main canvas */}
       <div className="flex flex-col items-center justify-center min-h-screen">
         <svg
@@ -328,10 +390,6 @@ export function GenreConstellationSelect({ onLaunch }) {
           height={VIEWPORT_HEIGHT}
           viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
           className="select-none"
-          style={{
-            transform: `translate(${-cameraPosition.x * 0.5}px, ${-cameraPosition.y * 0.5}px) scale(${zoomLevel})`,
-            transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}
         >
           <defs>
             {/* Circular path for orbiting text */}
@@ -346,9 +404,9 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           </defs>
 
-          {/* Axis lines */}
+          {/* Axis lines and labels */}
           {axisConfig.map(axis => (
-            <g key={axis.feature}>
+            <g key={axis.feature} opacity={axis.enabled ? 1 : 0.2}>
               <line
                 x1={CENTER_X}
                 y1={CENTER_Y}
@@ -358,30 +416,41 @@ export function GenreConstellationSelect({ onLaunch }) {
                 strokeWidth="1"
                 opacity="0.3"
               />
-              <text
-                x={CENTER_X + axis.x}
-                y={CENTER_Y + axis.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#71717a"
-                fontSize="12"
-                fontWeight="600"
-              >
-                {axis.feature}
-              </text>
+              <g transform={`translate(${CENTER_X + axis.x}, ${CENTER_Y + axis.y})`}>
+                <rect
+                  x="-35"
+                  y="-12"
+                  width="70"
+                  height="24"
+                  fill="#18181b"
+                  stroke={axis.enabled ? '#22c55e' : '#3f3f46'}
+                  strokeWidth="1"
+                  rx="4"
+                />
+                <text
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={axis.enabled ? 'white' : '#71717a'}
+                  fontSize="14"
+                  fontWeight="600"
+                >
+                  <tspan x="0" dy="-2">{axis.emoji}</tspan>
+                  <tspan x="0" dy="12" fontSize="10">{axis.name}</tspan>
+                </text>
+              </g>
             </g>
           ))}
 
-          {/* Connection line from center to focused item */}
-          {viewStack.length > 0 && cameraPosition.x !== 0 && (
+          {/* Dynamic hover line from LAUNCH to hovered item */}
+          {hoveredItem && (
             <line
               x1={CENTER_X}
               y1={CENTER_Y}
-              x2={CENTER_X + cameraPosition.x}
-              y2={CENTER_Y + cameraPosition.y}
+              x2={CENTER_X + hoveredItem.x}
+              y2={CENTER_Y + hoveredItem.y}
               stroke="#22c55e"
               strokeWidth="2"
-              opacity="0.5"
+              opacity="0.6"
               strokeDasharray="4 4"
             />
           )}
@@ -391,15 +460,18 @@ export function GenreConstellationSelect({ onLaunch }) {
             <g
               key={item.key}
               onClick={item.onClick}
+              onMouseEnter={() => setHoveredItem(item)}
+              onMouseLeave={() => setHoveredItem(null)}
               className="cursor-pointer"
               transform={`translate(${CENTER_X + item.x}, ${CENTER_Y + item.y})`}
             >
               <circle
                 r={item.type === 'track' ? 40 : 50}
                 fill="#18181b"
-                stroke={item.isSelected ? '#eab308' : '#22c55e'}
-                strokeWidth={item.isSelected ? '4' : '2'}
+                stroke={item.isSelected ? '#eab308' : hoveredItem?.key === item.key ? '#16a34a' : '#22c55e'}
+                strokeWidth={item.isSelected ? '4' : hoveredItem?.key === item.key ? '3' : '2'}
                 className="hover:fill-zinc-800 transition-all"
+                filter={hoveredItem?.key === item.key ? 'url(#glow)' : undefined}
               />
               <text
                 textAnchor="middle"
@@ -407,13 +479,14 @@ export function GenreConstellationSelect({ onLaunch }) {
                 fill="white"
                 fontSize={item.type === 'track' ? 10 : 12}
                 fontWeight="700"
+                style={{ pointerEvents: 'none' }}
               >
                 {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
               </text>
             </g>
           ))}
 
-          {/* Center LAUNCH button */}
+          {/* Center LAUNCH button (at its current position) */}
           <g>
             <circle
               cx={CENTER_X}
@@ -424,6 +497,9 @@ export function GenreConstellationSelect({ onLaunch }) {
               strokeWidth="4"
               className={canLaunch() ? 'cursor-pointer' : 'cursor-not-allowed'}
               onClick={canLaunch() ? handleLaunch : undefined}
+              style={{
+                transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
             />
             <text
               x={CENTER_X}
@@ -465,13 +541,24 @@ export function GenreConstellationSelect({ onLaunch }) {
               </textPath>
             </text>
           </g>
+
+          {/* Glow filter for hover effect */}
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
         </svg>
       </div>
 
       {/* Debug: Exaggeration slider */}
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-zinc-800/90 px-4 py-2 rounded-lg z-30">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-400">Exaggeration:</span>
+          <span className="text-xs text-zinc-400">Spread:</span>
           <input
             type="range"
             min="0.8"

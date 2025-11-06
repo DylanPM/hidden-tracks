@@ -5,8 +5,12 @@ import { useMemo } from 'react';
  *
  * Computes 2D positions for genres/subgenres/tracks based on their audio features.
  * Uses the manifest's global config for normalization and projection.
+ *
+ * @param {Object} manifest - The genre manifest with global config
+ * @param {number} exaggeration - Exaggeration factor for spreading
+ * @param {Object} activeFeatures - Map of feature names to boolean (enabled/disabled)
  */
-export function useFeatureMap(manifest, exaggeration = 1.2) {
+export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {}) {
   const positions = useMemo(() => {
     if (!manifest?.global) return {};
 
@@ -48,6 +52,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2) {
       let y = 0;
 
       feature_angles.forEach(featureName => {
+        // Skip if this feature is disabled
+        if (activeFeatures[featureName] === false) return;
+
         const rawValue = features[featureName];
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
@@ -91,7 +98,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2) {
     });
 
     return result;
-  }, [manifest, exaggeration]);
+  }, [manifest, exaggeration, activeFeatures]);
 
   return { positions };
 }
@@ -99,7 +106,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2) {
 /**
  * Compute position for a single track using its individual features
  */
-export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2) {
+export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2, activeFeatures = {}) {
   if (!manifest?.global) return { x: 0, y: 0 };
 
   const { feature_angles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
@@ -134,6 +141,9 @@ export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2
   let y = 0;
 
   feature_angles.forEach(featureName => {
+    // Skip if this feature is disabled
+    if (activeFeatures[featureName] === false) return;
+
     const rawValue = trackFeatures[featureName];
     let percentile = normalizeFeature(rawValue, featureName);
     percentile = applyContrastCurve(percentile, featureName);
