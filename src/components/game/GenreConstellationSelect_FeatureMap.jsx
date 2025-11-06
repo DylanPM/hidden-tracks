@@ -415,14 +415,16 @@ export function GenreConstellationSelect({ onLaunch }) {
     return labels;
   }, [manifest, activeFeatures]);
 
-  // Compute feature weights for selected node (for disco floor effect)
-  const selectedNodeFeatureWeights = useMemo(() => {
-    if (!selectedNode || !manifest?.global) return null;
+  // Compute feature weights for focused node (for disco floor effect)
+  // Uses hovered item if available, otherwise selected node
+  const focusedNodeFeatureWeights = useMemo(() => {
+    const focusedNode = hoveredItem || selectedNode;
+    if (!focusedNode || !manifest?.global) return null;
 
     // Get the node's feature data
     let nodeFeatures = null;
 
-    if (selectedNode.isParent && viewStack.length > 0) {
+    if (focusedNode.isParent && viewStack.length > 0) {
       // Parent node - use its manifest features
       const path = viewStack.join('.');
       const parts = path.split('.');
@@ -433,12 +435,12 @@ export function GenreConstellationSelect({ onLaunch }) {
         else break;
       }
       nodeFeatures = node?.features;
-    } else if (selectedNode.track) {
+    } else if (focusedNode.track) {
       // Track node - use track features
-      nodeFeatures = selectedNode.track.features || selectedNode.track;
+      nodeFeatures = focusedNode.track.features || focusedNode.track;
     } else {
       // Regular genre/subgenre node
-      const path = [...viewStack, selectedNode.key].join('.');
+      const path = [...viewStack, focusedNode.key].join('.');
       const parts = path.split('.');
       let node = manifest;
       for (const part of parts) {
@@ -480,7 +482,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     });
 
     return weights;
-  }, [selectedNode, manifest, viewStack]);
+  }, [hoveredItem, selectedNode, manifest, viewStack]);
 
   // Toggle feature
   const toggleFeature = (feature) => {
@@ -590,14 +592,14 @@ export function GenreConstellationSelect({ onLaunch }) {
           }}
         >
           <defs>
-            {/* Circular path for orbiting text (follows hover) */}
+            {/* Circular path for orbiting text (follows hover) - closer to node */}
             <path
               id="descPath"
               d={`
                 M ${CENTER_X + (hoveredItem?.x || selectedNodePos.x)} ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}
-                m -120, 0
-                a 120,120 0 1,1 240,0
-                a 120,120 0 1,1 -240,0
+                m -60, 0
+                a 60,60 0 1,1 120,0
+                a 60,60 0 1,1 -120,0
               `}
             />
             {/* Glow filter for hover effect */}
@@ -624,11 +626,11 @@ export function GenreConstellationSelect({ onLaunch }) {
           )}
 
           {/* Disco floor - colored octagon segments based on feature weights */}
-          {selectedNodeFeatureWeights && manifest?.global?.display?.feature_angles.map((feature, i) => {
+          {focusedNodeFeatureWeights && manifest?.global?.display?.feature_angles.map((feature, i) => {
             const angleStep = (Math.PI * 2) / 8;
             const angle = i * angleStep;
             const nextAngle = ((i + 1) % 8) * angleStep;
-            const weight = selectedNodeFeatureWeights[feature];
+            const weight = focusedNodeFeatureWeights[feature];
             const radius = 250;
 
             // Map weight to opacity (0.5 = no color, 0 or 1 = strong color)
@@ -820,39 +822,67 @@ export function GenreConstellationSelect({ onLaunch }) {
                   onClick={isSelected && canLaunch() ? handleLaunch : item.onClick}
                 />
 
-                {/* Node label - smaller by default, grows on hover */}
-                <text
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="white"
-                  fontSize={hoveredItem?.key === item.key ? (item.type === 'track' ? 11 : 13) : (item.type === 'track' ? 8 : 10)}
-                  fontWeight="700"
-                  style={{
-                    pointerEvents: 'none',
-                    transition: 'font-size 0.15s ease'
-                  }}
-                >
-                  {(() => {
-                    const label = hoveredItem?.key === item.key
-                      ? item.label
-                      : (item.label.length > 15 ? item.label.slice(0, 15) + '…' : item.label);
-
-                    const lines = label.split('\n');
-                    if (lines.length > 1) {
-                      return lines.map((line, i) => (
-                        <tspan key={i} x="0" dy={i === 0 ? "-0.3em" : "1em"}>
-                          {line}
-                        </tspan>
-                      ));
-                    }
-                    return label;
-                  })()}
-                </text>
+                {/* Node label - circular text by default, inner text when focused */}
+                {isSelected ? (
+                  // Focused: show inner text
+                  <text
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="white"
+                    fontSize={item.type === 'track' ? 9 : 11}
+                    fontWeight="700"
+                    style={{
+                      pointerEvents: 'none',
+                      transition: 'font-size 0.15s ease'
+                    }}
+                  >
+                    {(() => {
+                      const label = item.label.length > 15 ? item.label.slice(0, 15) + '…' : item.label;
+                      const lines = label.split('\n');
+                      if (lines.length > 1) {
+                        return lines.map((line, i) => (
+                          <tspan key={i} x="0" dy={i === 0 ? "-0.3em" : "1em"}>
+                            {line}
+                          </tspan>
+                        ));
+                      }
+                      return label;
+                    })()}
+                  </text>
+                ) : (
+                  // Not focused: show circular text around edge
+                  <>
+                    <defs>
+                      <path
+                        id={`nodePath-${item.key}`}
+                        d={`
+                          M 0 0
+                          m -${nodeRadius}, 0
+                          a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
+                          a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
+                        `}
+                      />
+                    </defs>
+                    <text
+                      fill="white"
+                      fontSize={hoveredItem?.key === item.key ? (item.type === 'track' ? 9 : 11) : (item.type === 'track' ? 7 : 9)}
+                      fontWeight="600"
+                      style={{
+                        pointerEvents: 'none',
+                        transition: 'font-size 0.15s ease'
+                      }}
+                    >
+                      <textPath href={`#nodePath-${item.key}`} startOffset="25%">
+                        {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
+                      </textPath>
+                    </text>
+                  </>
+                )}
               </g>
             );
           })}
 
-          {/* Orbiting description text (follows hover, shows hover item label) */}
+          {/* Orbiting description text (follows hover, shows genre descriptions) */}
           {selectedNode && (
             <g
               style={{
@@ -861,14 +891,14 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
-              <text fontSize="14" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
+              <text fontSize="9" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem
                     ? (hoveredItem.type === 'track' && hoveredItem.track
-                        ? `${hoveredItem.track.artist}\n- ${hoveredItem.track.name}`
-                        : hoveredItem.label)
+                        ? `${hoveredItem.track.artist} - ${hoveredItem.track.name}`
+                        : getGenreDescription(hoveredItem.label))
                     : (selectedNode.type === 'track' && selectedNode.track
-                        ? `${selectedNode.track.artist}\n- ${selectedNode.track.name}`
+                        ? `${selectedNode.track.artist} - ${selectedNode.track.name}`
                         : genreDescription)
                   }
                 </textPath>
