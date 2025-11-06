@@ -1,16 +1,40 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFeatureMap } from '../../hooks/useFeatureMap';
 
-// Human-friendly feature labels
+// Human-friendly feature labels (bidirectional)
 const FEATURE_CONFIG = {
-  danceability: { emoji: '💃', name: 'Dance', desc: 'How suitable for dancing' },
-  energy: { emoji: '⚡', name: 'Energy', desc: 'Intensity and activity level' },
-  speechiness: { emoji: '🗣️', name: 'Words', desc: 'How much talking/rapping' },
-  acousticness: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments vs electronic' },
-  valence: { emoji: '😊', name: 'Mood', desc: 'Happy vs sad feeling' },
-  tempo_norm: { emoji: '🥁', name: 'Speed', desc: 'Fast vs slow tempo' },
-  popularity: { emoji: '🔥', name: 'Popular', desc: 'How mainstream/well-known' },
-  instrumentalness: { emoji: '🎹', name: 'Instrumental', desc: 'Music without vocals' }
+  danceability: {
+    low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing' },
+    high: { emoji: '💃', name: 'Dance', desc: 'Made for dancing' }
+  },
+  energy: {
+    low: { emoji: '😌', name: 'Calm', desc: 'Mellow and peaceful' },
+    high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active' }
+  },
+  speechiness: {
+    low: { emoji: '🎵', name: 'Musical', desc: 'Instrumental melodies' },
+    high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping' }
+  },
+  acousticness: {
+    low: { emoji: '🎹', name: 'Electronic', desc: 'Synths and machines' },
+    high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments' }
+  },
+  valence: {
+    low: { emoji: '😢', name: 'Sad', desc: 'Melancholic feeling' },
+    high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful' }
+  },
+  tempo_norm: {
+    low: { emoji: '🐌', name: 'Slow', desc: 'Slower tempo' },
+    high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo' }
+  },
+  popularity: {
+    low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare' },
+    high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits' }
+  },
+  instrumentalness: {
+    low: { emoji: '🎤', name: 'Vocal', desc: 'With singing' },
+    high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals' }
+  }
 };
 
 /**
@@ -162,7 +186,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setViewStack(newStack);
     setSelectedTrack(null);
     setLoadedTracks([]);
-    setSelectedNodeKey(key); // Set LAUNCH overlay on clicked node
+    // Set LAUNCH overlay on parent node (which will appear in new view)
+    setSelectedNodeKey(`parent-${key}`);
     setZoomLevel(1.3); // Slight zoom when focusing
   };
 
@@ -184,7 +209,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       setZoomLevel(1.0);
     } else {
       // Keep LAUNCH on the parent node
-      setSelectedNodeKey(newStack[newStack.length - 1]);
+      setSelectedNodeKey(`parent-${newStack[newStack.length - 1]}`);
     }
   };
 
@@ -326,7 +351,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
 
-  // Axis configuration
+  // Axis configuration (bidirectional labels)
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
@@ -334,18 +359,44 @@ export function GenreConstellationSelect({ onLaunch }) {
     const angleStep = (Math.PI * 2) / feature_angles.length;
     const axisRadius = 250; // Distance from center to axis label
 
-    return feature_angles.map((feature, i) => {
+    const labels = [];
+
+    feature_angles.forEach((feature, i) => {
       const angle = i * angleStep;
-      const config = FEATURE_CONFIG[feature] || { emoji: '?', name: feature, desc: '' };
-      return {
+      const config = FEATURE_CONFIG[feature];
+      const enabled = activeFeatures[feature] !== false;
+
+      if (!config) return;
+
+      // High end (at the axis direction)
+      labels.push({
         feature,
+        end: 'high',
         angle,
         x: Math.cos(angle) * axisRadius,
         y: Math.sin(angle) * axisRadius,
-        ...config,
-        enabled: activeFeatures[feature] !== false
-      };
+        emoji: config.high.emoji,
+        name: config.high.name,
+        desc: config.high.desc,
+        enabled
+      });
+
+      // Low end (opposite direction, 180° away)
+      const oppositeAngle = angle + Math.PI;
+      labels.push({
+        feature,
+        end: 'low',
+        angle: oppositeAngle,
+        x: Math.cos(oppositeAngle) * axisRadius,
+        y: Math.sin(oppositeAngle) * axisRadius,
+        emoji: config.low.emoji,
+        name: config.low.name,
+        desc: config.low.desc,
+        enabled
+      });
     });
+
+    return labels;
   }, [manifest, activeFeatures]);
 
   // Toggle feature
@@ -410,27 +461,36 @@ export function GenreConstellationSelect({ onLaunch }) {
       <div className="fixed right-4 top-4 z-20 bg-zinc-900/90 rounded-lg p-3 max-w-xs border border-zinc-700">
         <div className="text-xs font-bold text-zinc-400 mb-2">FEATURES</div>
         <div className="space-y-1">
-          {axisConfig.map(axis => (
-            <div key={axis.feature} className="flex items-center gap-2 group">
-              <input
-                type="checkbox"
-                checked={axis.enabled}
-                onChange={() => toggleFeature(axis.feature)}
-                className="w-3 h-3"
-              />
-              <span className="text-sm cursor-pointer flex-1" title={axis.desc} onClick={() => toggleFeature(axis.feature)}>
-                <span className="mr-1">{axis.emoji}</span>
-                <span className={axis.enabled ? 'text-white' : 'text-zinc-600'}>{axis.name}</span>
-              </span>
-              <button
-                onClick={() => enableOnly(axis.feature)}
-                className="text-xs px-1 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 opacity-0 group-hover:opacity-100 transition"
-                title="Only this one"
-              >
-                only
-              </button>
-            </div>
-          ))}
+          {manifest?.global?.display?.feature_angles.map(feature => {
+            const config = FEATURE_CONFIG[feature];
+            const enabled = activeFeatures[feature] !== false;
+            if (!config) return null;
+
+            return (
+              <div key={feature} className="flex items-center gap-2 group">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={() => toggleFeature(feature)}
+                  className="w-3 h-3"
+                />
+                <span className="text-sm cursor-pointer flex-1" onClick={() => toggleFeature(feature)}>
+                  <span className="mr-1">{config.low.emoji}</span>
+                  <span className={enabled ? 'text-white' : 'text-zinc-600'}>{config.low.name}</span>
+                  <span className="mx-1">↔</span>
+                  <span className="mr-1">{config.high.emoji}</span>
+                  <span className={enabled ? 'text-white' : 'text-zinc-600'}>{config.high.name}</span>
+                </span>
+                <button
+                  onClick={() => enableOnly(feature)}
+                  className="text-xs px-1 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 opacity-0 group-hover:opacity-100 transition"
+                  title="Only this one"
+                >
+                  only
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -468,73 +528,82 @@ export function GenreConstellationSelect({ onLaunch }) {
           </defs>
 
           {/* Octagon back button (outer ring) */}
-          {viewStack.length > 0 && (
-            <polygon
-              points={(() => {
-                const outerRadius = 280;
-                const innerRadius = 260;
-                const angles = axisConfig.map(a => a.angle);
+          {viewStack.length > 0 && (() => {
+            const outerRadius = 280;
+            const innerRadius = 260;
+            const angleStep = (Math.PI * 2) / 8; // Always 8 sides
+            const angles = Array.from({length: 8}, (_, i) => i * angleStep);
 
-                // Create octagon ring with inner and outer vertices
-                const outerPoints = angles.map(angle =>
-                  `${CENTER_X + Math.cos(angle) * outerRadius},${CENTER_Y + Math.sin(angle) * outerRadius}`
-                ).join(' ');
-                const innerPoints = angles.map(angle =>
-                  `${CENTER_X + Math.cos(angle) * innerRadius},${CENTER_Y + Math.sin(angle) * innerRadius}`
-                ).reverse().join(' ');
+            const outerPoints = angles.map(angle =>
+              `${CENTER_X + Math.cos(angle) * outerRadius},${CENTER_Y + Math.sin(angle) * outerRadius}`
+            ).join(' ');
+            const innerPoints = angles.map(angle =>
+              `${CENTER_X + Math.cos(angle) * innerRadius},${CENTER_Y + Math.sin(angle) * innerRadius}`
+            ).reverse().join(' ');
 
-                return `${outerPoints} ${innerPoints}`;
-              })()}
-              fill="#3f3f46"
-              fillOpacity="0.15"
-              stroke="#52525b"
-              strokeWidth="2"
-              className="cursor-pointer hover:fill-opacity-30 transition-all"
-              onClick={handleBack}
-            />
-          )}
+            return (
+              <polygon
+                points={`${outerPoints} ${innerPoints}`}
+                fill="#3f3f46"
+                fillOpacity="0.15"
+                stroke="#52525b"
+                strokeWidth="2"
+                className="cursor-pointer hover:fill-opacity-30 transition-all"
+                onClick={handleBack}
+              />
+            );
+          })()}
 
-          {/* Axis lines and labels */}
-          {axisConfig.map(axis => (
-            <g key={axis.feature} opacity={axis.enabled ? 1 : 0.2}>
+          {/* Axis lines (8 total) */}
+          {manifest?.global?.display?.feature_angles.map((feature, i) => {
+            const angleStep = (Math.PI * 2) / 8;
+            const angle = i * angleStep;
+            const enabled = activeFeatures[feature] !== false;
+
+            return (
               <line
+                key={`axis-${feature}`}
                 x1={CENTER_X}
                 y1={CENTER_Y}
-                x2={CENTER_X + axis.x}
-                y2={CENTER_Y + axis.y}
+                x2={CENTER_X + Math.cos(angle) * 250}
+                y2={CENTER_Y + Math.sin(angle) * 250}
                 stroke="#3f3f46"
                 strokeWidth="1"
-                opacity="0.3"
+                opacity={enabled ? 0.3 : 0.1}
               />
-              <g transform={`translate(${CENTER_X + axis.x}, ${CENTER_Y + axis.y})`}>
-                <rect
-                  x="-32"
-                  y="-16"
-                  width="64"
-                  height="32"
-                  fill="#18181b"
-                  stroke={axis.enabled ? '#22c55e' : '#3f3f46'}
-                  strokeWidth="1.5"
-                  rx="6"
-                />
-                <text
-                  textAnchor="middle"
-                  fill={axis.enabled ? 'white' : '#71717a'}
-                  fontSize="16"
-                  fontWeight="600"
-                >
-                  <tspan x="0" dy="-3">{axis.emoji}</tspan>
-                </text>
-                <text
-                  textAnchor="middle"
-                  fill={axis.enabled ? '#a1a1aa' : '#52525b'}
-                  fontSize="9"
-                  fontWeight="600"
-                  y="14"
-                >
-                  {axis.name}
-                </text>
-              </g>
+            );
+          })}
+
+          {/* Axis labels (16 total - both ends) */}
+          {axisConfig.map((label, idx) => (
+            <g key={`label-${label.feature}-${label.end}`} transform={`translate(${CENTER_X + label.x}, ${CENTER_Y + label.y})`}>
+              <rect
+                x="-28"
+                y="-14"
+                width="56"
+                height="28"
+                fill="#18181b"
+                stroke={label.enabled ? '#22c55e' : '#3f3f46'}
+                strokeWidth="1.5"
+                rx="4"
+              />
+              <text
+                textAnchor="middle"
+                fill={label.enabled ? 'white' : '#71717a'}
+                fontSize="14"
+                fontWeight="600"
+              >
+                <tspan x="0" dy="-2">{label.emoji}</tspan>
+              </text>
+              <text
+                textAnchor="middle"
+                fill={label.enabled ? '#a1a1aa' : '#52525b'}
+                fontSize="8"
+                fontWeight="600"
+                y="12"
+              >
+                {label.name}
+              </text>
             </g>
           ))}
 
@@ -559,8 +628,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           {/* Items (genres/subgenres/tracks) */}
           {items.map(item => {
             const isSelected = item.key === selectedNodeKey;
-            const nodeRadius = item.type === 'track' ? 40 : 50;
-            const launchRingRadius = 75; // Outer ring for LAUNCH overlay
+            const nodeRadius = item.type === 'track' ? 35 : 45; // Smaller circles
+            const launchRingRadius = 70; // Outer ring for LAUNCH overlay
 
             return (
               <g
@@ -618,16 +687,22 @@ export function GenreConstellationSelect({ onLaunch }) {
                   onClick={isSelected && canLaunch() ? handleLaunch : item.onClick}
                 />
 
-                {/* Node label */}
+                {/* Node label - smaller by default, grows on hover */}
                 <text
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="white"
-                  fontSize={item.type === 'track' ? 10 : 12}
+                  fontSize={hoveredItem?.key === item.key ? (item.type === 'track' ? 11 : 13) : (item.type === 'track' ? 8 : 10)}
                   fontWeight="700"
-                  style={{ pointerEvents: 'none' }}
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'font-size 0.15s ease'
+                  }}
                 >
-                  {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
+                  {hoveredItem?.key === item.key
+                    ? item.label
+                    : (item.label.length > 15 ? item.label.slice(0, 15) + '…' : item.label)
+                  }
                 </text>
               </g>
             );
@@ -651,6 +726,58 @@ export function GenreConstellationSelect({ onLaunch }) {
                 </textPath>
               </text>
             </g>
+          )}
+
+          {/* Root-level instruction text (when no selection) */}
+          {!selectedNode && viewStack.length === 0 && (
+            <g
+              style={{
+                transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+                animation: `orbit 11000ms linear infinite`,
+                pointerEvents: 'none'
+              }}
+            >
+              <text fontSize="16" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
+                <textPath href="#descPath" startOffset="0%">
+                  Click a genre to explore the musical landscape
+                </textPath>
+              </text>
+            </g>
+          )}
+
+          {/* BACK text orbiting outer ring (when navigated) */}
+          {viewStack.length > 0 && (
+            <>
+              <defs>
+                <path
+                  id="backPath"
+                  d={`
+                    M ${CENTER_X} ${CENTER_Y}
+                    m -270, 0
+                    a 270,270 0 1,1 540,0
+                    a 270,270 0 1,1 -540,0
+                  `}
+                />
+              </defs>
+              <g
+                style={{
+                  transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+                  animation: `orbit 13000ms linear infinite reverse`,
+                  pointerEvents: 'none'
+                }}
+              >
+                <text fontSize="16" fill="#71717a" fontWeight="900" letterSpacing="1px">
+                  <textPath href="#backPath" startOffset="0%">
+                    ◁ BACK
+                  </textPath>
+                </text>
+                <text fontSize="16" fill="#71717a" fontWeight="900" letterSpacing="1px">
+                  <textPath href="#backPath" startOffset="50%">
+                    ◁ BACK
+                  </textPath>
+                </text>
+              </g>
+            </>
           )}
         </svg>
       </div>

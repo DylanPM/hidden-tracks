@@ -92,9 +92,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
 
-        // Convert to weight: [0, 1] (unidirectional from center)
-        // percentile 0 → center, percentile 1 → toward axis
-        const weight = percentile * exaggeration;
+        // Convert to weight: [-1, 1] (bidirectional)
+        // percentile 0 → opposite direction (low label), 0.5 → center, 1 → toward axis (high label)
+        const weight = (percentile - 0.5) * 2 * exaggeration;
 
         // Add weighted unit vector for this axis
         const angle = featureAngles[featureName];
@@ -211,8 +211,8 @@ export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2
     let percentile = normalizeFeature(rawValue, featureName);
     percentile = applyContrastCurve(percentile, featureName);
 
-    // Unidirectional: percentile 0 → center, percentile 1 → toward axis
-    const weight = percentile * exaggeration;
+    // Bidirectional: percentile 0 → opposite (low), 0.5 → center, 1 → toward axis (high)
+    const weight = (percentile - 0.5) * 2 * exaggeration;
     const angle = featureAngles[featureName];
     x += weight * Math.cos(angle);
     y += weight * Math.sin(angle);
