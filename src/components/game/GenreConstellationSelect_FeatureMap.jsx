@@ -1,39 +1,47 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFeatureMap } from '../../hooks/useFeatureMap';
 
-// Human-friendly feature labels (bidirectional)
+// Human-friendly feature labels (bidirectional) with colors
 const FEATURE_CONFIG = {
   danceability: {
     low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing' },
-    high: { emoji: '💃', name: 'Dance', desc: 'Made for dancing' }
+    high: { emoji: '💃', name: 'Dance', desc: 'Made for dancing' },
+    color: '#a855f7' // purple
   },
   energy: {
     low: { emoji: '😌', name: 'Calm', desc: 'Mellow and peaceful' },
-    high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active' }
+    high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active' },
+    color: '#ef4444' // red
   },
   speechiness: {
     low: { emoji: '🎵', name: 'Musical', desc: 'Instrumental melodies' },
-    high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping' }
+    high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping' },
+    color: '#eab308' // yellow
   },
   acousticness: {
     low: { emoji: '🎹', name: 'Electronic', desc: 'Synths and machines' },
-    high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments' }
+    high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments' },
+    color: '#f97316' // orange
   },
   valence: {
     low: { emoji: '😢', name: 'Sad', desc: 'Melancholic feeling' },
-    high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful' }
+    high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful' },
+    color: '#ec4899' // pink
   },
   tempo_norm: {
     low: { emoji: '🐌', name: 'Slow', desc: 'Slower tempo' },
-    high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo' }
+    high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo' },
+    color: '#06b6d4' // cyan
   },
   popularity: {
     low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare' },
-    high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits' }
+    high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits' },
+    color: '#fbbf24' // amber/gold
   },
   instrumentalness: {
     low: { emoji: '🎤', name: 'Vocal', desc: 'With singing' },
-    high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals' }
+    high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals' },
+    color: '#3b82f6' // blue
   }
 };
 
@@ -680,9 +688,17 @@ export function GenreConstellationSelect({ onLaunch }) {
               `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
             ).join(' ') + ' Z';
 
-            // Calculate average weight to determine color
-            const avgWeight = points.reduce((sum, p) => sum + p.weight, 0) / points.length;
-            const color = avgWeight > 0.5 ? '#22c55e' : '#3b82f6';
+            // Find dominant feature (highest strength) and use its color
+            let dominantFeature = feature_angles[0];
+            let maxStrength = points[0].strength;
+            points.forEach((p, i) => {
+              if (p.strength > maxStrength) {
+                maxStrength = p.strength;
+                dominantFeature = feature_angles[i];
+              }
+            });
+
+            const color = FEATURE_CONFIG[dominantFeature]?.color || '#22c55e';
             const avgStrength = points.reduce((sum, p) => sum + p.strength, 0) / points.length;
             const opacity = 0.2 + (avgStrength * 0.3);
 
@@ -913,7 +929,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                       opacity="0.6"
                       style={{ pointerEvents: 'none' }}
                     />
-                    {/* LAUNCH text centered */}
+                    {/* Go! text on launch ring */}
                     <text
                       textAnchor="middle"
                       dominantBaseline="middle"
@@ -925,7 +941,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                       strokeWidth="3"
                       paintOrder="stroke"
                     >
-                      LAUNCH
+                      Go!
                     </text>
                   </>
                 )}
@@ -970,7 +986,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   </textPath>
                 </text>
 
-                {/* LAUNCH text in center (only when selected) */}
+                {/* Go! text in center (only when selected) */}
                 {isSelected && (
                   <text
                     textAnchor="middle"
@@ -983,7 +999,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     strokeWidth="2"
                     paintOrder="stroke"
                   >
-                    LAUNCH
+                    Go!
                   </text>
                 )}
               </g>
@@ -999,7 +1015,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
-              <text fontSize="9" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
+              <text fontSize="7" fill="#b7f7cf" fontWeight="600" letterSpacing="0.5px">
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem
                     ? (hoveredItem.type === 'track' && hoveredItem.track
