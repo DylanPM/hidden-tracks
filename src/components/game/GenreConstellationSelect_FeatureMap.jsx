@@ -186,6 +186,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     setViewStack(newStack);
     setSelectedTrack(null);
     setLoadedTracks([]);
+    setHoveredItem(null); // Reset hover to prevent ghosting
     // Set LAUNCH overlay on parent node (which will appear in new view)
     setSelectedNodeKey(`parent-${key}`);
     setZoomLevel(1.15); // 15% zoom when focusing
@@ -202,6 +203,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     setViewStack(newStack);
     setSelectedTrack(null);
     setLoadedTracks([]);
+    setHoveredItem(null); // Reset hover to prevent ghosting
 
     // Clear LAUNCH overlay when going back to root
     if (newStack.length === 0) {
@@ -625,44 +627,48 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Disco floor - colored octagon segments based on feature weights */}
+          {/* Disco floor - histogram-like colored segments based on feature weights */}
           {focusedNodeFeatureWeights && manifest?.global?.display?.feature_angles.map((feature, i) => {
             const angleStep = (Math.PI * 2) / 8;
             const angle = i * angleStep;
             const nextAngle = ((i + 1) % 8) * angleStep;
             const weight = focusedNodeFeatureWeights[feature];
-            const radius = 250;
+            const maxRadius = 250;
 
-            // Map weight to opacity (0.5 = no color, 0 or 1 = strong color)
-            // Distance from 0.5 determines strength
+            // Histogram-like: radius varies based on distance from median
+            // 0.5 (median) = minimal radius, 0 or 1 = full radius
             const strength = Math.abs(weight - 0.5) * 2; // 0 to 1
-            const opacity = strength * 0.15; // Max 15% opacity for subtlety
+            const minRadius = 50; // Start segments at 50px from center
+            const segmentRadius = minRadius + (strength * (maxRadius - minRadius));
 
             // Color: green for high values (>0.5), blue for low values (<0.5)
             const color = weight > 0.5 ? '#22c55e' : '#3b82f6';
 
-            if (opacity < 0.02) return null; // Don't render if too faint
+            // More opaque for histogram effect
+            const opacity = 0.2 + (strength * 0.3); // 0.2 to 0.5 opacity range
+
+            if (strength < 0.05) return null; // Don't render if too close to median
 
             return (
               <path
                 key={`disco-${feature}`}
                 d={`
                   M ${CENTER_X} ${CENTER_Y}
-                  L ${CENTER_X + Math.cos(angle) * radius} ${CENTER_Y + Math.sin(angle) * radius}
-                  L ${CENTER_X + Math.cos(nextAngle) * radius} ${CENTER_Y + Math.sin(nextAngle) * radius}
+                  L ${CENTER_X + Math.cos(angle) * segmentRadius} ${CENTER_Y + Math.sin(angle) * segmentRadius}
+                  L ${CENTER_X + Math.cos(nextAngle) * segmentRadius} ${CENTER_Y + Math.sin(nextAngle) * segmentRadius}
                   Z
                 `}
                 fill={color}
                 opacity={opacity}
                 style={{
-                  transition: 'opacity 0.5s ease, fill 0.5s ease',
+                  transition: 'opacity 0.5s ease, fill 0.5s ease, d 0.5s ease',
                   pointerEvents: 'none'
                 }}
               />
             );
           })}
 
-          {/* Octagon back button (outer ring) */}
+          {/* Octagon back button (outer ring) - green with outward arrows */}
           {viewStack.length > 0 && (() => {
             const outerRadius = 280;
             const innerRadius = 260;
@@ -677,15 +683,45 @@ export function GenreConstellationSelect({ onLaunch }) {
             ).reverse().join(' ');
 
             return (
-              <polygon
-                points={`${outerPoints} ${innerPoints}`}
-                fill="#3f3f46"
-                fillOpacity="0.15"
-                stroke="#52525b"
-                strokeWidth="2"
-                className="cursor-pointer hover:fill-opacity-30 transition-all"
-                onClick={handleBack}
-              />
+              <>
+                <polygon
+                  points={`${outerPoints} ${innerPoints}`}
+                  fill="#22c55e"
+                  fillOpacity="0.2"
+                  stroke="#22c55e"
+                  strokeWidth="2"
+                  className="cursor-pointer hover:fill-opacity-40 transition-all"
+                  onClick={handleBack}
+                  style={{
+                    animation: 'backPulse 2s ease-in-out infinite'
+                  }}
+                />
+                {/* Outward arrows at cardinal directions */}
+                {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((arrowAngle, idx) => {
+                  const arrowRadius = 270;
+                  const arrowSize = 8;
+                  const ax = Math.cos(arrowAngle) * arrowRadius;
+                  const ay = Math.sin(arrowAngle) * arrowRadius;
+
+                  return (
+                    <g key={`arrow-${idx}`} transform={`translate(${CENTER_X + ax}, ${CENTER_Y + ay})`}>
+                      <path
+                        d={`
+                          M 0 0
+                          L ${-arrowSize} ${-arrowSize}
+                          M 0 0
+                          L ${-arrowSize} ${arrowSize}
+                        `}
+                        stroke="#22c55e"
+                        strokeWidth="2"
+                        fill="none"
+                        transform={`rotate(${arrowAngle * 180 / Math.PI})`}
+                        style={{ pointerEvents: 'none' }}
+                      />
+                    </g>
+                  );
+                })}
+              </>
             );
           })()}
 
@@ -763,7 +799,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           {/* Items (genres/subgenres/tracks) */}
           {items.map(item => {
             const isSelected = item.key === selectedNodeKey;
-            const nodeRadius = item.type === 'track' ? 26 : 34; // 25% smaller circles
+            const isHovered = hoveredItem?.key === item.key;
+            const nodeRadius = item.type === 'track' ? 21 : 27; // Further reduced for less overlap
             const launchRingRadius = 60; // Outer ring for LAUNCH overlay
 
             return (
@@ -815,10 +852,12 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <circle
                   r={nodeRadius}
                   fill="#18181b"
-                  stroke={isSelected ? '#22c55e' : item.isSelected ? '#eab308' : hoveredItem?.key === item.key ? '#16a34a' : '#22c55e'}
-                  strokeWidth={isSelected ? '4' : item.isSelected ? '4' : hoveredItem?.key === item.key ? '3' : '2'}
+                  fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
+                  stroke={isSelected ? '#22c55e' : item.isSelected ? '#eab308' : isHovered ? '#16a34a' : '#22c55e'}
+                  strokeWidth={isSelected ? '4' : item.isSelected ? '4' : isHovered ? '3' : '2'}
+                  strokeOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   className="hover:fill-zinc-800 transition-all"
-                  filter={hoveredItem?.key === item.key ? 'url(#glow)' : undefined}
+                  filter={isHovered ? 'url(#glow)' : undefined}
                   onClick={isSelected && canLaunch() ? handleLaunch : item.onClick}
                 />
 
@@ -829,6 +868,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="white"
+                    fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
                     fontSize={item.type === 'track' ? 9 : 11}
                     fontWeight="700"
                     style={{
@@ -865,14 +905,15 @@ export function GenreConstellationSelect({ onLaunch }) {
                     </defs>
                     <text
                       fill="white"
-                      fontSize={hoveredItem?.key === item.key ? (item.type === 'track' ? 9 : 11) : (item.type === 'track' ? 7 : 9)}
+                      fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
+                      fontSize={isHovered ? (item.type === 'track' ? 87.5 : 112.5) : (item.type === 'track' ? 17.5 : 22.5)}
                       fontWeight="600"
                       style={{
                         pointerEvents: 'none',
-                        transition: 'font-size 0.15s ease'
+                        transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
                       }}
                     >
-                      <textPath href={`#nodePath-${item.key}`} startOffset="25%">
+                      <textPath href={`#nodePath-${item.key}`} startOffset="75%">
                         {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
                       </textPath>
                     </text>
@@ -1005,6 +1046,10 @@ export function GenreConstellationSelect({ onLaunch }) {
           0%, 100% { opacity: 0.15; transform: scale(1); }
           50% { opacity: 0.25; transform: scale(1.05); }
         }
+        @keyframes backPulse {
+          0%, 100% { fill-opacity: 0.2; }
+          50% { fill-opacity: 0.35; }
+        }
       `}</style>
     </div>
   );
@@ -1035,6 +1080,84 @@ function getGenreDescription(genreName) {
     dubstep: 'Half-time lurch, wobble bass, stark space between hits.',
     rap: 'Bars over drums, cadence and rhyme carry the hook.',
     trap: 'Fast hats, 808 subs, sparse melodies, minor-key pads.',
+    // Jazz subgenres
+    'cool jazz': 'Relaxed tempos, lighter tone, contrapuntal arrangements. West Coast restraint.',
+    'nu jazz': 'Electronic textures meet jazz harmony. Broken beats and ambient drift.',
+    bebop: 'Fast tempos, complex changes, virtuosic solos. Head-solo-head form.',
+    'hard bop': 'Gospel and blues inflections added to bebop language. Groovier, earthier.',
+    'smooth jazz': 'Radio-friendly melodies, steady grooves, polished production. Easy flow.',
+    'jazz fusion': 'Electric instruments, rock/funk energy, extended soloing over vamps.',
+    swing: 'Big band arrangements, danceable pulse, riff-based melodies.',
+    'bossa nova': 'Samba rhythms slowed, whisper-close vocals, jazz chords, gentle movement.',
+    // Rock subgenres
+    'alternative rock': 'Indie spirit, wider palette than classic rock. Hooks with bite.',
+    'indie rock': 'DIY ethos, melodic focus, jangly guitars, earnest delivery.',
+    shoegaze: 'Wall-of-sound guitars, buried vocals, texture over clarity, dreamy wash.',
+    'classic rock': 'Blues-based riffs, anthem choruses, guitar solos. Stadium-ready.',
+    'garage rock': 'Raw, lo-fi, energetic. Three chords and attitude.',
+    'psychedelic rock': 'Effects-heavy, extended jams, modal harmony, consciousness expansion.',
+    'hard rock': 'Louder, heavier blues rock. Big riffs, powerful vocals.',
+    'roots rock': 'Back to basics, Americana influence, organic feel, honest lyrics.',
+    'southern rock': 'Blues and country blend, dual guitars, regional pride.',
+    // Metal subgenres
+    'stoner metal': 'Downtuned, fuzzy, groove-heavy. Desert rock meets Black Sabbath.',
+    'death metal': 'Extreme vocals, blast beats, complex riffing, dark themes.',
+    'nu metal': 'Hip-hop rhythms, downtuned guitars, angst-driven vocals.',
+    // Punk subgenres
+    emo: 'Emotional lyrics, dynamic shifts, melodic hardcore roots, confessional tone.',
+    // Electronic subgenres
+    'deep house': 'Warm, soulful, subtle. Jazz and soul samples over steady kick.',
+    'tech house': 'Minimal, techy, stripped-back. Focus on groove and rhythm.',
+    'progressive house': 'Long builds, layered melodies, journey-focused arrangements.',
+    'drum and bass': 'Breakbeats at 170+ BPM, heavy bass, jungle energy.',
+    'uk garage': '2-step rhythms, shuffled hi-hats, bass pressure, nocturnal vibe.',
+    synthwave: 'Retro-futuristic, 80s nostalgia, analog synths, neon aesthetics.',
+    ambient: 'Atmospheric, minimal rhythm, sound design focus, immersive space.',
+    // Pop subgenres
+    pop: 'Hook-first songwriting, radio-ready production, universal appeal.',
+    'dance pop': 'Four-on-floor beats, catchy vocals, club-ready energy.',
+    'indie pop': 'Jangly, melodic, DIY charm, lighter touch than indie rock.',
+    electropop: 'Synth-driven pop, bright production, electronic textures.',
+    // Hip Hop subgenres
+    drill: 'Dark, aggressive, sliding 808s, street narratives, ominous atmosphere.',
+    'gangsta rap': 'Hard-hitting beats, street life stories, West Coast G-funk or East Coast boom-bap.',
+    'east coast hip hop': 'Sample-heavy, boom-bap drums, lyrical focus, NYC swagger.',
+    'west coast rap': 'G-funk synths, laid-back grooves, melodic bass, California sun.',
+    'southern hip hop': 'Crunk energy or chopped & screwed, regional slang, 808 bass.',
+    'conscious hip hop': 'Socially aware lyrics, jazz/soul samples, message-driven.',
+    'underground hip hop': 'Independent, experimental, lyrical depth, anti-commercial.',
+    phonk: 'Memphis rap samples, dark aesthetic, cowbell hits, lo-fi crunch.',
+    'cloud rap': 'Ethereal beats, Auto-Tuned flows, spacious mix, dreamy atmosphere.',
+    // Soul/R&B subgenres
+    disco: 'Four-on-the-floor, string sections, funk bass, dance floor euphoria.',
+    motown: 'Polished pop-soul, tambourine backbeat, call-response vocals, Detroit sound.',
+    'neo soul': 'Vintage soul modernized, live instrumentation, introspective lyrics.',
+    'quiet storm': 'Late-night smooth R&B, mellow grooves, romantic themes.',
+    // Reggae subgenres
+    reggaeton: 'Dembow rhythm, Spanish vocals, reggae/dancehall roots, Latin fusion.',
+    dancehall: 'Digital riddims, DJ toasts, upbeat energy, Jamaican patois.',
+    ska: 'Upstroke guitars, walking bass, horn sections, precursor to reggae.',
+    dub: 'Remix culture, heavy reverb/delay, bass emphasis, stripped-down versions.',
+    // Latin subgenres
+    salsa: 'Clave-driven, horn sections, piano montunos, Afro-Cuban roots.',
+    cumbia: 'Colombian rhythms, accordion or synths, dancing groove, infectious pulse.',
+    mambo: 'Big band Latin jazz, syncopated brass, dance-floor energy.',
+    merengue: 'Fast 2/4 rhythm, accordion, tambora drums, Dominican dance music.',
+    'latin pop': 'Pop structures with Latin rhythms, crossover appeal, Spanish or bilingual.',
+    tropical: 'Caribbean and Latin dance rhythms, bright production, summer vibes.',
+    afropop: 'African rhythms meet pop production, joyful energy, pan-African fusion.',
+    amapiano: 'South African house, log drum bass, jazzy keys, laid-back groove.',
+    // Classical subgenres
+    'modern classical': 'Contemporary composition, extended techniques, film score aesthetics.',
+    romantic: 'Emotional expression, rich orchestration, 19th century European tradition.',
+    // Country subgenres
+    'classic country': 'Honky-tonk piano, steel guitar, traditional songwriting, Nashville sound.',
+    'country rock': 'Electric guitars, rock energy, country storytelling, Southern California vibe.',
+    'outlaw country': 'Anti-Nashville, rough edges, rebellious spirit, Willie & Waylon.',
+    // Blues
+    blues: 'Twelve-bar form, call and response, bent notes, emotional catharsis.',
+    bluegrass: 'Acoustic strings, high lonesome vocals, virtuosic picking, Appalachian roots.',
+    'indie folk': 'Acoustic intimacy, poetic lyrics, folk traditions modernized, lo-fi warmth.',
   };
   const key = String(genreName || '').toLowerCase();
   return map[key] || 'Choose a genre, subgenre, or track to explore its hidden patterns';
