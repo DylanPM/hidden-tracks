@@ -659,6 +659,32 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
+          {/* Subtle background floor coloring - always visible, shows feature colors */}
+          {manifest?.global?.display?.feature_angles.map((feature, i) => {
+            const angleStep = (Math.PI * 2) / 8;
+            const angle = i * angleStep;
+            const nextAngle = ((i + 1) % 8) * angleStep;
+            const featureColor = FEATURE_CONFIG[feature]?.color || '#22c55e';
+            const radius = 250;
+
+            return (
+              <path
+                key={`floor-bg-${feature}`}
+                d={`
+                  M ${CENTER_X} ${CENTER_Y}
+                  L ${CENTER_X + Math.cos(angle) * radius} ${CENTER_Y + Math.sin(angle) * radius}
+                  L ${CENTER_X + Math.cos(nextAngle) * radius} ${CENTER_Y + Math.sin(nextAngle) * radius}
+                  Z
+                `}
+                fill={featureColor}
+                opacity={0.08}
+                style={{
+                  pointerEvents: 'none'
+                }}
+              />
+            );
+          })}
+
           {/* Disco floor - connected polygon based on feature weights */}
           {focusedNodeFeatureWeights && (() => {
             const feature_angles = manifest?.global?.display?.feature_angles;
@@ -801,6 +827,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
             const boxWidth = isHovered ? 160 : 56;
             const boxHeight = isHovered ? 70 : 28;
+            const featureColor = FEATURE_CONFIG[label.feature]?.color || '#22c55e';
 
             return (
               <g
@@ -815,8 +842,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                   y={-boxHeight / 2}
                   width={boxWidth}
                   height={boxHeight}
-                  fill="#18181b"
-                  stroke={label.enabled ? '#22c55e' : '#3f3f46'}
+                  fill={label.enabled ? featureColor : '#18181b'}
+                  fillOpacity={label.enabled ? 0.3 : 1}
+                  stroke={label.enabled ? featureColor : '#3f3f46'}
                   strokeWidth="1.5"
                   rx="4"
                   className="transition-all duration-200"
@@ -949,7 +977,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Main node circle */}
                 <circle
                   r={nodeRadius}
-                  fill="#18181b"
+                  fill={isSelected ? '#22c55e' : '#18181b'}
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   stroke={isSelected ? '#22c55e' : item.isSelected ? '#eab308' : isHovered ? '#16a34a' : '#22c55e'}
                   strokeWidth={isSelected ? '4' : item.isSelected ? '4' : isHovered ? '3' : '2'}
@@ -974,7 +1002,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <text
                   fill="white"
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  fontSize={isHovered ? (item.type === 'track' ? 24 : 28) : (item.type === 'track' ? 17.5 : 22.5)}
+                  fontSize={isHovered ? (item.type === 'track' ? 11 : 13) : (item.type === 'track' ? 8 : 10)}
                   fontWeight="600"
                   style={{
                     pointerEvents: 'none',
@@ -991,13 +1019,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#22c55e"
+                    fill="white"
                     fontSize="14"
                     fontWeight="900"
                     style={{ pointerEvents: 'none' }}
-                    stroke="#18181b"
-                    strokeWidth="2"
-                    paintOrder="stroke"
                   >
                     Go!
                   </text>
