@@ -744,64 +744,92 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })()}
 
-          {/* Octagon back button (outer ring) - green with outward arrows */}
-          {viewStack.length > 0 && (() => {
-            const outerRadius = 280;
-            const innerRadius = 260;
-            const angleStep = (Math.PI * 2) / 8; // Always 8 sides
-            const angles = Array.from({length: 8}, (_, i) => i * angleStep);
+          {/* Circular ring with embedded 16 axis label segments (Trivial Pursuit style) */}
+          {axisConfig.map((label, idx) => {
+            const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
 
-            const outerPoints = angles.map(angle =>
-              `${CENTER_X + Math.cos(angle) * outerRadius},${CENTER_Y + Math.sin(angle) * outerRadius}`
-            ).join(' ');
-            const innerPoints = angles.map(angle =>
-              `${CENTER_X + Math.cos(angle) * innerRadius},${CENTER_Y + Math.sin(angle) * innerRadius}`
-            ).reverse().join(' ');
+            // Hover pushes segment outward by 30px
+            const outerRadius = isHovered ? 310 : 280;
+            const innerRadius = 260;
+
+            // Calculate arc angles for this segment
+            const angleStep = (Math.PI * 2) / 16; // 16 segments total
+            const startAngle = label.angle - angleStep / 2;
+            const endAngle = label.angle + angleStep / 2;
+
+            const featureColor = FEATURE_CONFIG[label.feature]?.color || '#22c55e';
+
+            // Create arc path for this segment
+            const outerStart = {
+              x: CENTER_X + Math.cos(startAngle) * outerRadius,
+              y: CENTER_Y + Math.sin(startAngle) * outerRadius
+            };
+            const outerEnd = {
+              x: CENTER_X + Math.cos(endAngle) * outerRadius,
+              y: CENTER_Y + Math.sin(endAngle) * outerRadius
+            };
+            const innerStart = {
+              x: CENTER_X + Math.cos(startAngle) * innerRadius,
+              y: CENTER_Y + Math.sin(startAngle) * innerRadius
+            };
+            const innerEnd = {
+              x: CENTER_X + Math.cos(endAngle) * innerRadius,
+              y: CENTER_Y + Math.sin(endAngle) * innerRadius
+            };
+
+            const segmentPath = `
+              M ${outerStart.x} ${outerStart.y}
+              A ${outerRadius} ${outerRadius} 0 0 1 ${outerEnd.x} ${outerEnd.y}
+              L ${innerEnd.x} ${innerEnd.y}
+              A ${innerRadius} ${innerRadius} 0 0 0 ${innerStart.x} ${innerStart.y}
+              Z
+            `;
+
+            // Text position (curved along arc)
+            const textRadius = (outerRadius + innerRadius) / 2;
+            const textPathRadius = textRadius;
 
             return (
-              <>
-                <polygon
-                  points={`${outerPoints} ${innerPoints}`}
-                  fill="#22c55e"
-                  fillOpacity="0.2"
-                  stroke="#22c55e"
-                  strokeWidth="2"
-                  className="cursor-pointer hover:fill-opacity-40 transition-all"
-                  onClick={handleBack}
-                  style={{
-                    animation: 'backPulse 2s ease-in-out infinite'
-                  }}
+              <g key={`ring-segment-${label.feature}-${label.end}`}>
+                {/* Arc segment */}
+                <path
+                  d={segmentPath}
+                  fill={featureColor}
+                  fillOpacity={label.enabled ? 0.4 : 0.2}
+                  stroke={featureColor}
+                  strokeWidth="1"
+                  className="cursor-pointer transition-all duration-200"
+                  onClick={viewStack.length > 0 ? handleBack : undefined}
+                  onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
+                  onMouseLeave={() => setHoveredAxisLabel(null)}
                 />
-                {/* Outward arrows at cardinal directions */}
-                {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((arrowAngle, idx) => {
-                  const arrowRadius = 270;
-                  const arrowSize = 8;
-                  const ax = Math.cos(arrowAngle) * arrowRadius;
-                  const ay = Math.sin(arrowAngle) * arrowRadius;
 
-                  return (
-                    <g key={`arrow-${idx}`} transform={`translate(${CENTER_X + ax}, ${CENTER_Y + ay})`}>
-                      <path
-                        d={`
-                          M 0 0
-                          L ${-arrowSize} ${-arrowSize}
-                          M 0 0
-                          L ${-arrowSize} ${arrowSize}
-                        `}
-                        stroke="#22c55e"
-                        strokeWidth="2"
-                        fill="none"
-                        transform={`rotate(${arrowAngle * 180 / Math.PI})`}
-                        style={{ pointerEvents: 'none' }}
-                      />
-                    </g>
-                  );
-                })}
-              </>
+                {/* Curved text along arc */}
+                <defs>
+                  <path
+                    id={`arc-${label.feature}-${label.end}`}
+                    d={`
+                      M ${CENTER_X + Math.cos(startAngle) * textPathRadius} ${CENTER_Y + Math.sin(startAngle) * textPathRadius}
+                      A ${textPathRadius} ${textPathRadius} 0 0 1 ${CENTER_X + Math.cos(endAngle) * textPathRadius} ${CENTER_Y + Math.sin(endAngle) * textPathRadius}
+                    `}
+                  />
+                </defs>
+                <text
+                  fill="white"
+                  fontSize={isHovered ? "9" : "8"}
+                  fontWeight="600"
+                  className="transition-all duration-200"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  <textPath href={`#arc-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
+                    {isHovered ? `${label.emoji} ${label.name}: ${label.desc.slice(0, 20)}` : `${label.emoji} ${label.name}`}
+                  </textPath>
+                </text>
+              </g>
             );
-          })()}
+          })}
 
-          {/* Axis lines (8 total) - extended beyond octagon */}
+          {/* Axis lines (8 total) - point to center of ring segments */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
             const angleStep = (Math.PI * 2) / 8;
             const angle = i * angleStep;
@@ -812,89 +840,13 @@ export function GenreConstellationSelect({ onLaunch }) {
                 key={`axis-${feature}`}
                 x1={CENTER_X}
                 y1={CENTER_Y}
-                x2={CENTER_X + Math.cos(angle) * 305}
-                y2={CENTER_Y + Math.sin(angle) * 305}
+                x2={CENTER_X + Math.cos(angle) * 270}
+                y2={CENTER_Y + Math.sin(angle) * 270}
                 stroke="#3f3f46"
                 strokeWidth="1"
                 strokeDasharray="4 4"
                 opacity={enabled ? 0.3 : 0.1}
               />
-            );
-          })}
-
-          {/* Axis labels (16 total - both ends) */}
-          {axisConfig.map((label, idx) => {
-            const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
-            const boxWidth = isHovered ? 160 : 56;
-            const boxHeight = isHovered ? 70 : 28;
-            const featureColor = FEATURE_CONFIG[label.feature]?.color || '#22c55e';
-
-            return (
-              <g
-                key={`label-${label.feature}-${label.end}`}
-                transform={`translate(${CENTER_X + label.x}, ${CENTER_Y + label.y})`}
-                onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
-                onMouseLeave={() => setHoveredAxisLabel(null)}
-                className="cursor-pointer"
-              >
-                <rect
-                  x={-boxWidth / 2}
-                  y={-boxHeight / 2}
-                  width={boxWidth}
-                  height={boxHeight}
-                  fill={label.enabled ? featureColor : '#18181b'}
-                  fillOpacity={label.enabled ? 0.3 : 1}
-                  stroke={label.enabled ? featureColor : '#3f3f46'}
-                  strokeWidth="1.5"
-                  rx="4"
-                  className="transition-all duration-200"
-                />
-                {isHovered ? (
-                  // Expanded: show description
-                  <>
-                    <text
-                      textAnchor="middle"
-                      fill={label.enabled ? 'white' : '#71717a'}
-                      fontSize="12"
-                      fontWeight="600"
-                      y="-10"
-                    >
-                      {label.emoji} {label.name}
-                    </text>
-                    <text
-                      textAnchor="middle"
-                      fill={label.enabled ? '#a1a1aa' : '#52525b'}
-                      fontSize="8"
-                      fontWeight="400"
-                      y="5"
-                    >
-                      <tspan x="0" dy="0">{label.desc.slice(0, 30)}</tspan>
-                      {label.desc.length > 30 && <tspan x="0" dy="10">{label.desc.slice(30)}</tspan>}
-                    </text>
-                  </>
-                ) : (
-                  // Collapsed: show emoji and name
-                  <>
-                    <text
-                      textAnchor="middle"
-                      fill={label.enabled ? 'white' : '#71717a'}
-                      fontSize="14"
-                      fontWeight="600"
-                    >
-                      <tspan x="0" dy="-2">{label.emoji}</tspan>
-                    </text>
-                    <text
-                      textAnchor="middle"
-                      fill={label.enabled ? '#a1a1aa' : '#52525b'}
-                      fontSize="8"
-                      fontWeight="600"
-                      y="12"
-                    >
-                      {label.name}
-                    </text>
-                  </>
-                )}
-              </g>
             );
           })}
 
@@ -1055,7 +1007,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             </g>
           )}
 
-          {/* Root-level instruction text (outer ring style) */}
+          {/* Root-level instruction text (outside ring) */}
           {!selectedNode && viewStack.length === 0 && (
             <>
               <defs>
@@ -1063,9 +1015,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                   id="rootPath"
                   d={`
                     M ${CENTER_X} ${CENTER_Y}
-                    m -270, 0
-                    a 270,270 0 1,1 540,0
-                    a 270,270 0 1,1 -540,0
+                    m -330, 0
+                    a 330,330 0 1,1 660,0
+                    a 330,330 0 1,1 -660,0
                   `}
                 />
               </defs>
@@ -1090,7 +1042,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             </>
           )}
 
-          {/* BACK text orbiting outer ring (when navigated) */}
+          {/* BACK text orbiting outside ring (when navigated) */}
           {viewStack.length > 0 && (
             <>
               <defs>
@@ -1098,9 +1050,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                   id="backPath"
                   d={`
                     M ${CENTER_X} ${CENTER_Y}
-                    m -270, 0
-                    a 270,270 0 1,1 540,0
-                    a 270,270 0 1,1 -540,0
+                    m -330, 0
+                    a 330,330 0 1,1 660,0
+                    a 330,330 0 1,1 -660,0
                   `}
                 />
               </defs>
