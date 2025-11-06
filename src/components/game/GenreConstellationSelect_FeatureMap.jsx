@@ -102,17 +102,20 @@ export function GenreConstellationSelect({ onLaunch }) {
     })();
   }, []);
 
-  // Get current node in the tree
-  const getCurrentNode = () => {
-    if (!manifest || viewStack.length === 0) return null;
+  // Helper: Navigate manifest tree by path
+  const getManifestNode = (pathArray) => {
+    if (!manifest) return null;
     let node = manifest;
-    for (const key of viewStack) {
-      if (node[key]) node = node[key];
-      else if (node.subgenres?.[key]) node = node.subgenres[key];
+    for (const part of pathArray) {
+      if (node[part]) node = node[part];
+      else if (node.subgenres?.[part]) node = node.subgenres[part];
       else return null;
     }
     return node;
   };
+
+  // Get current node in the tree
+  const getCurrentNode = () => getManifestNode(viewStack);
 
   // Get children of current node
   const getChildren = () => {
@@ -462,51 +465,17 @@ export function GenreConstellationSelect({ onLaunch }) {
   }, [manifest, activeFeatures]);
 
   // Compute feature weights for focused node (for disco floor effect)
-  // Uses hovered item if available, otherwise selected node
-  // For tracks, use parent node since we don't have track-level data in manifest
   const focusedNodeFeatureWeights = useMemo(() => {
     const focusedNode = hoveredItem || selectedNode;
     if (!focusedNode || !manifest?.global) return null;
 
-    // Get the node's feature data
-    let nodeFeatures = null;
+    // Determine path: parent/track use viewStack, regular node adds its key
+    const pathArray = (focusedNode.isParent || focusedNode.track)
+      ? viewStack
+      : [...viewStack, focusedNode.key];
 
-    if (focusedNode.isParent && viewStack.length > 0) {
-      // Parent node - use its manifest features
-      const path = viewStack.join('.');
-      const parts = path.split('.');
-      let node = manifest;
-      for (const part of parts) {
-        if (node[part]) node = node[part];
-        else if (node.subgenres?.[part]) node = node.subgenres[part];
-        else break;
-      }
-      nodeFeatures = node?.features;
-    } else if (focusedNode.track) {
-      // Track node - use parent (subgenre) features instead
-      // We don't have track-level feature data in the manifest
-      const path = viewStack.join('.');
-      const parts = path.split('.');
-      let node = manifest;
-      for (const part of parts) {
-        if (node[part]) node = node[part];
-        else if (node.subgenres?.[part]) node = node.subgenres[part];
-        else break;
-      }
-      nodeFeatures = node?.features;
-    } else {
-      // Regular genre/subgenre node
-      const path = [...viewStack, focusedNode.key].join('.');
-      const parts = path.split('.');
-      let node = manifest;
-      for (const part of parts) {
-        if (node[part]) node = node[part];
-        else if (node.subgenres?.[part]) node = node.subgenres[part];
-        else break;
-      }
-      nodeFeatures = node?.features;
-    }
-
+    const node = getManifestNode(pathArray);
+    const nodeFeatures = node?.features;
     if (!nodeFeatures) return null;
 
     const { feature_angles } = manifest.global.display;
