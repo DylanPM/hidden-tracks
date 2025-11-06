@@ -226,7 +226,7 @@ const HIDDEN_GENRES = ['folk', 'brostep', 'spoken-word', 'audiobook'];
     const out = [];
     // top-level style children
     Object.keys(node).forEach((k) => {
-      if (k !== 'seeds' && k !== 'subgenres' && typeof node[k] === 'object') {
+      if (k !== 'seeds' && k !== 'subgenres' && k !== 'features' && k !== 'global' && typeof node[k] === 'object') {
         out.push({ key: k, type: 'genre', data: node[k] });
       }
     });
