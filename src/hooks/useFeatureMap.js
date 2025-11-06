@@ -9,13 +9,46 @@ import { useMemo } from 'react';
  * @param {Object} manifest - The genre manifest with global config
  * @param {number} exaggeration - Exaggeration factor for spreading
  * @param {Object} activeFeatures - Map of feature names to boolean (enabled/disabled)
+ * @param {Array} siblingFeatures - Optional array of feature objects from siblings for local normalization
  */
-export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {}) {
+export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {}, siblingFeatures = null) {
   const positions = useMemo(() => {
     if (!manifest?.global) return {};
 
     const { feature_angles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
-    const { quantiles } = manifest.global;
+    const { quantiles: globalQuantiles } = manifest.global;
+
+    // Compute local quantiles from siblings if provided
+    const computeLocalQuantiles = (siblings) => {
+      const localQ = {};
+
+      feature_angles.forEach(featureName => {
+        const values = siblings
+          .map(s => s[featureName])
+          .filter(v => v != null && !isNaN(v))
+          .sort((a, b) => a - b);
+
+        if (values.length === 0) {
+          localQ[featureName] = globalQuantiles[featureName] || { p10: 0, p50: 0.5, p90: 1 };
+          return;
+        }
+
+        const p10Idx = Math.floor(values.length * 0.1);
+        const p50Idx = Math.floor(values.length * 0.5);
+        const p90Idx = Math.floor(values.length * 0.9);
+
+        localQ[featureName] = {
+          p10: values[p10Idx],
+          p50: values[p50Idx],
+          p90: values[p90Idx]
+        };
+      });
+
+      return localQ;
+    };
+
+    // Use local quantiles if siblings provided, otherwise global
+    const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : globalQuantiles;
 
     // Compute angle for each feature (octagonal: 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
     const angleStep = (Math.PI * 2) / feature_angles.length;
@@ -59,8 +92,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {})
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
 
-        // Convert to weight centered at 0: [-0.5, 0.5]
-        const weight = (percentile - 0.5) * exaggeration;
+        // Convert to weight centered at 0: [-1, 1] (bidirectional)
+        // percentile 0 → push opposite direction, 0.5 → center, 1 → push toward axis
+        const weight = (percentile - 0.5) * 2 * exaggeration;
 
         // Add weighted unit vector for this axis
         const angle = featureAngles[featureName];
@@ -98,19 +132,48 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {})
     });
 
     return result;
-  }, [manifest, exaggeration, activeFeatures]);
+  }, [manifest, exaggeration, activeFeatures, siblingFeatures]);
 
   return { positions };
 }
 
 /**
  * Compute position for a single track using its individual features
+ * @param {Array} siblingFeatures - Optional array of feature objects from sibling tracks for local normalization
  */
-export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2, activeFeatures = {}) {
+export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2, activeFeatures = {}, siblingFeatures = null) {
   if (!manifest?.global) return { x: 0, y: 0 };
 
   const { feature_angles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
-  const { quantiles } = manifest.global;
+  const { quantiles: globalQuantiles } = manifest.global;
+
+  // Compute local quantiles from siblings if provided
+  let quantiles = globalQuantiles;
+  if (siblingFeatures && siblingFeatures.length > 0) {
+    const localQ = {};
+    feature_angles.forEach(featureName => {
+      const values = siblingFeatures
+        .map(s => s[featureName])
+        .filter(v => v != null && !isNaN(v))
+        .sort((a, b) => a - b);
+
+      if (values.length === 0) {
+        localQ[featureName] = globalQuantiles[featureName] || { p10: 0, p50: 0.5, p90: 1 };
+        return;
+      }
+
+      const p10Idx = Math.floor(values.length * 0.1);
+      const p50Idx = Math.floor(values.length * 0.5);
+      const p90Idx = Math.floor(values.length * 0.9);
+
+      localQ[featureName] = {
+        p10: values[p10Idx],
+        p50: values[p50Idx],
+        p90: values[p90Idx]
+      };
+    });
+    quantiles = localQ;
+  }
 
   const angleStep = (Math.PI * 2) / feature_angles.length;
   const featureAngles = feature_angles.reduce((acc, feature, i) => {
@@ -148,7 +211,8 @@ export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2
     let percentile = normalizeFeature(rawValue, featureName);
     percentile = applyContrastCurve(percentile, featureName);
 
-    const weight = (percentile - 0.5) * exaggeration;
+    // Bidirectional: percentile 0 → opposite, 0.5 → center, 1 → toward axis
+    const weight = (percentile - 0.5) * 2 * exaggeration;
     const angle = featureAngles[featureName];
     x += weight * Math.cos(angle);
     y += weight * Math.sin(angle);
