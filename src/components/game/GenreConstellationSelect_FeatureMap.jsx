@@ -486,8 +486,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       if (!config) return;
 
-      // High end at position i*2 (even segments: 0, 2, 4, 6...)
-      const highAngle = i * 2 * segmentAngleStep;
+      // High end at segment i (0-7)
+      const highAngle = i * segmentAngleStep;
       labels.push({
         feature,
         end: 'high',
@@ -500,8 +500,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         enabled
       });
 
-      // Low end at position (i*2 + 8) - opposite side (8 segments away = 180°)
-      const lowAngle = (i * 2 + 8) * segmentAngleStep;
+      // Low end at segment (i + 8), which is 180° opposite (8-15)
+      const lowAngle = (i + 8) * segmentAngleStep;
       labels.push({
         feature,
         end: 'low',
@@ -802,7 +802,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           <g
             style={{
               transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-              animation: viewStack.length > 0 ? 'breathe 3.5s ease-in-out infinite' : 'none'
+              animation: viewStack.length > 0 ? 'breathe 4.5s ease-in-out infinite' : 'none'
             }}
           >
           {axisConfig.map((label, idx) => {
@@ -927,21 +927,22 @@ export function GenreConstellationSelect({ onLaunch }) {
               const x = CENTER_X + Math.cos(angle) * arrowRadius;
               const y = CENTER_Y + Math.sin(angle) * arrowRadius;
 
-              // Create arrow path pointing outward
-              const arrowSize = 8;
+              // Create arrow path pointing outward (chevron style: >>)
+              const arrowSize = 10;
+              const arrowAngle = 0.35; // Angle spread for arrow lines
               const arrowPath = `
-                M ${x} ${y}
-                L ${x + Math.cos(angle - 0.4) * arrowSize} ${y + Math.sin(angle - 0.4) * arrowSize}
-                M ${x} ${y}
-                L ${x + Math.cos(angle + 0.4) * arrowSize} ${y + Math.sin(angle + 0.4) * arrowSize}
+                M ${x + Math.cos(angle) * -2} ${y + Math.sin(angle) * -2}
+                L ${x + Math.cos(angle - arrowAngle) * arrowSize} ${y + Math.sin(angle - arrowAngle) * arrowSize}
+                M ${x + Math.cos(angle) * -2} ${y + Math.sin(angle) * -2}
+                L ${x + Math.cos(angle + arrowAngle) * arrowSize} ${y + Math.sin(angle + arrowAngle) * arrowSize}
               `;
 
               return (
                 <g
                   key={`arrow-${i}`}
                   style={{
-                    animation: 'arrowPulse 3.5s ease-in-out infinite',
-                    animationDelay: `${i * 0.1}s`
+                    animation: 'arrowPulse 4.5s ease-in-out infinite',
+                    animationDelay: `${i * 0.15}s`
                   }}
                 >
                   <path
@@ -1241,11 +1242,11 @@ export function GenreConstellationSelect({ onLaunch }) {
         }
         @keyframes breathe {
           0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.025); }
+          50% { transform: scale(1.008); }
         }
         @keyframes arrowPulse {
-          0%, 100% { opacity: 0.3; transform: translateX(0px); }
-          50% { opacity: 0.6; transform: translateX(3px); }
+          0%, 100% { opacity: 0.25; }
+          50% { opacity: 0.5; }
         }
       `}</style>
     </div>
