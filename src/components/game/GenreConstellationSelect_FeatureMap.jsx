@@ -644,6 +644,14 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
+            {/* Stronger glow for text (20% more) */}
+            <filter id="textGlow">
+              <feGaussianBlur stdDeviation="3.6" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
           </defs>
 
           {/* Background click area - go back if outside octagon */}
@@ -954,8 +962,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <text
                   fill="white"
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  fontSize={isHovered ? (item.type === 'track' ? 11 : 13) : (item.type === 'track' ? 8 : 10)}
+                  fontSize={isHovered ? (item.type === 'track' ? 13.2 : 15.6) : (item.type === 'track' ? 9.6 : 12)}
                   fontWeight="600"
+                  filter={isHovered ? 'url(#textGlow)' : undefined}
                   style={{
                     pointerEvents: 'none',
                     transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
@@ -966,8 +975,8 @@ export function GenreConstellationSelect({ onLaunch }) {
                   </textPath>
                 </text>
 
-                {/* Go! text in center (only when selected) */}
-                {isSelected && (
+                {/* Go! text in center (follows hover) */}
+                {(isSelected || isHovered) && (
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -992,7 +1001,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
-              <text fontSize="7" fill="#b7f7cf" fontWeight="600" letterSpacing="0.5px">
+              <text fontSize="14" fill="#b7f7cf" fontWeight="600" letterSpacing="0.5px">
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem
                     ? (hoveredItem.type === 'track' && hoveredItem.track
