@@ -415,6 +415,73 @@ export function GenreConstellationSelect({ onLaunch }) {
     return labels;
   }, [manifest, activeFeatures]);
 
+  // Compute feature weights for selected node (for disco floor effect)
+  const selectedNodeFeatureWeights = useMemo(() => {
+    if (!selectedNode || !manifest?.global) return null;
+
+    // Get the node's feature data
+    let nodeFeatures = null;
+
+    if (selectedNode.isParent && viewStack.length > 0) {
+      // Parent node - use its manifest features
+      const path = viewStack.join('.');
+      const parts = path.split('.');
+      let node = manifest;
+      for (const part of parts) {
+        if (node[part]) node = node[part];
+        else if (node.subgenres?.[part]) node = node.subgenres[part];
+        else break;
+      }
+      nodeFeatures = node?.features;
+    } else if (selectedNode.track) {
+      // Track node - use track features
+      nodeFeatures = selectedNode.track.features || selectedNode.track;
+    } else {
+      // Regular genre/subgenre node
+      const path = [...viewStack, selectedNode.key].join('.');
+      const parts = path.split('.');
+      let node = manifest;
+      for (const part of parts) {
+        if (node[part]) node = node[part];
+        else if (node.subgenres?.[part]) node = node.subgenres[part];
+        else break;
+      }
+      nodeFeatures = node?.features;
+    }
+
+    if (!nodeFeatures) return null;
+
+    const { feature_angles } = manifest.global.display;
+    const { quantiles } = manifest.global;
+
+    // Normalize each feature to 0-1 using quantiles
+    const weights = {};
+    feature_angles.forEach(feature => {
+      const value = nodeFeatures[feature];
+      if (value == null || isNaN(value)) {
+        weights[feature] = 0.5;
+        return;
+      }
+
+      const q = quantiles[feature];
+      if (!q) {
+        weights[feature] = 0.5;
+        return;
+      }
+
+      // Approximate percentile
+      let percentile;
+      if (value <= q.p10) percentile = 0.1;
+      else if (value <= q.p50) percentile = 0.1 + 0.4 * ((value - q.p10) / (q.p50 - q.p10));
+      else if (value <= q.p90) percentile = 0.5 + 0.4 * ((value - q.p50) / (q.p90 - q.p50));
+      else percentile = 0.9 + 0.1 * Math.min(1, (value - q.p90) / (q.p90 - q.p50));
+
+      weights[feature] = percentile;
+    });
+
+    return weights;
+  }, [selectedNode, manifest, viewStack]);
+
   // Toggle feature
   const toggleFeature = (feature) => {
     setActiveFeatures(prev => ({ ...prev, [feature]: !prev[feature] }));
@@ -555,6 +622,43 @@ export function GenreConstellationSelect({ onLaunch }) {
               onClick={handleBack}
             />
           )}
+
+          {/* Disco floor - colored octagon segments based on feature weights */}
+          {selectedNodeFeatureWeights && manifest?.global?.display?.feature_angles.map((feature, i) => {
+            const angleStep = (Math.PI * 2) / 8;
+            const angle = i * angleStep;
+            const nextAngle = ((i + 1) % 8) * angleStep;
+            const weight = selectedNodeFeatureWeights[feature];
+            const radius = 250;
+
+            // Map weight to opacity (0.5 = no color, 0 or 1 = strong color)
+            // Distance from 0.5 determines strength
+            const strength = Math.abs(weight - 0.5) * 2; // 0 to 1
+            const opacity = strength * 0.15; // Max 15% opacity for subtlety
+
+            // Color: green for high values (>0.5), blue for low values (<0.5)
+            const color = weight > 0.5 ? '#22c55e' : '#3b82f6';
+
+            if (opacity < 0.02) return null; // Don't render if too faint
+
+            return (
+              <path
+                key={`disco-${feature}`}
+                d={`
+                  M ${CENTER_X} ${CENTER_Y}
+                  L ${CENTER_X + Math.cos(angle) * radius} ${CENTER_Y + Math.sin(angle) * radius}
+                  L ${CENTER_X + Math.cos(nextAngle) * radius} ${CENTER_Y + Math.sin(nextAngle) * radius}
+                  Z
+                `}
+                fill={color}
+                opacity={opacity}
+                style={{
+                  transition: 'opacity 0.5s ease, fill 0.5s ease',
+                  pointerEvents: 'none'
+                }}
+              />
+            );
+          })}
 
           {/* Octagon back button (outer ring) */}
           {viewStack.length > 0 && (() => {
