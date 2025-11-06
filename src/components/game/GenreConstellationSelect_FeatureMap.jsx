@@ -188,7 +188,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     setLoadedTracks([]);
     // Set LAUNCH overlay on parent node (which will appear in new view)
     setSelectedNodeKey(`parent-${key}`);
-    setZoomLevel(1.3); // Slight zoom when focusing
+    setZoomLevel(1.15); // 15% zoom when focusing
   };
 
   const handleTrackClick = async (track) => {
@@ -318,9 +318,25 @@ export function GenreConstellationSelect({ onLaunch }) {
         });
       });
     } else if (loadedTracks.length > 0) {
-      // For tracks: arrange in circle around parent position
+      // For tracks: show parent node at center (origin) + tracks in circle
       const parentPath = viewStack.join('.');
       const parentPos = positions[parentPath] || { x: 0, y: 0 };
+      const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
+
+      // Add parent node at its position (center of track circle)
+      items.push({
+        key: parentKey,
+        label: viewStack[viewStack.length - 1],
+        x: parentPos.x,
+        y: parentPos.y,
+        type: 'parent',
+        isParent: true,
+        onClick: () => {
+          setSelectedNodeKey(parentKey);
+        }
+      });
+
+      // Arrange tracks in circle around parent
       const circleRadius = 120;
       const angleStep = (Math.PI * 2) / loadedTracks.length;
 
@@ -331,7 +347,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
         items.push({
           key: track.uri || i,
-          label: `${track.artist} - ${track.name}`,
+          label: `${track.artist}\n- ${track.name}`,
           x,
           y,
           type: 'track',
@@ -507,11 +523,11 @@ export function GenreConstellationSelect({ onLaunch }) {
           }}
         >
           <defs>
-            {/* Circular path for orbiting text (positioned at selected node) */}
+            {/* Circular path for orbiting text (follows hover) */}
             <path
               id="descPath"
               d={`
-                M ${CENTER_X + selectedNodePos.x} ${CENTER_Y + selectedNodePos.y}
+                M ${CENTER_X + (hoveredItem?.x || selectedNodePos.x)} ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}
                 m -120, 0
                 a 120,120 0 1,1 240,0
                 a 120,120 0 1,1 -240,0
@@ -526,6 +542,19 @@ export function GenreConstellationSelect({ onLaunch }) {
               </feMerge>
             </filter>
           </defs>
+
+          {/* Background click area - go back if outside octagon */}
+          {viewStack.length > 0 && (
+            <rect
+              x="0"
+              y="0"
+              width={VIEWPORT_WIDTH}
+              height={VIEWPORT_HEIGHT}
+              fill="transparent"
+              className="cursor-pointer"
+              onClick={handleBack}
+            />
+          )}
 
           {/* Octagon back button (outer ring) */}
           {viewStack.length > 0 && (() => {
@@ -628,8 +657,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           {/* Items (genres/subgenres/tracks) */}
           {items.map(item => {
             const isSelected = item.key === selectedNodeKey;
-            const nodeRadius = item.type === 'track' ? 35 : 45; // Smaller circles
-            const launchRingRadius = 70; // Outer ring for LAUNCH overlay
+            const nodeRadius = item.type === 'track' ? 26 : 34; // 25% smaller circles
+            const launchRingRadius = 60; // Outer ring for LAUNCH overlay
 
             return (
               <g
@@ -699,50 +728,83 @@ export function GenreConstellationSelect({ onLaunch }) {
                     transition: 'font-size 0.15s ease'
                   }}
                 >
-                  {hoveredItem?.key === item.key
-                    ? item.label
-                    : (item.label.length > 15 ? item.label.slice(0, 15) + '…' : item.label)
-                  }
+                  {(() => {
+                    const label = hoveredItem?.key === item.key
+                      ? item.label
+                      : (item.label.length > 15 ? item.label.slice(0, 15) + '…' : item.label);
+
+                    const lines = label.split('\n');
+                    if (lines.length > 1) {
+                      return lines.map((line, i) => (
+                        <tspan key={i} x="0" dy={i === 0 ? "-0.3em" : "1em"}>
+                          {line}
+                        </tspan>
+                      ));
+                    }
+                    return label;
+                  })()}
                 </text>
               </g>
             );
           })}
 
-          {/* Orbiting description text (around selected node) */}
+          {/* Orbiting description text (follows hover, shows hover item label) */}
           {selectedNode && (
             <g
               style={{
-                transformOrigin: `${CENTER_X + selectedNodePos.x}px ${CENTER_Y + selectedNodePos.y}px`,
+                transformOrigin: `${CENTER_X + (hoveredItem?.x || selectedNodePos.x)}px ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}px`,
                 animation: `orbit 11000ms linear infinite`,
                 pointerEvents: 'none'
               }}
             >
               <text fontSize="14" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
                 <textPath href="#descPath" startOffset="0%">
-                  {selectedNode.type === 'track' && selectedNode.track
-                    ? `${selectedNode.track.artist} - ${selectedNode.track.name}`
-                    : genreDescription
+                  {hoveredItem
+                    ? (hoveredItem.type === 'track' && hoveredItem.track
+                        ? `${hoveredItem.track.artist}\n- ${hoveredItem.track.name}`
+                        : hoveredItem.label)
+                    : (selectedNode.type === 'track' && selectedNode.track
+                        ? `${selectedNode.track.artist}\n- ${selectedNode.track.name}`
+                        : genreDescription)
                   }
                 </textPath>
               </text>
             </g>
           )}
 
-          {/* Root-level instruction text (when no selection) */}
+          {/* Root-level instruction text (outer ring style) */}
           {!selectedNode && viewStack.length === 0 && (
-            <g
-              style={{
-                transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                animation: `orbit 11000ms linear infinite`,
-                pointerEvents: 'none'
-              }}
-            >
-              <text fontSize="16" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
-                <textPath href="#descPath" startOffset="0%">
-                  Click a genre to explore the musical landscape
-                </textPath>
-              </text>
-            </g>
+            <>
+              <defs>
+                <path
+                  id="rootPath"
+                  d={`
+                    M ${CENTER_X} ${CENTER_Y}
+                    m -270, 0
+                    a 270,270 0 1,1 540,0
+                    a 270,270 0 1,1 -540,0
+                  `}
+                />
+              </defs>
+              <g
+                style={{
+                  transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+                  animation: `orbit 18000ms linear infinite`,
+                  pointerEvents: 'none'
+                }}
+              >
+                <text fontSize="16" fill="#b7f7cf" fontWeight="700" letterSpacing="1px">
+                  <textPath href="#rootPath" startOffset="0%">
+                    Click a genre to explore the musical landscape
+                  </textPath>
+                </text>
+                <text fontSize="16" fill="#b7f7cf" fontWeight="700" letterSpacing="1px">
+                  <textPath href="#rootPath" startOffset="50%">
+                    Click a genre to explore the musical landscape
+                  </textPath>
+                </text>
+              </g>
+            </>
           )}
 
           {/* BACK text orbiting outer ring (when navigated) */}
@@ -762,18 +824,18 @@ export function GenreConstellationSelect({ onLaunch }) {
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 13000ms linear infinite reverse`,
+                  animation: `orbit 20000ms linear infinite`,
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize="16" fill="#71717a" fontWeight="900" letterSpacing="1px">
+                <text fontSize="14" fill="#71717a" fontWeight="900" letterSpacing="1px">
                   <textPath href="#backPath" startOffset="0%">
-                    ◁ BACK
+                    ▷ Tap outside the ring to go back a level
                   </textPath>
                 </text>
-                <text fontSize="16" fill="#71717a" fontWeight="900" letterSpacing="1px">
+                <text fontSize="14" fill="#71717a" fontWeight="900" letterSpacing="1px">
                   <textPath href="#backPath" startOffset="50%">
-                    ◁ BACK
+                    ▷ Tap outside the ring to go back a level
                   </textPath>
                 </text>
               </g>
