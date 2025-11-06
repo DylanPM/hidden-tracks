@@ -40,11 +40,12 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [viewStack, setViewStack] = useState([]); // e.g. [], ['rock'], ['rock', 'metal']
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [loadedTracks, setLoadedTracks] = useState([]); // Actual track data with features
-  const [launchPosition, setLaunchPosition] = useState({ x: 0, y: 0 }); // LAUNCH button position
+  const [launchPosition, setLaunchPosition] = useState(null); // LAUNCH ring position (null = hidden)
 
   // Visual state
   const [exaggeration, setExaggeration] = useState(1.2);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [zoomLevel, setZoomLevel] = useState(1.0);
 
   // Active features (all enabled by default)
   const [activeFeatures, setActiveFeatures] = useState({
@@ -77,8 +78,32 @@ export function GenreConstellationSelect({ onLaunch }) {
     })();
   }, []);
 
-  // Compute positions
-  const { positions } = useFeatureMap(manifest, exaggeration, activeFeatures);
+  // Compute positions with clamping to octagon boundary
+  const { positions: rawPositions } = useFeatureMap(manifest, exaggeration, activeFeatures);
+
+  // Clamp positions to octagon boundary
+  const positions = useMemo(() => {
+    const AXIS_RADIUS = 250; // Distance from center to axis label
+    const MAX_DISTANCE = AXIS_RADIUS - 60; // Keep circles inside octagon
+
+    const clamped = {};
+    Object.keys(rawPositions).forEach(key => {
+      const pos = rawPositions[key];
+      const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+
+      if (distance > MAX_DISTANCE) {
+        // Clamp to max distance
+        const scale = MAX_DISTANCE / distance;
+        clamped[key] = {
+          x: pos.x * scale,
+          y: pos.y * scale
+        };
+      } else {
+        clamped[key] = pos;
+      }
+    });
+    return clamped;
+  }, [rawPositions]);
 
   // Get current node in the tree
   const getCurrentNode = () => {
@@ -134,10 +159,11 @@ export function GenreConstellationSelect({ onLaunch }) {
     setSelectedTrack(null);
     setLoadedTracks([]);
 
-    // Move LAUNCH button to this genre's position
+    // Move LAUNCH ring to this genre's position
     const path = newStack.join('.');
     const pos = positions[path] || { x: 0, y: 0 };
     setLaunchPosition(pos);
+    setZoomLevel(1.3); // Slight zoom when focusing
   };
 
   const handleTrackClick = async (track) => {
@@ -151,9 +177,10 @@ export function GenreConstellationSelect({ onLaunch }) {
     setSelectedTrack(null);
     setLoadedTracks([]);
 
-    // Move LAUNCH back
+    // Move LAUNCH back or hide
     if (newStack.length === 0) {
-      setLaunchPosition({ x: 0, y: 0 });
+      setLaunchPosition(null); // Hide on root
+      setZoomLevel(1.0);
     } else {
       const path = newStack.join('.');
       const pos = positions[path] || { x: 0, y: 0 };
@@ -188,18 +215,22 @@ export function GenreConstellationSelect({ onLaunch }) {
               const res = await fetch(`/profiles/${seed.filename}`);
               if (!res.ok) return null;
               const profile = await res.json();
+
+              // Clamp track position too
+              const rawPos = {
+                danceability: profile.seed.danceability,
+                energy: profile.seed.energy,
+                speechiness: profile.seed.speechiness,
+                acousticness: profile.seed.acousticness,
+                valence: profile.seed.valence,
+                tempo_norm: profile.seed.tempo_norm,
+                popularity: profile.seed.popularity,
+                instrumentalness: profile.seed.instrumentalness
+              };
+
               return {
                 ...seed,
-                features: {
-                  danceability: profile.seed.danceability,
-                  energy: profile.seed.energy,
-                  speechiness: profile.seed.speechiness,
-                  acousticness: profile.seed.acousticness,
-                  valence: profile.seed.valence,
-                  tempo_norm: profile.seed.tempo_norm,
-                  popularity: profile.seed.popularity,
-                  instrumentalness: profile.seed.instrumentalness
-                }
+                features: rawPos
               };
             } catch (e) {
               console.warn('Failed to load track features:', seed.filename);
@@ -234,8 +265,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         items.push({
           key: child.key,
           label: child.key,
-          x: pos.x - launchPosition.x, // Relative to LAUNCH
-          y: pos.y - launchPosition.y,
+          x: pos.x,
+          y: pos.y,
           type: child.type,
           onClick: () => handleGenreClick(child.key)
         });
@@ -245,13 +276,22 @@ export function GenreConstellationSelect({ onLaunch }) {
       loadedTracks.forEach((track, i) => {
         if (!track.features) return;
 
-        const pos = computeTrackPosition(track.features, manifest, exaggeration, activeFeatures);
+        const rawPos = computeTrackPosition(track.features, manifest, exaggeration, activeFeatures);
+
+        // Clamp track position
+        const distance = Math.sqrt(rawPos.x * rawPos.x + rawPos.y * rawPos.y);
+        const MAX_DISTANCE = 250 - 60;
+        let pos = rawPos;
+        if (distance > MAX_DISTANCE) {
+          const scale = MAX_DISTANCE / distance;
+          pos = { x: rawPos.x * scale, y: rawPos.y * scale };
+        }
 
         items.push({
           key: track.uri || i,
           label: `${track.artist} - ${track.name}`,
-          x: pos.x - launchPosition.x, // Relative to LAUNCH
-          y: pos.y - launchPosition.y,
+          x: pos.x,
+          y: pos.y,
           type: 'track',
           onClick: () => handleTrackClick(track),
           isSelected: selectedTrack?.uri === track.uri
@@ -263,6 +303,9 @@ export function GenreConstellationSelect({ onLaunch }) {
   };
 
   const items = renderItems();
+
+  // Get parent position for connection lines
+  const parentPos = launchPosition || { x: 0, y: 0 };
 
   // Axis configuration
   const axisConfig = useMemo(() => {
@@ -390,6 +433,10 @@ export function GenreConstellationSelect({ onLaunch }) {
           height={VIEWPORT_HEIGHT}
           viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
           className="select-none"
+          style={{
+            transform: `scale(${zoomLevel})`,
+            transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
         >
           <defs>
             {/* Circular path for orbiting text */}
@@ -402,6 +449,14 @@ export function GenreConstellationSelect({ onLaunch }) {
                 a 120,120 0 1,1 -240,0
               `}
             />
+            {/* Glow filter for hover effect */}
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
           </defs>
 
           {/* Axis lines and labels */}
@@ -418,34 +473,59 @@ export function GenreConstellationSelect({ onLaunch }) {
               />
               <g transform={`translate(${CENTER_X + axis.x}, ${CENTER_Y + axis.y})`}>
                 <rect
-                  x="-35"
-                  y="-12"
-                  width="70"
-                  height="24"
+                  x="-32"
+                  y="-16"
+                  width="64"
+                  height="32"
                   fill="#18181b"
                   stroke={axis.enabled ? '#22c55e' : '#3f3f46'}
-                  strokeWidth="1"
-                  rx="4"
+                  strokeWidth="1.5"
+                  rx="6"
                 />
                 <text
                   textAnchor="middle"
-                  dominantBaseline="middle"
                   fill={axis.enabled ? 'white' : '#71717a'}
-                  fontSize="14"
+                  fontSize="16"
                   fontWeight="600"
                 >
-                  <tspan x="0" dy="-2">{axis.emoji}</tspan>
-                  <tspan x="0" dy="12" fontSize="10">{axis.name}</tspan>
+                  <tspan x="0" dy="-3">{axis.emoji}</tspan>
+                </text>
+                <text
+                  textAnchor="middle"
+                  fill={axis.enabled ? '#a1a1aa' : '#52525b'}
+                  fontSize="9"
+                  fontWeight="600"
+                  y="14"
+                >
+                  {axis.name}
                 </text>
               </g>
             </g>
           ))}
 
-          {/* Dynamic hover line from LAUNCH to hovered item */}
-          {hoveredItem && (
+          {/* Connection lines from parent to children (always visible) */}
+          {launchPosition && items.map(item => (
             <line
-              x1={CENTER_X}
-              y1={CENTER_Y}
+              key={`line-${item.key}`}
+              x1={CENTER_X + parentPos.x}
+              y1={CENTER_Y + parentPos.y}
+              x2={CENTER_X + item.x}
+              y2={CENTER_Y + item.y}
+              stroke="#22c55e"
+              strokeWidth={hoveredItem?.key === item.key ? "3" : "1"}
+              opacity={hoveredItem?.key === item.key ? 0.8 : 0.2}
+              strokeDasharray={hoveredItem?.key === item.key ? "0" : "2 2"}
+              style={{
+                transition: 'all 0.2s ease'
+              }}
+            />
+          ))}
+
+          {/* Dynamic hover line from LAUNCH to hovered item */}
+          {hoveredItem && launchPosition && (
+            <line
+              x1={CENTER_X + parentPos.x}
+              y1={CENTER_Y + parentPos.y}
               x2={CENTER_X + hoveredItem.x}
               y2={CENTER_Y + hoveredItem.y}
               stroke="#22c55e"
@@ -486,48 +566,46 @@ export function GenreConstellationSelect({ onLaunch }) {
             </g>
           ))}
 
-          {/* Center LAUNCH button (at its current position) */}
-          <g>
-            <circle
-              cx={CENTER_X}
-              cy={CENTER_Y}
-              r={90}
-              fill={canLaunch() ? '#22c55e' : '#27272a'}
-              stroke={canLaunch() ? '#16a34a' : '#3f3f46'}
-              strokeWidth="4"
-              className={canLaunch() ? 'cursor-pointer' : 'cursor-not-allowed'}
-              onClick={canLaunch() ? handleLaunch : undefined}
-              style={{
-                transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            />
-            <text
-              x={CENTER_X}
-              y={CENTER_Y - 6}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={canLaunch() ? 'black' : '#a1a1aa'}
-              fontSize="28"
-              fontWeight="900"
-              style={{ pointerEvents: 'none' }}
-            >
-              LAUNCH
-            </text>
-            <text
-              x={CENTER_X}
-              y={CENTER_Y + 20}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={canLaunch() ? 'black' : '#a1a1aa'}
-              fontSize="14"
-              fontWeight="600"
-              style={{ pointerEvents: 'none' }}
-            >
-              {currentGenre ? currentGenre.toUpperCase() : 'GENRE MAP'}
-            </text>
-          </g>
+          {/* LAUNCH ring at selected node position */}
+          {launchPosition && (
+            <g transform={`translate(${CENTER_X + parentPos.x}, ${CENTER_Y + parentPos.y})`}>
+              <circle
+                r={90}
+                fill={canLaunch() ? '#22c55e' : '#27272a'}
+                stroke={canLaunch() ? '#16a34a' : '#3f3f46'}
+                strokeWidth="4"
+                className={canLaunch() ? 'cursor-pointer' : 'cursor-not-allowed'}
+                onClick={canLaunch() ? handleLaunch : undefined}
+                style={{
+                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              />
+              <text
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={canLaunch() ? 'black' : '#a1a1aa'}
+                fontSize="28"
+                fontWeight="900"
+                y="-6"
+                style={{ pointerEvents: 'none' }}
+              >
+                LAUNCH
+              </text>
+              <text
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={canLaunch() ? 'black' : '#a1a1aa'}
+                fontSize="14"
+                fontWeight="600"
+                y="20"
+                style={{ pointerEvents: 'none' }}
+              >
+                {currentGenre ? currentGenre.toUpperCase() : ''}
+              </text>
+            </g>
+          )}
 
-          {/* Orbiting description text */}
+          {/* Orbiting description text (around center) */}
           <g
             style={{
               transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
@@ -541,17 +619,6 @@ export function GenreConstellationSelect({ onLaunch }) {
               </textPath>
             </text>
           </g>
-
-          {/* Glow filter for hover effect */}
-          <defs>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
         </svg>
       </div>
 
@@ -561,8 +628,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           <span className="text-xs text-zinc-400">Spread:</span>
           <input
             type="range"
-            min="0.8"
-            max="2.0"
+            min="0.5"
+            max="4.0"
             step="0.1"
             value={exaggeration}
             onChange={(e) => setExaggeration(parseFloat(e.target.value))}
