@@ -194,6 +194,12 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   // Handle clicks
   const handleGenreClick = async (key) => {
+    // At root level, first click selects (shows LAUNCH ring), second click navigates
+    if (viewStack.length === 0 && selectedNodeKey !== key) {
+      setSelectedNodeKey(key);
+      return;
+    }
+
     const newStack = [...viewStack, key];
     setViewStack(newStack);
     setSelectedTrack(null);
@@ -292,6 +298,52 @@ export function GenreConstellationSelect({ onLaunch }) {
   const VIEWPORT_HEIGHT = 928;
   const CENTER_X = VIEWPORT_WIDTH / 2;
   const CENTER_Y = VIEWPORT_HEIGHT / 2;
+
+  // Helper: Resolve collisions between nodes
+  const resolveCollisions = (items) => {
+    const nodeRadius = 27; // Max radius for collision detection
+    const overlapThreshold = 0.3; // 30% overlap triggers push
+    const pushStrength = 1.5; // How much to push apart
+    const maxIterations = 3;
+
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+      let hadCollision = false;
+
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const item1 = items[i];
+          const item2 = items[j];
+
+          const dx = item2.x - item1.x;
+          const dy = item2.y - item1.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const minDistance = nodeRadius * 2;
+
+          // Calculate overlap percentage
+          if (distance < minDistance) {
+            const overlap = (minDistance - distance) / minDistance;
+
+            if (overlap > overlapThreshold) {
+              hadCollision = true;
+
+              // Push apart along the line connecting them
+              const angle = Math.atan2(dy, dx);
+              const pushDistance = (minDistance - distance) * pushStrength / 2;
+
+              item1.x -= Math.cos(angle) * pushDistance;
+              item1.y -= Math.sin(angle) * pushDistance;
+              item2.x += Math.cos(angle) * pushDistance;
+              item2.y += Math.sin(angle) * pushDistance;
+            }
+          }
+        }
+      }
+
+      if (!hadCollision) break; // Early exit if no collisions found
+    }
+
+    return items;
+  };
 
   // Render items with positions
   const renderItems = () => {
@@ -415,7 +467,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       }
     }
 
-    return items;
+    return resolveCollisions(items);
   };
 
   const items = renderItems();
@@ -805,7 +857,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   fill={featureColor}
                   fillOpacity={label.enabled ? 0.4 : 0.2}
                   stroke={featureColor}
-                  strokeWidth="1"
+                  strokeWidth="0.5"
                   className="cursor-pointer transition-all duration-200"
                   onClick={viewStack.length > 0 ? handleBack : undefined}
                   onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
@@ -814,25 +866,51 @@ export function GenreConstellationSelect({ onLaunch }) {
 
                 {/* Curved text along arc */}
                 <defs>
+                  {/* Title path (outer) */}
                   <path
-                    id={`arc-${label.feature}-${label.end}`}
+                    id={`arc-title-${label.feature}-${label.end}`}
                     d={`
-                      M ${CENTER_X + Math.cos(startAngle) * textPathRadius} ${CENTER_Y + Math.sin(startAngle) * textPathRadius}
-                      A ${textPathRadius} ${textPathRadius} 0 0 1 ${CENTER_X + Math.cos(endAngle) * textPathRadius} ${CENTER_Y + Math.sin(endAngle) * textPathRadius}
+                      M ${CENTER_X + Math.cos(startAngle) * (outerRadius - 5)} ${CENTER_Y + Math.sin(startAngle) * (outerRadius - 5)}
+                      A ${outerRadius - 5} ${outerRadius - 5} 0 0 1 ${CENTER_X + Math.cos(endAngle) * (outerRadius - 5)} ${CENTER_Y + Math.sin(endAngle) * (outerRadius - 5)}
                     `}
                   />
+                  {/* Description path (below title) */}
+                  {isHovered && (
+                    <path
+                      id={`arc-desc-${label.feature}-${label.end}`}
+                      d={`
+                        M ${CENTER_X + Math.cos(startAngle) * (textPathRadius - 3)} ${CENTER_Y + Math.sin(startAngle) * (textPathRadius - 3)}
+                        A ${textPathRadius - 3} ${textPathRadius - 3} 0 0 1 ${CENTER_X + Math.cos(endAngle) * (textPathRadius - 3)} ${CENTER_Y + Math.sin(endAngle) * (textPathRadius - 3)}
+                      `}
+                    />
+                  )}
                 </defs>
+                {/* Title text */}
                 <text
                   fill="white"
-                  fontSize={isHovered ? "9" : "8"}
-                  fontWeight="600"
+                  fontSize={isHovered ? "11" : "10"}
+                  fontWeight="700"
                   className="transition-all duration-200"
                   style={{ pointerEvents: 'none' }}
                 >
-                  <textPath href={`#arc-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
-                    {isHovered ? `${label.emoji} ${label.name}: ${label.desc.slice(0, 20)}` : `${label.emoji} ${label.name}`}
+                  <textPath href={`#arc-title-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
+                    {label.name}
                   </textPath>
                 </text>
+                {/* Description text (only on hover) */}
+                {isHovered && (
+                  <text
+                    fill="white"
+                    fontSize="7"
+                    fontWeight="400"
+                    opacity="0.8"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    <textPath href={`#arc-desc-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
+                      {label.desc.slice(0, 25)}
+                    </textPath>
+                  </text>
+                )}
               </g>
             );
           })}
@@ -970,7 +1048,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
                   }}
                 >
-                  <textPath href={`#nodePath-${item.key}`} startOffset="75%">
+                  <textPath href={`#nodePath-${item.key}`} startOffset="0%">
                     {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
                   </textPath>
                 </text>
@@ -1024,9 +1102,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                   id="rootPath"
                   d={`
                     M ${CENTER_X} ${CENTER_Y}
-                    m -330, 0
-                    a 330,330 0 1,1 660,0
-                    a 330,330 0 1,1 -660,0
+                    m -300, 0
+                    a 300,300 0 1,1 600,0
+                    a 300,300 0 1,1 -600,0
                   `}
                 />
               </defs>
@@ -1059,9 +1137,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                   id="backPath"
                   d={`
                     M ${CENTER_X} ${CENTER_Y}
-                    m -330, 0
-                    a 330,330 0 1,1 660,0
-                    a 330,330 0 1,1 -660,0
+                    m -300, 0
+                    a 300,300 0 1,1 600,0
+                    a 300,300 0 1,1 -600,0
                   `}
                 />
               </defs>
