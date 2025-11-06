@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft } from 'lucide-react';
-import { useFeatureMap, computeTrackPosition } from '../../hooks/useFeatureMap';
+import { useFeatureMap } from '../../hooks/useFeatureMap';
 
 // Human-friendly feature labels
 const FEATURE_CONFIG = {
@@ -257,6 +256,27 @@ export function GenreConstellationSelect({ onLaunch }) {
     const items = [];
 
     if (children.length > 0) {
+      // Add parent node at its position (if not at root)
+      if (viewStack.length > 0) {
+        const parentPath = viewStack.join('.');
+        const parentPos = positions[parentPath];
+        const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
+        if (parentPos) {
+          items.push({
+            key: parentKey,
+            label: viewStack[viewStack.length - 1],
+            x: parentPos.x,
+            y: parentPos.y,
+            type: 'parent',
+            isParent: true,
+            onClick: () => {
+              // Select parent for launching
+              setSelectedNodeKey(parentKey);
+            }
+          });
+        }
+      }
+
       // Show child genres/subgenres
       children.forEach(child => {
         const path = [...viewStack, child.key].join('.');
@@ -273,30 +293,24 @@ export function GenreConstellationSelect({ onLaunch }) {
         });
       });
     } else if (loadedTracks.length > 0) {
-      // Show tracks with local normalization
-      const trackFeatures = loadedTracks.map(t => t.features).filter(f => f);
+      // For tracks: arrange in circle around parent position
+      const parentPath = viewStack.join('.');
+      const parentPos = positions[parentPath] || { x: 0, y: 0 };
+      const circleRadius = 120;
+      const angleStep = (Math.PI * 2) / loadedTracks.length;
 
       loadedTracks.forEach((track, i) => {
-        if (!track.features) return;
-
-        // Use sibling track features for local normalization
-        const rawPos = computeTrackPosition(track.features, manifest, exaggeration, activeFeatures, trackFeatures);
-
-        // Clamp track position
-        const distance = Math.sqrt(rawPos.x * rawPos.x + rawPos.y * rawPos.y);
-        const MAX_DISTANCE = 250 - 60;
-        let pos = rawPos;
-        if (distance > MAX_DISTANCE) {
-          const scale = MAX_DISTANCE / distance;
-          pos = { x: rawPos.x * scale, y: rawPos.y * scale };
-        }
+        const angle = i * angleStep;
+        const x = parentPos.x + Math.cos(angle) * circleRadius;
+        const y = parentPos.y + Math.sin(angle) * circleRadius;
 
         items.push({
           key: track.uri || i,
           label: `${track.artist} - ${track.name}`,
-          x: pos.x,
-          y: pos.y,
+          x,
+          y,
           type: 'track',
+          track: track, // Store full track data for orbiting text
           onClick: () => handleTrackClick(track),
           isSelected: selectedTrack?.uri === track.uri
         });
@@ -392,17 +406,6 @@ export function GenreConstellationSelect({ onLaunch }) {
         </div>
       )}
 
-      {/* Back button */}
-      {viewStack.length > 0 && (
-        <button
-          onClick={handleBack}
-          className="fixed left-4 top-4 z-20 p-3 rounded-full bg-zinc-800/80 hover:bg-zinc-700/80 transition"
-          title="Back"
-        >
-          <ChevronLeft size={24} className="text-green-400" />
-        </button>
-      )}
-
       {/* Feature toggles */}
       <div className="fixed right-4 top-4 z-20 bg-zinc-900/90 rounded-lg p-3 max-w-xs border border-zinc-700">
         <div className="text-xs font-bold text-zinc-400 mb-2">FEATURES</div>
@@ -444,11 +447,11 @@ export function GenreConstellationSelect({ onLaunch }) {
           }}
         >
           <defs>
-            {/* Circular path for orbiting text */}
+            {/* Circular path for orbiting text (positioned at selected node) */}
             <path
               id="descPath"
               d={`
-                M ${CENTER_X} ${CENTER_Y}
+                M ${CENTER_X + selectedNodePos.x} ${CENTER_Y + selectedNodePos.y}
                 m -120, 0
                 a 120,120 0 1,1 240,0
                 a 120,120 0 1,1 -240,0
@@ -463,6 +466,33 @@ export function GenreConstellationSelect({ onLaunch }) {
               </feMerge>
             </filter>
           </defs>
+
+          {/* Octagon back button (outer ring) */}
+          {viewStack.length > 0 && (
+            <polygon
+              points={(() => {
+                const outerRadius = 280;
+                const innerRadius = 260;
+                const angles = axisConfig.map(a => a.angle);
+
+                // Create octagon ring with inner and outer vertices
+                const outerPoints = angles.map(angle =>
+                  `${CENTER_X + Math.cos(angle) * outerRadius},${CENTER_Y + Math.sin(angle) * outerRadius}`
+                ).join(' ');
+                const innerPoints = angles.map(angle =>
+                  `${CENTER_X + Math.cos(angle) * innerRadius},${CENTER_Y + Math.sin(angle) * innerRadius}`
+                ).reverse().join(' ');
+
+                return `${outerPoints} ${innerPoints}`;
+              })()}
+              fill="#3f3f46"
+              fillOpacity="0.15"
+              stroke="#52525b"
+              strokeWidth="2"
+              className="cursor-pointer hover:fill-opacity-30 transition-all"
+              onClick={handleBack}
+            />
+          )}
 
           {/* Axis lines and labels */}
           {axisConfig.map(axis => (
@@ -560,33 +590,19 @@ export function GenreConstellationSelect({ onLaunch }) {
                       strokeWidth="2"
                       opacity="0.6"
                     />
-                    {/* LAUNCH text on top half of ring */}
+                    {/* LAUNCH text centered */}
                     <text
                       textAnchor="middle"
+                      dominantBaseline="middle"
                       fill="#22c55e"
-                      fontSize="20"
+                      fontSize="16"
                       fontWeight="900"
-                      y={-(launchRingRadius + 5)}
                       style={{ pointerEvents: 'none' }}
                       stroke="#18181b"
                       strokeWidth="3"
                       paintOrder="stroke"
                     >
                       LAUNCH
-                    </text>
-                    {/* Genre description on bottom half */}
-                    <text
-                      textAnchor="middle"
-                      fill="#b7f7cf"
-                      fontSize="10"
-                      fontWeight="600"
-                      y={launchRingRadius + 15}
-                      style={{ pointerEvents: 'none' }}
-                      stroke="#18181b"
-                      strokeWidth="2"
-                      paintOrder="stroke"
-                    >
-                      {genreDescription.length > 25 ? genreDescription.slice(0, 25) + '…' : genreDescription}
                     </text>
                   </>
                 )}
@@ -617,20 +633,25 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Orbiting description text (around center) */}
-          <g
-            style={{
-              transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-              animation: `orbit 11000ms linear infinite`,
-              pointerEvents: 'none'
-            }}
-          >
-            <text fontSize="14" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
-              <textPath href="#descPath" startOffset="0%">
-                {genreDescription}
-              </textPath>
-            </text>
-          </g>
+          {/* Orbiting description text (around selected node) */}
+          {selectedNode && (
+            <g
+              style={{
+                transformOrigin: `${CENTER_X + selectedNodePos.x}px ${CENTER_Y + selectedNodePos.y}px`,
+                animation: `orbit 11000ms linear infinite`,
+                pointerEvents: 'none'
+              }}
+            >
+              <text fontSize="14" fill="#b7f7cf" fontWeight="700" letterSpacing="0.5px">
+                <textPath href="#descPath" startOffset="0%">
+                  {selectedNode.type === 'track' && selectedNode.track
+                    ? `${selectedNode.track.artist} - ${selectedNode.track.name}`
+                    : genreDescription
+                  }
+                </textPath>
+              </text>
+            </g>
+          )}
         </svg>
       </div>
 
