@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState';
-import { GenreConstellationSelect } from './components/game/GenreConstellationSelect';
+import { GenreConstellationSelect } from './components/game/GenreConstellationSelect_FeatureMap';
 import { DraftPhase } from './components/game/DraftPhase';
 import { GuessPhase } from './components/game/GuessPhase';
 import { ScorePhase } from './components/game/ScorePhase';
