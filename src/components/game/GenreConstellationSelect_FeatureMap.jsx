@@ -349,6 +349,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         const parentPath = viewStack.join('.');
         const parentPos = positions[parentPath];
         const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
+        const parentData = getCurrentNode();
         if (parentPos) {
           items.push({
             key: parentKey,
@@ -357,6 +358,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             y: parentPos.y,
             type: 'parent',
             isParent: true,
+            hasSubgenres: false, // Parent nodes shown with children don't have further subgenres
+            hasSeeds: (parentData?.seeds || parentData?._seeds)?.length > 0,
             onClick: () => {
               // Select parent for launching
               setSelectedNodeKey(parentKey);
@@ -371,12 +374,18 @@ export function GenreConstellationSelect({ onLaunch }) {
         const pos = positions[path];
         if (!pos) return;
 
+        const childData = child.data;
+        const hasSubgenres = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
+        const hasSeeds = (childData?.seeds || childData?._seeds)?.length > 0;
+
         items.push({
           key: child.key,
           label: child.key,
           x: pos.x,
           y: pos.y,
           type: child.type,
+          hasSubgenres,
+          hasSeeds,
           onClick: () => handleGenreClick(child.key)
         });
       });
@@ -385,6 +394,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       const parentPath = viewStack.join('.');
       const parentPos = positions[parentPath] || { x: 0, y: 0 };
       const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
+      const parentData = getCurrentNode();
 
       // Add parent node at its position (center of track circle)
       items.push({
@@ -394,6 +404,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         y: parentPos.y,
         type: 'parent',
         isParent: true,
+        hasSubgenres: false,
+        hasSeeds: (parentData?.seeds || parentData?._seeds)?.length > 0,
         onClick: () => {
           setSelectedNodeKey(parentKey);
         }
@@ -434,6 +446,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             y,
             type: 'track',
             track: track,
+            hasSubgenres: false,
+            hasSeeds: false, // Tracks are leaf nodes that can be played
             onClick: () => handleTrackClick(track),
             isSelected: selectedTrack?.uri === track.uri
           });
@@ -454,6 +468,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             y,
             type: 'track',
             track: track,
+            hasSubgenres: false,
+            hasSeeds: false, // Tracks are leaf nodes that can be played
             onClick: () => handleTrackClick(track),
             isSelected: selectedTrack?.uri === track.uri
           });
@@ -672,14 +688,14 @@ export function GenreConstellationSelect({ onLaunch }) {
           }}
         >
           <defs>
-            {/* Circular path for orbiting text (follows hover) - closer to node */}
+            {/* Circular path for orbiting text (follows hover) - enlarged focus ring */}
             <path
               id="descPath"
               d={`
                 M ${CENTER_X + (hoveredItem?.x || selectedNodePos.x)} ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}
-                m -60, 0
-                a 60,60 0 1,1 120,0
-                a 60,60 0 1,1 -120,0
+                m -85, 0
+                a 85,85 0 1,1 170,0
+                a 85,85 0 1,1 -170,0
               `}
             />
             {/* Glow filter for hover effect */}
@@ -991,7 +1007,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             const isSelected = item.key === selectedNodeKey;
             const isHovered = hoveredItem?.key === item.key;
             const nodeRadius = item.type === 'track' ? 21 : 27; // Further reduced for less overlap
-            const launchRingRadius = 60; // Outer ring for LAUNCH overlay
+            const focusRingRadius = 85; // Outer ring for focus ring (enlarged from 60)
 
             return (
               <g
@@ -1001,46 +1017,29 @@ export function GenreConstellationSelect({ onLaunch }) {
                 className="cursor-pointer"
                 transform={`translate(${CENTER_X + item.x}, ${CENTER_Y + item.y})`}
               >
-                {/* LAUNCH overlay ring (only on hover) */}
-                {isHovered && canLaunch() && (
+                {/* Focus ring (always on hover) */}
+                {isHovered && (
                   <>
-                    {/* Clickable launch ring (between node and outer ring) */}
+                    {/* Green fill circle */}
                     <circle
-                      r={launchRingRadius}
+                      r={focusRingRadius}
                       fill="#1DB954"
                       opacity="0.15"
                       className="cursor-pointer hover:opacity-30 transition-opacity"
                       style={{
                         animation: 'pulse 2s ease-in-out infinite'
                       }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleLaunch();
-                      }}
+                      onClick={item.onClick}
                     />
-                    {/* Outer stroke for text ring */}
+                    {/* Green stroke ring */}
                     <circle
-                      r={launchRingRadius}
+                      r={focusRingRadius}
                       fill="none"
                       stroke="#1DB954"
                       strokeWidth="2"
                       opacity="0.6"
                       style={{ pointerEvents: 'none' }}
                     />
-                    {/* Go! text on launch ring */}
-                    <text
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill="#1DB954"
-                      fontSize="16"
-                      fontWeight="900"
-                      style={{ pointerEvents: 'none' }}
-                      stroke="#18181b"
-                      strokeWidth="3"
-                      paintOrder="stroke"
-                    >
-                      Go!
-                    </text>
                   </>
                 )}
 
@@ -1057,46 +1056,91 @@ export function GenreConstellationSelect({ onLaunch }) {
                   onClick={item.onClick}
                 />
 
-                {/* Node label - always show circular text around edge */}
-                <defs>
-                  <path
-                    id={`nodePath-${item.key}`}
-                    d={`
-                      M 0 0
-                      m -${nodeRadius}, 0
-                      a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
-                      a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
-                    `}
-                  />
-                </defs>
-                <text
-                  fill="white"
-                  fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  fontSize={isHovered ? 13 : 11}
-                  fontWeight="600"
-                  filter={isHovered ? 'url(#textGlow)' : undefined}
-                  style={{
-                    pointerEvents: 'none',
-                    transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
-                  }}
-                >
-                  <textPath href={`#nodePath-${item.key}`} startOffset="0%">
-                    {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
-                  </textPath>
-                </text>
+                {/* Node label - show circular text around edge (hidden for tracks) */}
+                {item.type !== 'track' && (
+                  <>
+                    <defs>
+                      <path
+                        id={`nodePath-${item.key}`}
+                        d={`
+                          M 0 0
+                          m -${nodeRadius}, 0
+                          a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
+                          a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
+                        `}
+                      />
+                    </defs>
+                    <text
+                      fill="white"
+                      fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
+                      fontSize={isHovered ? 13 : 11}
+                      fontWeight="600"
+                      filter={isHovered ? 'url(#textGlow)' : undefined}
+                      style={{
+                        pointerEvents: 'none',
+                        transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
+                      }}
+                    >
+                      <textPath href={`#nodePath-${item.key}`} startOffset="0%">
+                        {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
+                      </textPath>
+                    </text>
+                  </>
+                )}
 
-                {/* Go! text in center (only on hover) */}
+                {/* Center action text (only on hover) - two lines: icon + word */}
                 {isHovered && (
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="white"
-                    fontSize="14"
-                    fontWeight="900"
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    Go!
-                  </text>
+                  <>
+                    {item.hasSubgenres ? (
+                      /* Has subgenres: show ↓ "More" */
+                      <>
+                        <text
+                          textAnchor="middle"
+                          y="-6"
+                          fill="white"
+                          fontSize="20"
+                          fontWeight="900"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          ↓
+                        </text>
+                        <text
+                          textAnchor="middle"
+                          y="10"
+                          fill="white"
+                          fontSize="11"
+                          fontWeight="700"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          More
+                        </text>
+                      </>
+                    ) : (
+                      /* Leaf node: show ▶ "Play" */
+                      <>
+                        <text
+                          textAnchor="middle"
+                          y="-6"
+                          fill="white"
+                          fontSize="20"
+                          fontWeight="900"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          ▶
+                        </text>
+                        <text
+                          textAnchor="middle"
+                          y="10"
+                          fill="white"
+                          fontSize="11"
+                          fontWeight="700"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          Play
+                        </text>
+                      </>
+                    )}
+                  </>
                 )}
               </g>
             );
