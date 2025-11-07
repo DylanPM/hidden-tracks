@@ -1,6 +1,34 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFeatureMap } from '../../hooks/useFeatureMap';
 
+// Font standardization system
+const FONT_STYLES = {
+  largest: {
+    // Ring instruction text (circling "Click anywhere outside...")
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: '1px'
+  },
+  large: {
+    // Focus ring text, outer ring labels
+    fontSize: 14,
+    fontWeight: 600,
+    letterSpacing: '0.5px'
+  },
+  medium: {
+    // Genre node title, inner node text
+    fontSize: 12,
+    fontWeight: 600,
+    letterSpacing: '0px'
+  },
+  small: {
+    // More information text inside ring extrusion
+    fontSize: 9,
+    fontWeight: 500,
+    letterSpacing: '0px'
+  }
+};
+
 // Human-friendly feature labels (bidirectional) with Spotify-inspired colors
 const FEATURE_CONFIG = {
   danceability: {
@@ -375,8 +403,11 @@ export function GenreConstellationSelect({ onLaunch }) {
         if (!pos) return;
 
         const childData = child.data;
-        const hasSubgenres = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
+        const hasSubgenresData = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
         const hasSeeds = (childData?.seeds || childData?._seeds)?.length > 0;
+
+        // Show "More" if node has either subgenres or seeds to drill into
+        const hasSubgenres = hasSubgenresData || hasSeeds;
 
         items.push({
           key: child.key,
@@ -441,7 +472,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
           items.push({
             key: track.uri || i,
-            label: `${track.artist}\n- ${track.name}`,
+            label: `option ${i + 1}`,
             x,
             y,
             type: 'track',
@@ -463,7 +494,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
           items.push({
             key: track.uri || i,
-            label: `${track.artist}\n- ${track.name}`,
+            label: `option ${i + 1}`,
             x,
             y,
             type: 'track',
@@ -481,6 +512,78 @@ export function GenreConstellationSelect({ onLaunch }) {
   };
 
   const items = renderItems();
+
+  // Compute preview items when hovering a node with children
+  const previewItems = useMemo(() => {
+    if (!hoveredItem || !manifest) return [];
+
+    // Determine what would be shown if we clicked this node
+    const nextViewStack = hoveredItem.isParent ? viewStack : [...viewStack, hoveredItem.key];
+
+    // Get the node we're previewing
+    let previewNode = manifest;
+    for (const part of nextViewStack) {
+      if (previewNode[part]) previewNode = previewNode[part];
+      else if (previewNode.subgenres?.[part]) previewNode = previewNode.subgenres[part];
+      else return [];
+    }
+
+    // Check if it has subgenres
+    if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
+      // Preview subgenres
+      const previews = [];
+      Object.keys(previewNode.subgenres).forEach(key => {
+        const path = [...nextViewStack, key].join('.');
+        const pos = positions[path];
+        if (!pos) return;
+
+        const subgenreData = previewNode.subgenres[key];
+        const hasSubgenresData = subgenreData?.subgenres && Object.keys(subgenreData.subgenres).length > 0;
+        const hasSeeds = (subgenreData?.seeds || subgenreData?._seeds)?.length > 0;
+
+        previews.push({
+          key: key,
+          label: key,
+          x: pos.x,
+          y: pos.y,
+          type: 'subgenre',
+          hasSubgenres: hasSubgenresData || hasSeeds,
+          isPreview: true
+        });
+      });
+      return previews;
+    }
+
+    // Check if it has seeds (tracks)
+    const seeds = previewNode?.seeds || previewNode?._seeds || [];
+    if (seeds.length > 0 && loadedTracks.length === 0) {
+      // Would show tracks, but we need to calculate their positions
+      // For preview, we'll show them in a circle around the parent
+      const parentPos = positions[nextViewStack.join('.')] || { x: 0, y: 0 };
+      const circleRadius = 120;
+      const angleStep = (Math.PI * 2) / Math.min(seeds.length, 5); // Show up to 5 track previews
+
+      const previews = [];
+      for (let i = 0; i < Math.min(seeds.length, 5); i++) {
+        const angle = i * angleStep;
+        const x = parentPos.x + Math.cos(angle) * circleRadius;
+        const y = parentPos.y + Math.sin(angle) * circleRadius;
+
+        previews.push({
+          key: `preview-track-${i}`,
+          label: `option ${i + 1}`,
+          x,
+          y,
+          type: 'track',
+          hasSubgenres: false,
+          isPreview: true
+        });
+      }
+      return previews;
+    }
+
+    return [];
+  }, [hoveredItem, manifest, positions, viewStack, loadedTracks]);
 
   // Get selected node position for connection lines and LAUNCH overlay
   const selectedNode = items.find(item => item.key === selectedNodeKey);
@@ -688,14 +791,14 @@ export function GenreConstellationSelect({ onLaunch }) {
           }}
         >
           <defs>
-            {/* Circular path for orbiting text (follows hover) - enlarged focus ring */}
+            {/* Circular path for orbiting text (follows hover) - focus ring text */}
             <path
               id="descPath"
               d={`
                 M ${CENTER_X + (hoveredItem?.x || selectedNodePos.x)} ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}
-                m -85, 0
-                a 85,85 0 1,1 170,0
-                a 85,85 0 1,1 -170,0
+                m -75, 0
+                a 75,75 0 1,1 150,0
+                a 75,75 0 1,1 -150,0
               `}
             />
             {/* Glow filter for hover effect */}
@@ -948,8 +1051,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Title text */}
                 <text
                   fill="white"
-                  fontSize={isHovered ? "12" : "11"}
-                  fontWeight="700"
+                  fontSize={isHovered ? FONT_STYLES.large.fontSize + 1 : FONT_STYLES.large.fontSize}
+                  fontWeight={FONT_STYLES.large.fontWeight}
+                  letterSpacing={FONT_STYLES.large.letterSpacing}
                   className="transition-all duration-200"
                   style={{ pointerEvents: 'none' }}
                 >
@@ -1005,8 +1109,14 @@ export function GenreConstellationSelect({ onLaunch }) {
           {items.map(item => {
             const isSelected = item.key === selectedNodeKey;
             const isHovered = hoveredItem?.key === item.key;
-            const nodeRadius = item.type === 'track' ? 21 : 27; // Further reduced for less overlap
+            const nodeRadius = 27; // Same size for all nodes
             const focusRingRadius = 85; // Outer ring for focus ring (enlarged from 60)
+
+            // Hide siblings when preview is active (only show hovered item)
+            const hasPreview = previewItems.length > 0;
+            const shouldHide = hasPreview && !isHovered;
+
+            if (shouldHide) return null;
 
             return (
               <g
@@ -1024,11 +1134,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                       r={focusRingRadius}
                       fill="#1DB954"
                       opacity="0.15"
-                      className="cursor-pointer hover:opacity-30 transition-opacity"
                       style={{
-                        animation: 'pulse 2s ease-in-out infinite'
+                        animation: 'pulse 2s ease-in-out infinite',
+                        pointerEvents: 'none'
                       }}
-                      onClick={item.onClick}
                     />
                     {/* Green stroke ring */}
                     <circle
@@ -1055,37 +1164,33 @@ export function GenreConstellationSelect({ onLaunch }) {
                   onClick={item.onClick}
                 />
 
-                {/* Node label - show circular text around edge (hidden for tracks) */}
-                {item.type !== 'track' && (
-                  <>
-                    <defs>
-                      <path
-                        id={`nodePath-${item.key}`}
-                        d={`
-                          M 0 0
-                          m -${nodeRadius}, 0
-                          a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
-                          a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
-                        `}
-                      />
-                    </defs>
-                    <text
-                      fill="white"
-                      fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                      fontSize={isHovered ? 13 : 11}
-                      fontWeight="600"
-                      filter={isHovered ? 'url(#textGlow)' : undefined}
-                      style={{
-                        pointerEvents: 'none',
-                        transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
-                      }}
-                    >
-                      <textPath href={`#nodePath-${item.key}`} startOffset="0%">
-                        {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
-                      </textPath>
-                    </text>
-                  </>
-                )}
+                {/* Node label - show circular text around edge */}
+                <defs>
+                  <path
+                    id={`nodePath-${item.key}`}
+                    d={`
+                      M 0 0
+                      m -${nodeRadius}, 0
+                      a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
+                      a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
+                    `}
+                  />
+                </defs>
+                <text
+                  fill="white"
+                  fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
+                  fontSize={isHovered ? FONT_STYLES.medium.fontSize + 1 : FONT_STYLES.medium.fontSize}
+                  fontWeight={FONT_STYLES.medium.fontWeight}
+                  filter={isHovered ? 'url(#textGlow)' : undefined}
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
+                  }}
+                >
+                  <textPath href={`#nodePath-${item.key}`} startOffset="0%">
+                    {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
+                  </textPath>
+                </text>
 
                 {/* Center action text (only on hover) - two lines: icon + word */}
                 {isHovered && (
@@ -1145,6 +1250,84 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
+          {/* Preview items (shown when hovering a node with children) */}
+          {previewItems.length > 0 && hoveredItem && previewItems.map((previewItem, idx) => {
+            const nodeRadius = 27;
+
+            return (
+              <g key={`preview-${previewItem.key}`}>
+                {/* Connection line from hovered item to preview item */}
+                <line
+                  x1={CENTER_X + hoveredItem.x}
+                  y1={CENTER_Y + hoveredItem.y}
+                  x2={CENTER_X + previewItem.x}
+                  y2={CENTER_Y + previewItem.y}
+                  stroke="#1DB954"
+                  strokeWidth="1"
+                  strokeDasharray="2 2"
+                  opacity="0.3"
+                  style={{ pointerEvents: 'none' }}
+                />
+
+                {/* Animated pulse along the line */}
+                <circle
+                  r="4"
+                  fill="#1DB954"
+                  opacity="0.8"
+                  style={{
+                    pointerEvents: 'none',
+                    animation: `linePulse-${idx} 2s ease-in-out infinite`
+                  }}
+                >
+                  <animateMotion
+                    dur="2s"
+                    repeatCount="indefinite"
+                    path={`M ${hoveredItem.x} ${hoveredItem.y} L ${previewItem.x} ${previewItem.y}`}
+                  />
+                </circle>
+
+                {/* Preview node */}
+                <g
+                  transform={`translate(${CENTER_X + previewItem.x}, ${CENTER_Y + previewItem.y})`}
+                  opacity="0.5"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {/* Node circle */}
+                  <circle
+                    r={nodeRadius}
+                    fill="#18181b"
+                    stroke="#1DB954"
+                    strokeWidth="2"
+                    strokeOpacity="0.6"
+                  />
+
+                  {/* Node label */}
+                  <defs>
+                    <path
+                      id={`previewNodePath-${previewItem.key}`}
+                      d={`
+                        M 0 0
+                        m -${nodeRadius}, 0
+                        a ${nodeRadius},${nodeRadius} 0 1,1 ${nodeRadius * 2},0
+                        a ${nodeRadius},${nodeRadius} 0 1,1 -${nodeRadius * 2},0
+                      `}
+                    />
+                  </defs>
+                  <text
+                    fill="white"
+                    fillOpacity="0.6"
+                    fontSize={FONT_STYLES.medium.fontSize}
+                    fontWeight={FONT_STYLES.medium.fontWeight}
+                  >
+                    <textPath href={`#previewNodePath-${previewItem.key}`} startOffset="0%">
+                      {previewItem.label.length > 20 ? previewItem.label.slice(0, 20) + '…' : previewItem.label}
+                    </textPath>
+                  </text>
+                </g>
+              </g>
+            );
+          })}
+
           {/* Orbiting description text (follows hover, shows genre descriptions) */}
           {selectedNode && (
             <g
@@ -1154,7 +1337,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
-              <text fontSize="14" fill="#b7f7cf" fontWeight="600" letterSpacing="0.5px">
+              <text fontSize={FONT_STYLES.large.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem
                     ? (hoveredItem.type === 'track' && hoveredItem.track
@@ -1190,12 +1373,12 @@ export function GenreConstellationSelect({ onLaunch }) {
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize="16" fill="#b7f7cf" fontWeight="700" letterSpacing="1px">
+                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#rootPath" startOffset="0%">
                     Click a genre to explore the musical landscape
                   </textPath>
                 </text>
-                <text fontSize="16" fill="#b7f7cf" fontWeight="700" letterSpacing="1px">
+                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#rootPath" startOffset="50%">
                     Click a genre to explore the musical landscape
                   </textPath>
@@ -1225,12 +1408,12 @@ export function GenreConstellationSelect({ onLaunch }) {
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize="16" fill="#a1a1aa" fontWeight="900" letterSpacing="1.5px">
+                <text fontSize={FONT_STYLES.largest.fontSize} fill="#a1a1aa" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="0%">
                     Click anywhere outside the ring to go back
                   </textPath>
                 </text>
-                <text fontSize="16" fill="#a1a1aa" fontWeight="900" letterSpacing="1.5px">
+                <text fontSize={FONT_STYLES.largest.fontSize} fill="#a1a1aa" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="50%">
                     Click anywhere outside the ring to go back
                   </textPath>
@@ -1248,8 +1431,8 @@ export function GenreConstellationSelect({ onLaunch }) {
               <text
                 key={`desc-${label.feature}-${label.end}`}
                 fill="white"
-                fontSize="9"
-                fontWeight="500"
+                fontSize={FONT_STYLES.small.fontSize}
+                fontWeight={FONT_STYLES.small.fontWeight}
                 opacity="0.9"
                 style={{ pointerEvents: 'none' }}
               >
