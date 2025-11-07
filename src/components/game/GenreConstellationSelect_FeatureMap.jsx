@@ -515,7 +515,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   // Compute preview items when hovering a node with children
   const previewItems = useMemo(() => {
-    if (!hoveredItem || !manifest) return [];
+    if (!hoveredItem || !manifest?.global) return [];
 
     // Determine what would be shown if we clicked this node
     const nextViewStack = hoveredItem.isParent ? viewStack : [...viewStack, hoveredItem.key];
@@ -528,13 +528,105 @@ export function GenreConstellationSelect({ onLaunch }) {
       else return [];
     }
 
+    // Helper to compute positions with local normalization
+    const computeLocalPositions = (subgenres) => {
+      const { feature_angles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
+      const { quantiles: globalQuantiles } = manifest.global;
+
+      // Collect sibling features for local normalization
+      const siblingFeatures = Object.values(subgenres)
+        .map(sg => sg.features)
+        .filter(f => f);
+
+      if (siblingFeatures.length === 0) return {};
+
+      // Compute local quantiles
+      const localQuantiles = {};
+      feature_angles.forEach(featureName => {
+        const values = siblingFeatures
+          .map(s => s[featureName])
+          .filter(v => v != null && !isNaN(v))
+          .sort((a, b) => a - b);
+
+        if (values.length === 0) {
+          localQuantiles[featureName] = globalQuantiles[featureName];
+          return;
+        }
+
+        const p10Idx = Math.floor(values.length * 0.1);
+        const p50Idx = Math.floor(values.length * 0.5);
+        const p90Idx = Math.floor(values.length * 0.9);
+
+        localQuantiles[featureName] = {
+          p10: values[p10Idx],
+          p50: values[p50Idx],
+          p90: values[p90Idx]
+        };
+      });
+
+      // Project each subgenre to 2D
+      const angleStep = (Math.PI * 2) / feature_angles.length;
+      const featureAngles = feature_angles.reduce((acc, feature, i) => {
+        acc[feature] = i * angleStep;
+        return acc;
+      }, {});
+
+      const projectTo2D = (features) => {
+        let x = 0, y = 0;
+
+        feature_angles.forEach(featureName => {
+          if (activeFeatures[featureName] === false) return;
+
+          const rawValue = features[featureName];
+          if (rawValue == null || isNaN(rawValue)) return;
+
+          const q = localQuantiles[featureName];
+          if (!q) return;
+
+          // Normalize to percentile
+          let percentile;
+          if (rawValue <= q.p10) percentile = 0.1;
+          else if (rawValue <= q.p50) percentile = 0.1 + 0.4 * ((rawValue - q.p10) / (q.p50 - q.p10));
+          else if (rawValue <= q.p90) percentile = 0.5 + 0.4 * ((rawValue - q.p50) / (q.p90 - q.p50));
+          else percentile = 0.9 + 0.1 * Math.min(1, (rawValue - q.p90) / (q.p90 - q.p50));
+
+          // Apply contrast curve for speechiness
+          if (featureName === 'speechiness') {
+            percentile = Math.pow(percentile, 1 / speechiness_contrast_gamma);
+          }
+
+          // Convert to weight
+          const weight = (percentile - 0.5) * 2 * exaggeration;
+          const angle = featureAngles[featureName];
+          x += weight * Math.cos(angle);
+          y += weight * Math.sin(angle);
+        });
+
+        return {
+          x: x * projection_scale,
+          y: y * projection_scale
+        };
+      };
+
+      const result = {};
+      Object.keys(subgenres).forEach(key => {
+        if (subgenres[key].features) {
+          result[key] = projectTo2D(subgenres[key].features);
+        }
+      });
+
+      return result;
+    };
+
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
+      // Compute positions with local normalization at this level
+      const localPositions = computeLocalPositions(previewNode.subgenres);
+
       // Preview subgenres
       const previews = [];
       Object.keys(previewNode.subgenres).forEach(key => {
-        const path = [...nextViewStack, key].join('.');
-        const pos = positions[path];
+        const pos = localPositions[key];
         if (!pos) return;
 
         const subgenreData = previewNode.subgenres[key];
@@ -583,7 +675,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     }
 
     return [];
-  }, [hoveredItem, manifest, positions, viewStack, loadedTracks]);
+  }, [hoveredItem, manifest, positions, viewStack, loadedTracks, exaggeration, activeFeatures]);
 
   // Get selected node position for connection lines and LAUNCH overlay
   const selectedNode = items.find(item => item.key === selectedNodeKey);
@@ -791,14 +883,14 @@ export function GenreConstellationSelect({ onLaunch }) {
           }}
         >
           <defs>
-            {/* Circular path for orbiting text (follows hover) - focus ring text */}
+            {/* Circular path for orbiting text (follows hover) - orbits outside green ring */}
             <path
               id="descPath"
               d={`
                 M ${CENTER_X + (hoveredItem?.x || selectedNodePos.x)} ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}
-                m -75, 0
-                a 75,75 0 1,1 150,0
-                a 75,75 0 1,1 -150,0
+                m -85, 0
+                a 85,85 0 1,1 170,0
+                a 85,85 0 1,1 -170,0
               `}
             />
             {/* Glow filter for hover effect */}
@@ -1110,11 +1202,11 @@ export function GenreConstellationSelect({ onLaunch }) {
             const isSelected = item.key === selectedNodeKey;
             const isHovered = hoveredItem?.key === item.key;
             const nodeRadius = 27; // Same size for all nodes
-            const focusRingRadius = 85; // Outer ring for focus ring (enlarged from 60)
+            const focusRingRadius = 75; // Green ring radius
 
-            // Hide siblings when preview is active (only show hovered item)
+            // Hide siblings when preview is active (only show hovered item + parent nodes)
             const hasPreview = previewItems.length > 0;
-            const shouldHide = hasPreview && !isHovered;
+            const shouldHide = hasPreview && !isHovered && !item.isParent;
 
             if (shouldHide) return null;
 
@@ -1274,15 +1366,12 @@ export function GenreConstellationSelect({ onLaunch }) {
                   r="4"
                   fill="#1DB954"
                   opacity="0.8"
-                  style={{
-                    pointerEvents: 'none',
-                    animation: `linePulse-${idx} 2s ease-in-out infinite`
-                  }}
+                  style={{ pointerEvents: 'none' }}
                 >
                   <animateMotion
                     dur="2s"
                     repeatCount="indefinite"
-                    path={`M ${hoveredItem.x} ${hoveredItem.y} L ${previewItem.x} ${previewItem.y}`}
+                    path={`M ${CENTER_X + hoveredItem.x} ${CENTER_Y + hoveredItem.y} L ${CENTER_X + previewItem.x} ${CENTER_Y + previewItem.y}`}
                   />
                 </circle>
 
@@ -1329,7 +1418,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           })}
 
           {/* Orbiting description text (follows hover, shows genre descriptions) */}
-          {selectedNode && (
+          {(hoveredItem || selectedNode) && (
             <g
               style={{
                 transformOrigin: `${CENTER_X + (hoveredItem?.x || selectedNodePos.x)}px ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}px`,
@@ -1343,7 +1432,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     ? (hoveredItem.type === 'track' && hoveredItem.track
                         ? `${hoveredItem.track.artist} - ${hoveredItem.track.name}`
                         : getGenreDescription(hoveredItem.label))
-                    : (selectedNode.type === 'track' && selectedNode.track
+                    : (selectedNode?.type === 'track' && selectedNode.track
                         ? `${selectedNode.track.artist} - ${selectedNode.track.name}`
                         : genreDescription)
                   }
