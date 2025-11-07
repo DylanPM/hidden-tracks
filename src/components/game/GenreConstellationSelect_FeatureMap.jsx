@@ -486,12 +486,12 @@ export function GenreConstellationSelect({ onLaunch }) {
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
 
-  // Axis configuration (bidirectional labels) - 16 segments but positioned at 8 feature angles
+  // Axis configuration (bidirectional labels) - 16 evenly-spaced segments
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
     const { feature_angles } = manifest.global.display;
-    const featureAngleStep = (Math.PI * 2) / 8; // Features are at 45° intervals
+    const segmentAngleStep = (Math.PI * 2) / 16; // 16 segments = 22.5° each
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
@@ -502,8 +502,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       if (!config) return;
 
-      // High end at feature angle (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
-      const highAngle = i * featureAngleStep;
+      // High end at evenly-spaced positions (0°, 22.5°, 45°, 67.5°, 90°, 112.5°, 135°, 157.5°)
+      const highAngle = i * segmentAngleStep;
       labels.push({
         feature,
         end: 'high',
@@ -516,8 +516,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         enabled
       });
 
-      // Low end 180° opposite
-      const lowAngle = highAngle + Math.PI;
+      // Low end 180° opposite (8 segments away: 180°, 202.5°, 225°, 247.5°, 270°, 292.5°, 315°, 337.5°)
+      const lowAngle = (i + 8) * segmentAngleStep;
       labels.push({
         feature,
         end: 'low',
@@ -729,20 +729,19 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Subtle background floor coloring - 16 segments at feature angles */}
+          {/* Subtle background floor coloring - 16 evenly-spaced segments */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
-            const featureAngleStep = (Math.PI * 2) / 8; // Features at 45° intervals
-            const segmentAngleStep = (Math.PI * 2) / 16; // Use for segment width
+            const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
-            // High end segment: centered at feature angle, spans one segment width
-            const highAngle = i * featureAngleStep - segmentAngleStep / 2;
-            const highNextAngle = i * featureAngleStep + segmentAngleStep / 2;
+            // High end segment at evenly-spaced position i
+            const highStartAngle = i * segmentAngleStep - segmentAngleStep / 2;
+            const highEndAngle = i * segmentAngleStep + segmentAngleStep / 2;
 
-            // Low end segment: 180° opposite
-            const lowAngle = (i * featureAngleStep + Math.PI) - segmentAngleStep / 2;
-            const lowNextAngle = (i * featureAngleStep + Math.PI) + segmentAngleStep / 2;
+            // Low end segment 180° opposite (8 segments away)
+            const lowStartAngle = (i + 8) * segmentAngleStep - segmentAngleStep / 2;
+            const lowEndAngle = (i + 8) * segmentAngleStep + segmentAngleStep / 2;
 
             return (
               <g key={`floor-bg-${feature}`}>
@@ -750,8 +749,8 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <path
                   d={`
                     M ${CENTER_X} ${CENTER_Y}
-                    L ${CENTER_X + Math.cos(highAngle) * radius} ${CENTER_Y + Math.sin(highAngle) * radius}
-                    L ${CENTER_X + Math.cos(highNextAngle) * radius} ${CENTER_Y + Math.sin(highNextAngle) * radius}
+                    L ${CENTER_X + Math.cos(highStartAngle) * radius} ${CENTER_Y + Math.sin(highStartAngle) * radius}
+                    L ${CENTER_X + Math.cos(highEndAngle) * radius} ${CENTER_Y + Math.sin(highEndAngle) * radius}
                     Z
                   `}
                   fill={featureColor}
@@ -762,8 +761,8 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <path
                   d={`
                     M ${CENTER_X} ${CENTER_Y}
-                    L ${CENTER_X + Math.cos(lowAngle) * radius} ${CENTER_Y + Math.sin(lowAngle) * radius}
-                    L ${CENTER_X + Math.cos(lowNextAngle) * radius} ${CENTER_Y + Math.sin(lowNextAngle) * radius}
+                    L ${CENTER_X + Math.cos(lowStartAngle) * radius} ${CENTER_Y + Math.sin(lowStartAngle) * radius}
+                    L ${CENTER_X + Math.cos(lowEndAngle) * radius} ${CENTER_Y + Math.sin(lowEndAngle) * radius}
                     Z
                   `}
                   fill={featureColor}
@@ -779,18 +778,18 @@ export function GenreConstellationSelect({ onLaunch }) {
             const feature_angles = manifest?.global?.display?.feature_angles;
             if (!feature_angles) return null;
 
-            const featureAngleStep = (Math.PI * 2) / 8; // Features at 45° intervals
+            const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment for even spacing
             const maxRadius = 250;
             const minRadius = 50;
 
-            // Create 16 points: high ends at feature angles, low ends 180° opposite
+            // Create 16 points at evenly-spaced angles
             const points = [];
 
             feature_angles.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
-              // High end point: radius increases with weight (0.0 → minRadius, 1.0 → maxRadius)
-              const highAngle = i * featureAngleStep;
+              // High end point at evenly-spaced position i
+              const highAngle = i * segmentAngleStep;
               const highRadius = minRadius + (weight * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(highAngle) * highRadius,
@@ -803,8 +802,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             feature_angles.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
-              // Low end point: radius increases with inverse weight (1.0 → minRadius, 0.0 → maxRadius)
-              const lowAngle = i * featureAngleStep + Math.PI;
+              // Low end point 180° opposite (8 segments away)
+              const lowAngle = (i + 8) * segmentAngleStep;
               const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(lowAngle) * lowRadius,
