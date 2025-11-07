@@ -1,47 +1,47 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFeatureMap } from '../../hooks/useFeatureMap';
 
-// Human-friendly feature labels (bidirectional) with colors
+// Human-friendly feature labels (bidirectional) with Spotify-inspired colors
 const FEATURE_CONFIG = {
   danceability: {
     low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing' },
     high: { emoji: '💃', name: 'Dance', desc: 'Made for dancing' },
-    color: '#a855f7' // purple
+    color: '#B026FF' // Electric purple
   },
   energy: {
     low: { emoji: '😌', name: 'Calm', desc: 'Mellow and peaceful' },
     high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active' },
-    color: '#ef4444' // red
+    color: '#FF4458' // Vibrant red
   },
   speechiness: {
     low: { emoji: '🎵', name: 'Musical', desc: 'Instrumental melodies' },
     high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping' },
-    color: '#eab308' // yellow
+    color: '#FFD700' // Bright gold
   },
   acousticness: {
     low: { emoji: '🎹', name: 'Electronic', desc: 'Synths and machines' },
     high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments' },
-    color: '#f97316' // orange
+    color: '#FF8C00' // Dark orange
   },
   valence: {
     low: { emoji: '😢', name: 'Sad', desc: 'Melancholic feeling' },
     high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful' },
-    color: '#ec4899' // pink
+    color: '#FF1493' // Hot pink
   },
   tempo_norm: {
     low: { emoji: '🐌', name: 'Slow', desc: 'Slower tempo' },
     high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo' },
-    color: '#06b6d4' // cyan
+    color: '#00D9FF' // Electric cyan
   },
   popularity: {
     low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare' },
     high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits' },
-    color: '#fbbf24' // amber/gold
+    color: '#FFC107' // Material gold
   },
   instrumentalness: {
     low: { emoji: '🎤', name: 'Vocal', desc: 'With singing' },
     high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals' },
-    color: '#3b82f6' // blue
+    color: '#4A90E2' // Bright blue
   }
 };
 
@@ -470,12 +470,12 @@ export function GenreConstellationSelect({ onLaunch }) {
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
 
-  // Axis configuration (bidirectional labels) - 16 evenly spaced segments
+  // Axis configuration (bidirectional labels) - 16 segments but positioned at 8 feature angles
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
     const { feature_angles } = manifest.global.display;
-    const segmentAngleStep = (Math.PI * 2) / 16; // 16 segments = 22.5° each
+    const featureAngleStep = (Math.PI * 2) / 8; // Features are at 45° intervals
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
@@ -486,8 +486,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       if (!config) return;
 
-      // High end at segment i (0-7)
-      const highAngle = i * segmentAngleStep;
+      // High end at feature angle (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
+      const highAngle = i * featureAngleStep;
       labels.push({
         feature,
         end: 'high',
@@ -500,8 +500,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         enabled
       });
 
-      // Low end at segment (i + 8), which is 180° opposite (8-15)
-      const lowAngle = (i + 8) * segmentAngleStep;
+      // Low end 180° opposite
+      const lowAngle = highAngle + Math.PI;
       labels.push({
         feature,
         end: 'low',
@@ -713,19 +713,20 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Subtle background floor coloring - 16 segments matching ring */}
+          {/* Subtle background floor coloring - 16 segments at feature angles */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
-            const segmentAngleStep = (Math.PI * 2) / 16;
+            const featureAngleStep = (Math.PI * 2) / 8; // Features at 45° intervals
+            const segmentAngleStep = (Math.PI * 2) / 16; // Use for segment width
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
-            // High end segment
-            const highAngle = i * segmentAngleStep;
-            const highNextAngle = highAngle + segmentAngleStep;
+            // High end segment: centered at feature angle, spans one segment width
+            const highAngle = i * featureAngleStep - segmentAngleStep / 2;
+            const highNextAngle = i * featureAngleStep + segmentAngleStep / 2;
 
-            // Low end segment (8 segments away)
-            const lowAngle = (i + 8) * segmentAngleStep;
-            const lowNextAngle = lowAngle + segmentAngleStep;
+            // Low end segment: 180° opposite
+            const lowAngle = (i * featureAngleStep + Math.PI) - segmentAngleStep / 2;
+            const lowNextAngle = (i * featureAngleStep + Math.PI) + segmentAngleStep / 2;
 
             return (
               <g key={`floor-bg-${feature}`}>
@@ -762,18 +763,18 @@ export function GenreConstellationSelect({ onLaunch }) {
             const feature_angles = manifest?.global?.display?.feature_angles;
             if (!feature_angles) return null;
 
-            const segmentAngleStep = (Math.PI * 2) / 16; // Same as ring segments
+            const featureAngleStep = (Math.PI * 2) / 8; // Features at 45° intervals
             const maxRadius = 250;
             const minRadius = 50;
 
-            // Create 16 points: high ends at segments 0-7, low ends at segments 8-15
+            // Create 16 points: high ends at feature angles, low ends 180° opposite
             const points = [];
 
             feature_angles.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
               // High end point: radius increases with weight (0.0 → minRadius, 1.0 → maxRadius)
-              const highAngle = i * segmentAngleStep;
+              const highAngle = i * featureAngleStep;
               const highRadius = minRadius + (weight * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(highAngle) * highRadius,
@@ -787,7 +788,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               const weight = focusedNodeFeatureWeights[feature];
 
               // Low end point: radius increases with inverse weight (1.0 → minRadius, 0.0 → maxRadius)
-              const lowAngle = (i + 8) * segmentAngleStep;
+              const lowAngle = i * featureAngleStep + Math.PI;
               const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(lowAngle) * lowRadius,
@@ -849,6 +850,9 @@ export function GenreConstellationSelect({ onLaunch }) {
           >
           {axisConfig.map((label, idx) => {
             const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
+            // Also light up if the opposite end is hovered
+            const oppositeEnd = label.end === 'high' ? 'low' : 'high';
+            const isOppositeHovered = hoveredAxisLabel === `${label.feature}-${oppositeEnd}`;
 
             // Hover pushes segment outward by 30px
             const outerRadius = isHovered ? 315 : 285;
@@ -887,9 +891,8 @@ export function GenreConstellationSelect({ onLaunch }) {
               Z
             `;
 
-            // Text position (curved along arc)
+            // Text position (curved along arc, centered mid-ring)
             const textRadius = (outerRadius + innerRadius) / 2;
-            const textPathRadius = textRadius;
 
             return (
               <g key={`ring-segment-${label.feature}-${label.end}`}>
@@ -897,9 +900,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <path
                   d={segmentPath}
                   fill={featureColor}
-                  fillOpacity={label.enabled ? 0.4 : 0.2}
+                  fillOpacity={label.enabled ? (isHovered || isOppositeHovered ? 0.6 : 0.4) : 0.2}
                   stroke={featureColor}
-                  strokeWidth="0.5"
+                  strokeWidth="2"
                   className="cursor-pointer transition-all duration-200"
                   onClick={viewStack.length > 0 ? handleBack : undefined}
                   onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
@@ -908,21 +911,21 @@ export function GenreConstellationSelect({ onLaunch }) {
 
                 {/* Curved text along arc */}
                 <defs>
-                  {/* Title path (outer) */}
+                  {/* Title path (centered mid-ring) */}
                   <path
                     id={`arc-title-${label.feature}-${label.end}`}
                     d={`
-                      M ${CENTER_X + Math.cos(startAngle) * (outerRadius - 5)} ${CENTER_Y + Math.sin(startAngle) * (outerRadius - 5)}
-                      A ${outerRadius - 5} ${outerRadius - 5} 0 0 1 ${CENTER_X + Math.cos(endAngle) * (outerRadius - 5)} ${CENTER_Y + Math.sin(endAngle) * (outerRadius - 5)}
+                      M ${CENTER_X + Math.cos(startAngle) * textRadius} ${CENTER_Y + Math.sin(startAngle) * textRadius}
+                      A ${textRadius} ${textRadius} 0 0 1 ${CENTER_X + Math.cos(endAngle) * textRadius} ${CENTER_Y + Math.sin(endAngle) * textRadius}
                     `}
                   />
-                  {/* Description path (below title) */}
+                  {/* Description path (extended to canvas edge when hovering) */}
                   {isHovered && (
                     <path
                       id={`arc-desc-${label.feature}-${label.end}`}
                       d={`
-                        M ${CENTER_X + Math.cos(startAngle) * (textPathRadius - 3)} ${CENTER_Y + Math.sin(startAngle) * (textPathRadius - 3)}
-                        A ${textPathRadius - 3} ${textPathRadius - 3} 0 0 1 ${CENTER_X + Math.cos(endAngle) * (textPathRadius - 3)} ${CENTER_Y + Math.sin(endAngle) * (textPathRadius - 3)}
+                        M ${CENTER_X + Math.cos(startAngle) * 330} ${CENTER_Y + Math.sin(startAngle) * 330}
+                        A 330 330 0 0 1 ${CENTER_X + Math.cos(endAngle) * 330} ${CENTER_Y + Math.sin(endAngle) * 330}
                       `}
                     />
                   )}
@@ -939,66 +942,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                     {label.name}
                   </textPath>
                 </text>
-                {/* Description text (only on hover) */}
-                {isHovered && (
-                  <text
-                    fill="white"
-                    fontSize="8"
-                    fontWeight="400"
-                    opacity="0.8"
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    <textPath href={`#arc-desc-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
-                      {label.desc.slice(0, 25)}
-                    </textPath>
-                  </text>
-                )}
               </g>
             );
           })}
           </g>
-
-          {/* Outward arrows around ring (clickability indicator) */}
-          {viewStack.length > 0 && (() => {
-            const arrowCount = 8;
-            const arrowRadius = 295; // Between ring segments
-            const arrowAngleStep = (Math.PI * 2) / arrowCount;
-
-            return Array.from({ length: arrowCount }).map((_, i) => {
-              const angle = i * arrowAngleStep;
-              const x = CENTER_X + Math.cos(angle) * arrowRadius;
-              const y = CENTER_Y + Math.sin(angle) * arrowRadius;
-
-              // Create arrow path pointing outward (thin point outward)
-              const arrowSize = 10;
-              const arrowAngle = 0.35; // Angle spread for arrow lines
-              const arrowPath = `
-                M ${x + Math.cos(angle - arrowAngle) * -arrowSize} ${y + Math.sin(angle - arrowAngle) * -arrowSize}
-                L ${x + Math.cos(angle) * 2} ${y + Math.sin(angle) * 2}
-                M ${x + Math.cos(angle + arrowAngle) * -arrowSize} ${y + Math.sin(angle + arrowAngle) * -arrowSize}
-                L ${x + Math.cos(angle) * 2} ${y + Math.sin(angle) * 2}
-              `;
-
-              return (
-                <g
-                  key={`arrow-${i}`}
-                  style={{
-                    animation: 'arrowPulse 4.5s ease-in-out infinite',
-                    animationDelay: `${i * 0.15}s`
-                  }}
-                >
-                  <path
-                    d={arrowPath}
-                    stroke="#71717a"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    fill="none"
-                    style={{ pointerEvents: 'none' }}
-                  />
-                </g>
-              );
-            });
-          })()}
 
           {/* Axis lines (8 total) - point to center of ring segments */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
@@ -1133,7 +1080,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
                   }}
                 >
-                  <textPath href={`#nodePath-${item.key}`} startOffset="75%" textAnchor="middle">
+                  <textPath href={`#nodePath-${item.key}`} startOffset="0%">
                     {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
                   </textPath>
                 </text>
@@ -1231,23 +1178,44 @@ export function GenreConstellationSelect({ onLaunch }) {
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 20000ms linear infinite`,
+                  animation: `orbit 22000ms linear infinite`,
                   pointerEvents: 'none'
                 }}
               >
                 <text fontSize="16" fill="#a1a1aa" fontWeight="900" letterSpacing="1.5px">
                   <textPath href="#backPath" startOffset="0%">
-                    ◁ Click outside to go back ◁
+                    Click anywhere outside the ring to go back
                   </textPath>
                 </text>
                 <text fontSize="16" fill="#a1a1aa" fontWeight="900" letterSpacing="1.5px">
                   <textPath href="#backPath" startOffset="50%">
-                    ◁ Click outside to go back ◁
+                    Click anywhere outside the ring to go back
                   </textPath>
                 </text>
               </g>
             </>
           )}
+
+          {/* Ring label descriptions (rendered on top of rotating text) */}
+          {axisConfig.map((label) => {
+            const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
+            if (!isHovered) return null;
+
+            return (
+              <text
+                key={`desc-${label.feature}-${label.end}`}
+                fill="white"
+                fontSize="9"
+                fontWeight="500"
+                opacity="0.9"
+                style={{ pointerEvents: 'none' }}
+              >
+                <textPath href={`#arc-desc-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
+                  {label.desc}
+                </textPath>
+              </text>
+            );
+          })}
         </svg>
       </div>
 
