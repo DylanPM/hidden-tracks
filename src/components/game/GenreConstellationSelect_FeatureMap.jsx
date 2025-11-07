@@ -17,7 +17,7 @@ const FONT_STYLES = {
   },
   medium: {
     // Genre node title, inner node text
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 600,
     letterSpacing: '0px'
   },
@@ -34,42 +34,42 @@ const FEATURE_CONFIG = {
   danceability: {
     low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing' },
     high: { emoji: '💃', name: 'Dance', desc: 'Made for dancing' },
-    color: '#B026FF' // Electric purple
+    color: '#8B5CF6' // Muted purple
   },
   energy: {
     low: { emoji: '😌', name: 'Calm', desc: 'Mellow and peaceful' },
     high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active' },
-    color: '#FF4458' // Vibrant red
+    color: '#EF4444' // Vibrant red
   },
   speechiness: {
     low: { emoji: '🎵', name: 'Musical', desc: 'Instrumental melodies' },
     high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping' },
-    color: '#FFD700' // Bright gold
+    color: '#F59E0B' // Amber
   },
   acousticness: {
     low: { emoji: '🎹', name: 'Electronic', desc: 'Synths and machines' },
     high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments' },
-    color: '#FF8C00' // Dark orange
+    color: '#EC4899' // Pink
   },
   valence: {
     low: { emoji: '😢', name: 'Sad', desc: 'Melancholic feeling' },
     high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful' },
-    color: '#FF1493' // Hot pink
+    color: '#FB923C' // Orange
   },
   tempo_norm: {
     low: { emoji: '🐌', name: 'Slow', desc: 'Slower tempo' },
     high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo' },
-    color: '#00D9FF' // Electric cyan
+    color: '#06B6D4' // Cyan
   },
   popularity: {
     low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare' },
     high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits' },
-    color: '#FFC107' // Material gold
+    color: '#FBBF24' // Yellow
   },
   instrumentalness: {
     low: { emoji: '🎤', name: 'Vocal', desc: 'With singing' },
     high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals' },
-    color: '#4A90E2' // Bright blue
+    color: '#3B82F6' // Blue
   }
 };
 
@@ -106,6 +106,8 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [hoveredItem, setHoveredItem] = useState(null);
   const [hoveredAxisLabel, setHoveredAxisLabel] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(0.85); // Start zoomed out to prevent clipping
+  const [showBackHint, setShowBackHint] = useState(false);
+  const [backHintTimeout, setBackHintTimeout] = useState(null);
 
   // Active features (all enabled by default)
   const [activeFeatures, setActiveFeatures] = useState({
@@ -245,6 +247,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     setSelectedTrack(null);
     setLoadedTracks([]);
     setHoveredItem(null); // Reset hover to prevent ghosting
+    setShowBackHint(false); // Hide hint when going back
 
     // Progressive zoom: reduce by 20% for each level back from 0.85 base
     setZoomLevel(0.85 + (newStack.length * 0.2));
@@ -528,6 +531,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       else return [];
     }
 
+    /* OLD CODE: Feature-based positioning with local normalization
     // Helper to compute positions with local normalization
     const computeLocalPositions = (subgenres) => {
       const { feature_angles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
@@ -617,17 +621,21 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       return result;
     };
+    */
 
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // Compute positions with local normalization at this level
-      const localPositions = computeLocalPositions(previewNode.subgenres);
+      // NEW CODE: Circular arrangement like tracks
+      const subgenreKeys = Object.keys(previewNode.subgenres);
+      const parentPos = { x: hoveredItem.x, y: hoveredItem.y };
+      const circleRadius = 120;
+      const angleStep = (Math.PI * 2) / subgenreKeys.length;
 
-      // Preview subgenres
       const previews = [];
-      Object.keys(previewNode.subgenres).forEach(key => {
-        const pos = localPositions[key];
-        if (!pos) return;
+      subgenreKeys.forEach((key, i) => {
+        const angle = i * angleStep;
+        const x = parentPos.x + Math.cos(angle) * circleRadius;
+        const y = parentPos.y + Math.sin(angle) * circleRadius;
 
         const subgenreData = previewNode.subgenres[key];
         const hasSubgenresData = subgenreData?.subgenres && Object.keys(subgenreData.subgenres).length > 0;
@@ -636,8 +644,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         previews.push({
           key: key,
           label: key,
-          x: pos.x,
-          y: pos.y,
+          x,
+          y,
           type: 'subgenre',
           hasSubgenres: hasSubgenresData || hasSeeds,
           isPreview: true
@@ -883,14 +891,14 @@ export function GenreConstellationSelect({ onLaunch }) {
           }}
         >
           <defs>
-            {/* Circular path for orbiting text (follows hover) - orbits outside green ring */}
+            {/* Circular path for orbiting text (follows hover) - orbits at green ring edge */}
             <path
               id="descPath"
               d={`
                 M ${CENTER_X + (hoveredItem?.x || selectedNodePos.x)} ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}
-                m -85, 0
-                a 85,85 0 1,1 170,0
-                a 85,85 0 1,1 -170,0
+                m -75, 0
+                a 75,75 0 1,1 150,0
+                a 75,75 0 1,1 -150,0
               `}
             />
             {/* Glow filter for hover effect */}
@@ -921,6 +929,19 @@ export function GenreConstellationSelect({ onLaunch }) {
               fill="transparent"
               className="cursor-pointer"
               onClick={handleBack}
+              onMouseEnter={() => {
+                // Show hint after delay if not hovering a node
+                const timeout = setTimeout(() => {
+                  if (!hoveredItem) {
+                    setShowBackHint(true);
+                  }
+                }, 800);
+                setBackHintTimeout(timeout);
+              }}
+              onMouseLeave={() => {
+                if (backHintTimeout) clearTimeout(backHintTimeout);
+                setShowBackHint(false);
+              }}
             />
           )}
 
@@ -1227,7 +1248,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                       fill="#1DB954"
                       opacity="0.15"
                       style={{
-                        animation: 'pulse 2s ease-in-out infinite',
+                        animation: 'pulse 2s ease-in-out infinite, fadeIn 0.2s ease-in',
                         pointerEvents: 'none'
                       }}
                     />
@@ -1238,7 +1259,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                       stroke="#1DB954"
                       strokeWidth="2"
                       opacity="0.6"
-                      style={{ pointerEvents: 'none' }}
+                      style={{
+                        pointerEvents: 'none',
+                        animation: 'fadeIn 0.2s ease-in'
+                      }}
                     />
                   </>
                 )}
@@ -1271,7 +1295,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <text
                   fill="white"
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  fontSize={isHovered ? FONT_STYLES.medium.fontSize + 1 : FONT_STYLES.medium.fontSize}
+                  fontSize={isHovered ? FONT_STYLES.medium.fontSize + 3 : FONT_STYLES.medium.fontSize}
                   fontWeight={FONT_STYLES.medium.fontWeight}
                   filter={isHovered ? 'url(#textGlow)' : undefined}
                   style={{
@@ -1296,7 +1320,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                           fill="white"
                           fontSize="20"
                           fontWeight="900"
-                          style={{ pointerEvents: 'none' }}
+                          style={{
+                            pointerEvents: 'none',
+                            animation: 'fadeIn 0.2s ease-in'
+                          }}
                         >
                           ↓
                         </text>
@@ -1306,7 +1333,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                           fill="white"
                           fontSize="11"
                           fontWeight="700"
-                          style={{ pointerEvents: 'none' }}
+                          style={{
+                            pointerEvents: 'none',
+                            animation: 'fadeIn 0.2s ease-in'
+                          }}
                         >
                           More
                         </text>
@@ -1320,7 +1350,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                           fill="white"
                           fontSize="20"
                           fontWeight="900"
-                          style={{ pointerEvents: 'none' }}
+                          style={{
+                            pointerEvents: 'none',
+                            animation: 'fadeIn 0.2s ease-in'
+                          }}
                         >
                           ▶
                         </text>
@@ -1330,7 +1363,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                           fill="white"
                           fontSize="11"
                           fontWeight="700"
-                          style={{ pointerEvents: 'none' }}
+                          style={{
+                            pointerEvents: 'none',
+                            animation: 'fadeIn 0.2s ease-in'
+                          }}
                         >
                           Play
                         </text>
@@ -1348,7 +1384,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
             return (
               <g key={`preview-${previewItem.key}`}>
-                {/* Connection line from hovered item to preview item */}
+                {/* Static dotted line */}
                 <line
                   x1={CENTER_X + hoveredItem.x}
                   y1={CENTER_Y + hoveredItem.y}
@@ -1356,24 +1392,26 @@ export function GenreConstellationSelect({ onLaunch }) {
                   y2={CENTER_Y + previewItem.y}
                   stroke="#1DB954"
                   strokeWidth="1"
-                  strokeDasharray="2 2"
-                  opacity="0.3"
+                  strokeDasharray="6 4"
+                  opacity="0.2"
                   style={{ pointerEvents: 'none' }}
                 />
 
-                {/* Animated pulse along the line */}
-                <circle
-                  r="4"
-                  fill="#1DB954"
+                {/* Animated "zipper" dashes traveling along the line */}
+                <line
+                  x1={CENTER_X + hoveredItem.x}
+                  y1={CENTER_Y + hoveredItem.y}
+                  x2={CENTER_X + previewItem.x}
+                  y2={CENTER_Y + previewItem.y}
+                  stroke="#1DB954"
+                  strokeWidth="2"
+                  strokeDasharray="6 4"
                   opacity="0.8"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  <animateMotion
-                    dur="2s"
-                    repeatCount="indefinite"
-                    path={`M ${CENTER_X + hoveredItem.x} ${CENTER_Y + hoveredItem.y} L ${CENTER_X + previewItem.x} ${CENTER_Y + previewItem.y}`}
-                  />
-                </circle>
+                  style={{
+                    pointerEvents: 'none',
+                    animation: `dashPulse 1.5s linear infinite`
+                  }}
+                />
 
                 {/* Preview node */}
                 <g
@@ -1531,6 +1569,25 @@ export function GenreConstellationSelect({ onLaunch }) {
               </text>
             );
           })}
+
+          {/* Back navigation hint text (shown on hover after delay) */}
+          {showBackHint && viewStack.length > 0 && (
+            <text
+              x={CENTER_X}
+              y={CENTER_Y}
+              textAnchor="middle"
+              fill="white"
+              fontSize={FONT_STYLES.medium.fontSize}
+              fontWeight={FONT_STYLES.medium.fontWeight}
+              opacity="0.7"
+              style={{
+                pointerEvents: 'none',
+                animation: 'fadeIn 0.3s ease-in'
+              }}
+            >
+              Click anywhere to back up a level
+            </text>
+          )}
         </svg>
       </div>
 
@@ -1572,6 +1629,19 @@ export function GenreConstellationSelect({ onLaunch }) {
         @keyframes arrowPulse {
           0%, 100% { opacity: 0.25; }
           50% { opacity: 0.5; }
+        }
+        @keyframes dashPulse {
+          from { stroke-dashoffset: 0; }
+          to { stroke-dashoffset: -10; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: inherit; }
+        }
+
+        /* Fade-in transition for hover effects */
+        .hover-fade-in {
+          animation: fadeIn 0.2s ease-in;
         }
       `}</style>
     </div>
