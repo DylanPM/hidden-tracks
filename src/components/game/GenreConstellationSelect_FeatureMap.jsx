@@ -32,43 +32,43 @@ const FONT_STYLES = {
 // Human-friendly feature labels (bidirectional) with Spotify-inspired colors
 const FEATURE_CONFIG = {
   danceability: {
-    low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing' },
-    high: { emoji: '💃', name: 'Dance', desc: 'Made for dancing' },
+    low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing', info: 'How suitable for dancing. Chill tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
+    high: { emoji: '💃', name: 'Danceable', desc: 'Made for dancing', info: 'How suitable for dancing. Chill tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
     color: '#8B5CF6' // Muted purple
   },
   energy: {
-    low: { emoji: '😌', name: 'Calm', desc: 'Mellow and peaceful' },
-    high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active' },
+    low: { emoji: '😌', name: 'Calm', desc: 'Mellow and peaceful', info: 'Perceptual intensity from 0-1. Calm is gentle; energetic is fast, loud, and noisy.' },
+    high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active', info: 'Perceptual intensity from 0-1. Calm is gentle; energetic is fast, loud, and noisy.' },
     color: '#EF4444' // Vibrant red
   },
   speechiness: {
-    low: { emoji: '🎵', name: 'Musical', desc: 'Instrumental melodies' },
-    high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping' },
+    low: { emoji: '🎵', name: 'Wordless', desc: 'Instrumental melodies', info: 'Presence of spoken words. Wordless is pure music; wordy contains talk shows, podcasts, or rap.' },
+    high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping', info: 'Presence of spoken words. Wordless is pure music; wordy contains talk shows, podcasts, or rap.' },
     color: '#F59E0B' // Amber
   },
   acousticness: {
-    low: { emoji: '🎹', name: 'Electronic', desc: 'Synths and machines' },
-    high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments' },
+    low: { emoji: '🎹', name: 'Electric', desc: 'Synths and machines', info: 'Confidence that track uses acoustic instruments. Electric is electronic/synthesized; acoustic is unplugged.' },
+    high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments', info: 'Confidence that track uses acoustic instruments. Electric is electronic/synthesized; acoustic is unplugged.' },
     color: '#EC4899' // Pink
   },
   valence: {
-    low: { emoji: '😢', name: 'Sad', desc: 'Melancholic feeling' },
-    high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful' },
+    low: { emoji: '😢', name: 'Sad', desc: 'Melancholic feeling', info: 'Musical positiveness. Sad tracks sound negative (angry, depressed); happy tracks sound positive (cheerful, euphoric).' },
+    high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful', info: 'Musical positiveness. Sad tracks sound negative (angry, depressed); happy tracks sound positive (cheerful, euphoric).' },
     color: '#FB923C' // Orange
   },
   tempo_norm: {
-    low: { emoji: '🐌', name: 'Slow', desc: 'Slower tempo' },
-    high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo' },
+    low: { emoji: '🐌', name: 'Slow', desc: 'Slower tempo', info: 'Overall tempo in BPM. Slow is laid-back and relaxed; fast is driving and urgent.' },
+    high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo', info: 'Overall tempo in BPM. Slow is laid-back and relaxed; fast is driving and urgent.' },
     color: '#06B6D4' // Cyan
   },
   popularity: {
-    low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare' },
-    high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits' },
+    low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare', info: 'Based on play count and recency. Niche is underground; popular is mainstream hits.' },
+    high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits', info: 'Based on play count and recency. Niche is underground; popular is mainstream hits.' },
     color: '#FBBF24' // Yellow
   },
   instrumentalness: {
-    low: { emoji: '🎤', name: 'Vocal', desc: 'With singing' },
-    high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals' },
+    low: { emoji: '🎤', name: 'Vocal', desc: 'With singing', info: 'Predicts absence of vocals. Vocal has singing/lyrics; instrumental is purely musical.' },
+    high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals', info: 'Predicts absence of vocals. Vocal has singing/lyrics; instrumental is purely musical.' },
     color: '#3B82F6' // Blue
   }
 };
@@ -850,7 +850,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             if (!config) return null;
 
             return (
-              <div key={feature} className="flex items-center gap-2 group">
+              <div key={feature} className="flex items-center gap-2 group" title={config.low.info}>
                 <input
                   type="checkbox"
                   checked={enabled}
