@@ -668,7 +668,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           style={{
             transformOrigin: `${CENTER_X + selectedNodePos.x}px ${CENTER_Y + selectedNodePos.y}px`,
             transform: `scale(${zoomLevel})`,
-            transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform-origin 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            transition: 'transform 0.7s cubic-bezier(0.25, 0.1, 0.25, 1), transform-origin 0.7s cubic-bezier(0.25, 0.1, 0.25, 1)'
           }}
         >
           <defs>
