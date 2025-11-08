@@ -305,8 +305,8 @@ export function GenreConstellationSelect({ onLaunch }) {
   };
 
   const handleTrackClick = async (track) => {
-    setSelectedTrack(track);
-    setSelectedNodeKey(track.uri); // Set LAUNCH overlay on clicked track
+    // Clicking a track launches immediately
+    onLaunch([track], difficulty);
   };
 
   const handleBack = () => {
@@ -466,13 +466,23 @@ export function GenreConstellationSelect({ onLaunch }) {
             type: child.type,
             hasSubgenres,
             hasSeeds,
-            onClick: () => handleGenreClick(child.key)
+            onClick: () => {
+              // If has actual subgenres, drill down
+              if (hasSubgenresData) {
+                handleGenreClick(child.key);
+              } else if (hasSeeds) {
+                // If only has seeds (no subgenres), launch directly
+                onLaunch(childData.seeds || childData._seeds, difficulty);
+              }
+            }
           });
         });
       } else {
         // NESTED LEVEL: Center parent and show children at local attribute positions
         const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
         const parentData = getCurrentNode();
+
+        const parentHasSeeds = (parentData?.seeds || parentData?._seeds)?.length > 0;
 
         items.push({
           key: parentKey,
@@ -482,9 +492,12 @@ export function GenreConstellationSelect({ onLaunch }) {
           type: 'parent',
           isParent: true,
           hasSubgenres: false,
-          hasSeeds: (parentData?.seeds || parentData?._seeds)?.length > 0,
+          hasSeeds: parentHasSeeds,
           onClick: () => {
-            setSelectedNodeKey(parentKey);
+            // Parent nodes can be clicked to launch if they have seeds
+            if (parentHasSeeds) {
+              onLaunch(parentData.seeds || parentData._seeds, difficulty);
+            }
           }
         });
 
@@ -508,7 +521,15 @@ export function GenreConstellationSelect({ onLaunch }) {
             type: child.type,
             hasSubgenres,
             hasSeeds,
-            onClick: () => handleGenreClick(child.key)
+            onClick: () => {
+              // If has actual subgenres, drill down
+              if (hasSubgenresData) {
+                handleGenreClick(child.key);
+              } else if (hasSeeds) {
+                // If only has seeds (no subgenres), launch directly
+                onLaunch(childData.seeds || childData._seeds, difficulty);
+              }
+            }
           });
         });
       }
@@ -516,6 +537,8 @@ export function GenreConstellationSelect({ onLaunch }) {
       // For tracks: show parent node at center + tracks in circle
       const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
       const parentData = getCurrentNode();
+
+      const parentHasSeeds = (parentData?.seeds || parentData?._seeds)?.length > 0;
 
       // Add parent node at center
       items.push({
@@ -526,9 +549,12 @@ export function GenreConstellationSelect({ onLaunch }) {
         type: 'parent',
         isParent: true,
         hasSubgenres: false,
-        hasSeeds: (parentData?.seeds || parentData?._seeds)?.length > 0,
+        hasSeeds: parentHasSeeds,
         onClick: () => {
-          setSelectedNodeKey(parentKey);
+          // Parent in track view can be clicked to launch with all seeds
+          if (parentHasSeeds) {
+            onLaunch(parentData.seeds || parentData._seeds, difficulty);
+          }
         }
       });
 
@@ -1008,44 +1034,6 @@ export function GenreConstellationSelect({ onLaunch }) {
               }}
             />
           )}
-
-          {/* Center LAUNCH button */}
-          <g>
-            <circle
-              cx={CENTER_X}
-              cy={CENTER_Y}
-              r={100}
-              fill={canLaunch() ? '#22c55e' : '#27272a'}
-              stroke={canLaunch() ? '#16a34a' : '#3f3f46'}
-              strokeWidth="4"
-              className={canLaunch() ? 'cursor-pointer' : 'cursor-not-allowed'}
-              onClick={canLaunch() ? handleLaunch : undefined}
-            />
-            <text
-              x={CENTER_X}
-              y={CENTER_Y - 6}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={canLaunch() ? 'black' : '#a1a1aa'}
-              fontSize="32"
-              fontWeight="900"
-              style={{ letterSpacing: '0.5px', pointerEvents: 'none' }}
-            >
-              LAUNCH
-            </text>
-            <text
-              x={CENTER_X}
-              y={CENTER_Y + 22}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={canLaunch() ? 'black' : '#71717a'}
-              fontSize="12"
-              fontWeight="600"
-              style={{ pointerEvents: 'none' }}
-            >
-              {selectedTrack ? `Play: ${selectedTrack.name}` : seeds.length > 0 ? `${seeds.length} track${seeds.length !== 1 ? 's' : ''}` : 'Select a track'}
-            </text>
-          </g>
 
           {/* Subtle background floor coloring - 16 evenly-spaced segments */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
