@@ -376,67 +376,86 @@ export function GenreConstellationSelect({ onLaunch }) {
     const items = [];
 
     if (children.length > 0) {
-      // Add parent node at its position (if not at root)
-      if (viewStack.length > 0) {
-        const parentPath = viewStack.join('.');
-        const parentPos = positions[parentPath];
+      // Two modes: root level (feature-based) vs nested levels (circle-based)
+      if (viewStack.length === 0) {
+        // ROOT LEVEL: Show genres at their feature positions
+        children.forEach(child => {
+          const path = child.key;
+          const pos = positions[path];
+          if (!pos) return;
+
+          const childData = child.data;
+          const hasSubgenresData = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
+          const hasSeeds = (childData?.seeds || childData?._seeds)?.length > 0;
+          const hasSubgenres = hasSubgenresData || hasSeeds;
+
+          items.push({
+            key: child.key,
+            label: child.key,
+            x: pos.x,
+            y: pos.y,
+            type: child.type,
+            hasSubgenres,
+            hasSeeds,
+            onClick: () => handleGenreClick(child.key)
+          });
+        });
+      } else {
+        // NESTED LEVEL: Center parent and arrange children in circle
         const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
         const parentData = getCurrentNode();
-        if (parentPos) {
-          items.push({
-            key: parentKey,
-            label: viewStack[viewStack.length - 1],
-            x: parentPos.x,
-            y: parentPos.y,
-            type: 'parent',
-            isParent: true,
-            hasSubgenres: false, // Parent nodes shown with children don't have further subgenres
-            hasSeeds: (parentData?.seeds || parentData?._seeds)?.length > 0,
-            onClick: () => {
-              // Select parent for launching
-              setSelectedNodeKey(parentKey);
-            }
-          });
-        }
-      }
-
-      // Show child genres/subgenres
-      children.forEach(child => {
-        const path = [...viewStack, child.key].join('.');
-        const pos = positions[path];
-        if (!pos) return;
-
-        const childData = child.data;
-        const hasSubgenresData = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
-        const hasSeeds = (childData?.seeds || childData?._seeds)?.length > 0;
-
-        // Show "More" if node has either subgenres or seeds to drill into
-        const hasSubgenres = hasSubgenresData || hasSeeds;
 
         items.push({
-          key: child.key,
-          label: child.key,
-          x: pos.x,
-          y: pos.y,
-          type: child.type,
-          hasSubgenres,
-          hasSeeds,
-          onClick: () => handleGenreClick(child.key)
+          key: parentKey,
+          label: viewStack[viewStack.length - 1],
+          x: 0, // Center parent at origin
+          y: 0,
+          type: 'parent',
+          isParent: true,
+          hasSubgenres: false,
+          hasSeeds: (parentData?.seeds || parentData?._seeds)?.length > 0,
+          onClick: () => {
+            setSelectedNodeKey(parentKey);
+          }
         });
-      });
+
+        // Arrange children in circle around parent
+        const circleRadius = 120;
+        const angleStep = (Math.PI * 2) / children.length;
+
+        children.forEach((child, i) => {
+          const angle = i * angleStep;
+          const x = Math.cos(angle) * circleRadius;
+          const y = Math.sin(angle) * circleRadius;
+
+          const childData = child.data;
+          const hasSubgenresData = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
+          const hasSeeds = (childData?.seeds || childData?._seeds)?.length > 0;
+          const hasSubgenres = hasSubgenresData || hasSeeds;
+
+          items.push({
+            key: child.key,
+            label: child.key,
+            x,
+            y,
+            type: child.type,
+            hasSubgenres,
+            hasSeeds,
+            onClick: () => handleGenreClick(child.key)
+          });
+        });
+      }
     } else if (loadedTracks.length > 0) {
-      // For tracks: show parent node at center (origin) + tracks in circle
-      const parentPath = viewStack.join('.');
-      const parentPos = positions[parentPath] || { x: 0, y: 0 };
+      // For tracks: show parent node at center + tracks in circle
       const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
       const parentData = getCurrentNode();
 
-      // Add parent node at its position (center of track circle)
+      // Add parent node at center
       items.push({
         key: parentKey,
         label: viewStack[viewStack.length - 1],
-        x: parentPos.x,
-        y: parentPos.y,
+        x: 0, // Center at origin
+        y: 0,
         type: 'parent',
         isParent: true,
         hasSubgenres: false,
@@ -446,70 +465,28 @@ export function GenreConstellationSelect({ onLaunch }) {
         }
       });
 
-      // Arrange tracks in circle around parent
+      // Arrange tracks in full circle around parent
       const circleRadius = 120;
-      const MAX_DISTANCE = 190; // Octagon boundary
-      const parentDistance = Math.sqrt(parentPos.x * parentPos.x + parentPos.y * parentPos.y);
+      const angleStep = (Math.PI * 2) / loadedTracks.length;
 
-      // If parent is near edge, arrange tracks in an arc facing inward
-      if (parentDistance > 50) {
-        // Calculate angle from center to parent
-        const parentAngle = Math.atan2(parentPos.y, parentPos.x);
-        // Arrange tracks in a 240-degree arc facing toward center (away from edge)
-        const arcStart = parentAngle + Math.PI - (Math.PI * 2 / 3); // 120 degrees before opposite
-        const arcEnd = parentAngle + Math.PI + (Math.PI * 2 / 3); // 120 degrees after opposite
-        const arcSpan = arcEnd - arcStart;
-        const angleStep = arcSpan / (loadedTracks.length > 1 ? loadedTracks.length - 1 : 1);
+      loadedTracks.forEach((track, i) => {
+        const angle = i * angleStep;
+        const x = Math.cos(angle) * circleRadius;
+        const y = Math.sin(angle) * circleRadius;
 
-        loadedTracks.forEach((track, i) => {
-          const angle = arcStart + (i * angleStep);
-          let x = parentPos.x + Math.cos(angle) * circleRadius;
-          let y = parentPos.y + Math.sin(angle) * circleRadius;
-
-          // Clamp to octagon if still outside
-          const trackDistance = Math.sqrt(x * x + y * y);
-          if (trackDistance > MAX_DISTANCE) {
-            const scale = MAX_DISTANCE / trackDistance;
-            x *= scale;
-            y *= scale;
-          }
-
-          items.push({
-            key: track.uri || i,
-            label: `option ${i + 1}`,
-            x,
-            y,
-            type: 'track',
-            track: track,
-            hasSubgenres: false,
-            hasSeeds: false, // Tracks are leaf nodes that can be played
-            onClick: () => handleTrackClick(track),
-            isSelected: selectedTrack?.uri === track.uri
-          });
+        items.push({
+          key: track.uri || i,
+          label: `option ${i + 1}`,
+          x,
+          y,
+          type: 'track',
+          track: track,
+          hasSubgenres: false,
+          hasSeeds: false,
+          onClick: () => handleTrackClick(track),
+          isSelected: selectedTrack?.uri === track.uri
         });
-      } else {
-        // Parent near center, use full circle
-        const angleStep = (Math.PI * 2) / loadedTracks.length;
-
-        loadedTracks.forEach((track, i) => {
-          const angle = i * angleStep;
-          const x = parentPos.x + Math.cos(angle) * circleRadius;
-          const y = parentPos.y + Math.sin(angle) * circleRadius;
-
-          items.push({
-            key: track.uri || i,
-            label: `option ${i + 1}`,
-            x,
-            y,
-            type: 'track',
-            track: track,
-            hasSubgenres: false,
-            hasSeeds: false, // Tracks are leaf nodes that can be played
-            onClick: () => handleTrackClick(track),
-            isSelected: selectedTrack?.uri === track.uri
-          });
-        });
-      }
+      });
     }
 
     return resolveCollisions(items);
