@@ -186,13 +186,11 @@ export function GenreConstellationSelect({ onLaunch }) {
   const children = getChildren();
   const seeds = getSeeds();
 
-  // Gather sibling features for local normalization
-  const siblingFeatures = useMemo(() => {
-    if (children.length === 0) return null;
-    return children.map(child => child.data?.features).filter(f => f);
-  }, [children]);
+  // Don't use sibling features for local normalization - use global quantiles instead
+  // This ensures node positions match the disco floor visualization
+  const siblingFeatures = null;
 
-  // Compute positions with local normalization
+  // Compute positions with global normalization
   const { positions: rawPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, siblingFeatures);
 
   // Clamp positions to octagon boundary
