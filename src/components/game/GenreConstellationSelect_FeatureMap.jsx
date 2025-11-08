@@ -629,27 +629,14 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // Show subgenres at their local attribute positions (where they'll appear after clicking)
+      // Show subgenres at their positions (use global positions for preview)
       const subgenreKeys = Object.keys(previewNode.subgenres);
       const previews = [];
-
-      // Compute local positions for preview (normalized to siblings)
-      const previewSiblingFeatures = subgenreKeys
-        .map(key => previewNode.subgenres[key]?.features)
-        .filter(f => f);
-
-      // Use the hook to compute positions with local normalization
-      const { positions: previewLocalPositions } = useFeatureMap(
-        manifest,
-        exaggeration,
-        activeFeatures,
-        previewSiblingFeatures.length > 0 ? previewSiblingFeatures : null
-      );
 
       subgenreKeys.forEach((key) => {
         // Calculate full path to this subgenre
         const subgenrePath = [...nextViewStack, key].join('.');
-        const pos = previewLocalPositions[subgenrePath];
+        const pos = globalPositions[subgenrePath]; // Use global positions for preview
 
         if (!pos) return;
 
