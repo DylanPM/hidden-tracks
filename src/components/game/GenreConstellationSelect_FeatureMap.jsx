@@ -626,21 +626,18 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // CENTER CODE: Cluster previews in center of ring
+      // CIRCLE CODE: Arrange subgenre previews in a circle around parent (centered at origin)
       const subgenreKeys = Object.keys(previewNode.subgenres);
       const previews = [];
 
-      // Arrange in a tight grid centered at origin
-      const cols = Math.ceil(Math.sqrt(subgenreKeys.length));
-      const spacing = 60; // Spacing between preview nodes
-      const gridWidth = (cols - 1) * spacing;
-      const gridHeight = (Math.ceil(subgenreKeys.length / cols) - 1) * spacing;
+      // Arrange in a circle around center
+      const circleRadius = 100; // Distance from center
+      const angleStep = (Math.PI * 2) / subgenreKeys.length;
 
       subgenreKeys.forEach((key, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const x = (col * spacing) - (gridWidth / 2);
-        const y = (row * spacing) - (gridHeight / 2);
+        const angle = i * angleStep;
+        const x = Math.cos(angle) * circleRadius;
+        const y = Math.sin(angle) * circleRadius;
 
         const subgenreData = previewNode.subgenres[key];
         const hasSubgenresData = subgenreData?.subgenres && Object.keys(subgenreData.subgenres).length > 0;
