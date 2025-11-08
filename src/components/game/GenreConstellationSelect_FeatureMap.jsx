@@ -107,9 +107,9 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [hoveredAxisLabel, setHoveredAxisLabel] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(0.85); // Start zoomed out to prevent clipping
   const [showBackHint, setShowBackHint] = useState(false);
-  const [backHintTimeout, setBackHintTimeout] = useState(null);
+  const [backHintInterval, setBackHintInterval] = useState(null);
+  const [backHintInitialTimeout, setBackHintInitialTimeout] = useState(null);
   const [backHintPosition, setBackHintPosition] = useState({ x: 0, y: 0 });
-  const [backHintFadeTimeout, setBackHintFadeTimeout] = useState(null);
 
   // Active features (all enabled by default)
   const [activeFeatures, setActiveFeatures] = useState({
@@ -188,21 +188,23 @@ export function GenreConstellationSelect({ onLaunch }) {
   const children = getChildren();
   const seeds = getSeeds();
 
-  // Don't use sibling features for local normalization - use global quantiles instead
-  // This ensures node positions match the disco floor visualization
-  const siblingFeatures = null;
+  // Compute positions with global normalization (for root level)
+  const { positions: rawGlobalPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, null);
 
-  // Compute positions with global normalization
-  const { positions: rawPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, siblingFeatures);
+  // Compute positions with local normalization (for nested levels)
+  const siblingFeatures = viewStack.length > 0 && children.length > 0
+    ? children.map(c => c.data?.features).filter(f => f)
+    : null;
+  const { positions: rawLocalPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, siblingFeatures);
 
   // Clamp positions to octagon boundary
-  const positions = useMemo(() => {
+  const globalPositions = useMemo(() => {
     const AXIS_RADIUS = 250;
     const MAX_DISTANCE = AXIS_RADIUS - 60;
 
     const clamped = {};
-    Object.keys(rawPositions).forEach(key => {
-      const pos = rawPositions[key];
+    Object.keys(rawGlobalPositions).forEach(key => {
+      const pos = rawGlobalPositions[key];
       const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
 
       if (distance > MAX_DISTANCE) {
@@ -216,7 +218,32 @@ export function GenreConstellationSelect({ onLaunch }) {
       }
     });
     return clamped;
-  }, [rawPositions]);
+  }, [rawGlobalPositions]);
+
+  const localPositions = useMemo(() => {
+    const AXIS_RADIUS = 250;
+    const MAX_DISTANCE = AXIS_RADIUS - 60;
+
+    const clamped = {};
+    Object.keys(rawLocalPositions).forEach(key => {
+      const pos = rawLocalPositions[key];
+      const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+
+      if (distance > MAX_DISTANCE) {
+        const scale = MAX_DISTANCE / distance;
+        clamped[key] = {
+          x: pos.x * scale,
+          y: pos.y * scale
+        };
+      } else {
+        clamped[key] = pos;
+      }
+    });
+    return clamped;
+  }, [rawLocalPositions]);
+
+  // Use global positions for root, local for nested levels
+  const positions = viewStack.length === 0 ? globalPositions : localPositions;
 
   // Description text
   const currentGenre = viewStack.length > 0 ? viewStack[viewStack.length - 1] : null;
@@ -248,7 +275,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setLoadedTracks([]);
     setHoveredItem(null); // Reset hover to prevent ghosting
     setShowBackHint(false); // Hide hint when going back
-    if (backHintFadeTimeout) clearTimeout(backHintFadeTimeout);
+    if (backHintInitialTimeout) clearTimeout(backHintInitialTimeout);
+    if (backHintInterval) clearInterval(backHintInterval);
 
     // Progressive zoom: reduce by 20% for each level back from 0.85 base
     setZoomLevel(0.85 + (newStack.length * 0.2));
@@ -401,16 +429,14 @@ export function GenreConstellationSelect({ onLaunch }) {
           });
         });
       } else {
-        // NESTED LEVEL: Center parent and show children at relative attribute positions
-        const parentPath = viewStack.join('.');
-        const parentPos = positions[parentPath] || { x: 0, y: 0 };
+        // NESTED LEVEL: Center parent and show children at local attribute positions
         const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
         const parentData = getCurrentNode();
 
         items.push({
           key: parentKey,
           label: viewStack[viewStack.length - 1],
-          x: 0, // Center parent at origin
+          x: 0, // Center parent at origin (UX choice, not attribute-based)
           y: 0,
           type: 'parent',
           isParent: true,
@@ -421,16 +447,12 @@ export function GenreConstellationSelect({ onLaunch }) {
           }
         });
 
-        // Show children at positions relative to parent
+        // Show children at their local attribute positions (normalized to siblings)
         children.forEach((child) => {
           const childPath = [...viewStack, child.key].join('.');
           const childPos = positions[childPath];
 
           if (!childPos) return;
-
-          // Calculate offset from parent (this becomes the relative position)
-          const relativeX = childPos.x - parentPos.x;
-          const relativeY = childPos.y - parentPos.y;
 
           const childData = child.data;
           const hasSubgenresData = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
@@ -440,8 +462,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           items.push({
             key: child.key,
             label: child.key,
-            x: relativeX,
-            y: relativeY,
+            x: childPos.x, // Use local position directly (already normalized to siblings)
+            y: childPos.y,
             type: child.type,
             hasSubgenres,
             hasSeeds,
@@ -607,18 +629,30 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // Show subgenres at their attribute positions (relative to where they'll appear)
+      // Show subgenres at their local attribute positions (where they'll appear after clicking)
       const subgenreKeys = Object.keys(previewNode.subgenres);
       const previews = [];
+
+      // Compute local positions for preview (normalized to siblings)
+      const previewSiblingFeatures = subgenreKeys
+        .map(key => previewNode.subgenres[key]?.features)
+        .filter(f => f);
+
+      // Use the hook to compute positions with local normalization
+      const { positions: previewLocalPositions } = useFeatureMap(
+        manifest,
+        exaggeration,
+        activeFeatures,
+        previewSiblingFeatures.length > 0 ? previewSiblingFeatures : null
+      );
 
       subgenreKeys.forEach((key) => {
         // Calculate full path to this subgenre
         const subgenrePath = [...nextViewStack, key].join('.');
-        const pos = positions[subgenrePath];
+        const pos = previewLocalPositions[subgenrePath];
 
         if (!pos) return;
 
-        // For preview, show at actual position (not relative)
         const subgenreData = previewNode.subgenres[key];
         const hasSubgenresData = subgenreData?.subgenres && Object.keys(subgenreData.subgenres).length > 0;
         const hasSeeds = (subgenreData?.seeds || subgenreData?._seeds)?.length > 0;
@@ -926,22 +960,26 @@ export function GenreConstellationSelect({ onLaunch }) {
                 setBackHintPosition({ x: svgP.x, y: svgP.y });
               }}
               onMouseEnter={() => {
-                // Show hint after delay if not hovering a node
-                const timeout = setTimeout(() => {
-                  if (!hoveredItem) {
-                    setShowBackHint(true);
-                    // Auto-fade after 2 seconds
-                    const fadeTimeout = setTimeout(() => {
-                      setShowBackHint(false);
-                    }, 2000);
-                    setBackHintFadeTimeout(fadeTimeout);
-                  }
-                }, 800);
-                setBackHintTimeout(timeout);
+                // Cycle: 2.5s hidden, 2.5s visible, repeat
+
+                // Initial delay before first show
+                const initialDelay = setTimeout(() => {
+                  setShowBackHint(true);
+
+                  // After showing for the first time, start cycling interval
+                  const interval = setInterval(() => {
+                    setShowBackHint(prev => !prev);
+                  }, 2500);
+                  setBackHintInterval(interval);
+                }, 2500);
+
+                setBackHintInitialTimeout(initialDelay);
               }}
               onMouseLeave={() => {
-                if (backHintTimeout) clearTimeout(backHintTimeout);
-                if (backHintFadeTimeout) clearTimeout(backHintFadeTimeout);
+                if (backHintInitialTimeout) clearTimeout(backHintInitialTimeout);
+                if (backHintInterval) clearInterval(backHintInterval);
+                setBackHintInterval(null);
+                setBackHintInitialTimeout(null);
                 setShowBackHint(false);
               }}
             />
@@ -1189,16 +1227,6 @@ export function GenreConstellationSelect({ onLaunch }) {
                       A ${textRadius} ${textRadius} 0 0 1 ${CENTER_X + Math.cos(endAngle) * textRadius} ${CENTER_Y + Math.sin(endAngle) * textRadius}
                     `}
                   />
-                  {/* Description path (inside ring segment, below title) */}
-                  {isHovered && (
-                    <path
-                      id={`arc-desc-${label.feature}-${label.end}`}
-                      d={`
-                        M ${CENTER_X + Math.cos(startAngle) * 255} ${CENTER_Y + Math.sin(startAngle) * 255}
-                        A 255 255 0 0 1 ${CENTER_X + Math.cos(endAngle) * 255} ${CENTER_Y + Math.sin(endAngle) * 255}
-                      `}
-                    />
-                  )}
                 </defs>
                 {/* Title text */}
                 <text
@@ -1554,24 +1582,61 @@ export function GenreConstellationSelect({ onLaunch }) {
             </>
           )}
 
-          {/* Ring label descriptions (rendered on top of rotating text) */}
+          {/* Ring label descriptions (tooltip box) */}
           {axisConfig.map((label) => {
             const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
             if (!isHovered) return null;
 
+            // Position tooltip box near the segment
+            const tooltipX = CENTER_X + Math.cos(label.angle) * 350;
+            const tooltipY = CENTER_Y + Math.sin(label.angle) * 350;
+
+            // Wrap text into multiple lines (approx 40 chars per line)
+            const words = label.info.split(' ');
+            const lines = [];
+            let currentLine = '';
+
+            words.forEach(word => {
+              if ((currentLine + word).length > 40) {
+                lines.push(currentLine.trim());
+                currentLine = word + ' ';
+              } else {
+                currentLine += word + ' ';
+              }
+            });
+            if (currentLine) lines.push(currentLine.trim());
+
             return (
-              <text
-                key={`desc-${label.feature}-${label.end}`}
-                fill="white"
-                fontSize={FONT_STYLES.small.fontSize}
-                fontWeight={FONT_STYLES.small.fontWeight}
-                opacity="0.9"
-                style={{ pointerEvents: 'none' }}
-              >
-                <textPath href={`#arc-desc-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
-                  {label.info}
-                </textPath>
-              </text>
+              <g key={`desc-${label.feature}-${label.end}`}>
+                {/* Tooltip background */}
+                <rect
+                  x={tooltipX - 110}
+                  y={tooltipY - 15 - (lines.length * 6)}
+                  width="220"
+                  height={lines.length * 12 + 10}
+                  fill="rgba(0, 0, 0, 0.9)"
+                  stroke="white"
+                  strokeWidth="1"
+                  rx="4"
+                  style={{ pointerEvents: 'none' }}
+                />
+                {/* Tooltip text (multiple lines) */}
+                {lines.map((line, i) => (
+                  <text
+                    key={i}
+                    x={tooltipX}
+                    y={tooltipY - (lines.length - i - 1) * 12}
+                    textAnchor="middle"
+                    fill="white"
+                    fontSize="10"
+                    fontWeight="400"
+                    opacity="0.95"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {line}
+                  </text>
+                ))}
+              </g>
             );
           })}
 
