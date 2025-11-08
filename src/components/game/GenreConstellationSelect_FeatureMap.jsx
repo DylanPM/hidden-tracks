@@ -108,6 +108,8 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [zoomLevel, setZoomLevel] = useState(0.85); // Start zoomed out to prevent clipping
   const [showBackHint, setShowBackHint] = useState(false);
   const [backHintTimeout, setBackHintTimeout] = useState(null);
+  const [backHintPosition, setBackHintPosition] = useState({ x: 0, y: 0 });
+  const [backHintFadeTimeout, setBackHintFadeTimeout] = useState(null);
 
   // Active features (all enabled by default)
   const [activeFeatures, setActiveFeatures] = useState({
@@ -246,6 +248,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     setLoadedTracks([]);
     setHoveredItem(null); // Reset hover to prevent ghosting
     setShowBackHint(false); // Hide hint when going back
+    if (backHintFadeTimeout) clearTimeout(backHintFadeTimeout);
 
     // Progressive zoom: reduce by 20% for each level back from 0.85 base
     setZoomLevel(0.85 + (newStack.length * 0.2));
@@ -623,17 +626,21 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // NEW CODE: Circular arrangement like tracks
+      // CENTER CODE: Cluster previews in center of ring
       const subgenreKeys = Object.keys(previewNode.subgenres);
-      const parentPos = { x: hoveredItem.x, y: hoveredItem.y };
-      const circleRadius = 120;
-      const angleStep = (Math.PI * 2) / subgenreKeys.length;
-
       const previews = [];
+
+      // Arrange in a tight grid centered at origin
+      const cols = Math.ceil(Math.sqrt(subgenreKeys.length));
+      const spacing = 60; // Spacing between preview nodes
+      const gridWidth = (cols - 1) * spacing;
+      const gridHeight = (Math.ceil(subgenreKeys.length / cols) - 1) * spacing;
+
       subgenreKeys.forEach((key, i) => {
-        const angle = i * angleStep;
-        const x = parentPos.x + Math.cos(angle) * circleRadius;
-        const y = parentPos.y + Math.sin(angle) * circleRadius;
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = (col * spacing) - (gridWidth / 2);
+        const y = (row * spacing) - (gridHeight / 2);
 
         const subgenreData = previewNode.subgenres[key];
         const hasSubgenresData = subgenreData?.subgenres && Object.keys(subgenreData.subgenres).length > 0;
@@ -655,17 +662,21 @@ export function GenreConstellationSelect({ onLaunch }) {
     // Check if it has seeds (tracks)
     const seeds = previewNode?.seeds || previewNode?._seeds || [];
     if (seeds.length > 0 && loadedTracks.length === 0) {
-      // Would show tracks, but we need to calculate their positions
-      // For preview, we'll show them in a circle around the parent
-      const parentPos = positions[nextViewStack.join('.')] || { x: 0, y: 0 };
-      const circleRadius = 120;
-      const angleStep = (Math.PI * 2) / Math.min(seeds.length, 5); // Show up to 5 track previews
-
+      // CENTER CODE: Cluster track previews in center of ring
+      const numTracks = Math.min(seeds.length, 5); // Show up to 5 track previews
       const previews = [];
-      for (let i = 0; i < Math.min(seeds.length, 5); i++) {
-        const angle = i * angleStep;
-        const x = parentPos.x + Math.cos(angle) * circleRadius;
-        const y = parentPos.y + Math.sin(angle) * circleRadius;
+
+      // Arrange in a tight grid centered at origin
+      const cols = Math.ceil(Math.sqrt(numTracks));
+      const spacing = 60;
+      const gridWidth = (cols - 1) * spacing;
+      const gridHeight = (Math.ceil(numTracks / cols) - 1) * spacing;
+
+      for (let i = 0; i < numTracks; i++) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = (col * spacing) - (gridWidth / 2);
+        const y = (row * spacing) - (gridHeight / 2);
 
         previews.push({
           key: `preview-track-${i}`,
@@ -687,12 +698,12 @@ export function GenreConstellationSelect({ onLaunch }) {
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
 
-  // Axis configuration (bidirectional labels) - must match positioning angles!
+  // Axis configuration (bidirectional labels) - 16 evenly-spaced segments
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
     const { feature_angles } = manifest.global.display;
-    const angleStep = (Math.PI * 2) / feature_angles.length; // Match positioning: 45° for 8 features
+    const segmentAngleStep = (Math.PI * 2) / 16; // 16 segments = 22.5° each
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
@@ -703,8 +714,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       if (!config) return;
 
-      // High end at positioning angles (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
-      const highAngle = i * angleStep;
+      // High end at evenly-spaced positions (0°, 22.5°, 45°, 67.5°, 90°, 112.5°, 135°, 157.5°)
+      const highAngle = i * segmentAngleStep;
       labels.push({
         feature,
         end: 'high',
@@ -718,8 +729,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         enabled
       });
 
-      // Low end 180° opposite
-      const lowAngle = highAngle + Math.PI;
+      // Low end 180° opposite (8 segments away: 180°, 202.5°, 225°, 247.5°, 270°, 292.5°, 315°, 337.5°)
+      const lowAngle = (i + 8) * segmentAngleStep;
       labels.push({
         feature,
         end: 'low',
@@ -929,37 +940,49 @@ export function GenreConstellationSelect({ onLaunch }) {
               fill="transparent"
               className="cursor-pointer"
               onClick={handleBack}
+              onMouseMove={(e) => {
+                const svg = e.currentTarget.ownerSVGElement;
+                const pt = svg.createSVGPoint();
+                pt.x = e.clientX;
+                pt.y = e.clientY;
+                const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                setBackHintPosition({ x: svgP.x, y: svgP.y });
+              }}
               onMouseEnter={() => {
                 // Show hint after delay if not hovering a node
                 const timeout = setTimeout(() => {
                   if (!hoveredItem) {
                     setShowBackHint(true);
+                    // Auto-fade after 1 second
+                    const fadeTimeout = setTimeout(() => {
+                      setShowBackHint(false);
+                    }, 1000);
+                    setBackHintFadeTimeout(fadeTimeout);
                   }
                 }, 800);
                 setBackHintTimeout(timeout);
               }}
               onMouseLeave={() => {
                 if (backHintTimeout) clearTimeout(backHintTimeout);
+                if (backHintFadeTimeout) clearTimeout(backHintFadeTimeout);
                 setShowBackHint(false);
               }}
             />
           )}
 
-          {/* Subtle background floor coloring - matches positioning angles */}
+          {/* Subtle background floor coloring - 16 evenly-spaced segments */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
-            const angleStep = (Math.PI * 2) / manifest.global.display.feature_angles.length; // 45° for 8 features
+            const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
-            // High end segment at positioning angle
-            const highAngle = i * angleStep;
-            const highStartAngle = highAngle - angleStep / 2;
-            const highEndAngle = highAngle + angleStep / 2;
+            // High end segment at evenly-spaced position i
+            const highStartAngle = i * segmentAngleStep - segmentAngleStep / 2;
+            const highEndAngle = i * segmentAngleStep + segmentAngleStep / 2;
 
-            // Low end segment 180° opposite
-            const lowAngle = highAngle + Math.PI;
-            const lowStartAngle = lowAngle - angleStep / 2;
-            const lowEndAngle = lowAngle + angleStep / 2;
+            // Low end segment 180° opposite (8 segments away)
+            const lowStartAngle = (i + 8) * segmentAngleStep - segmentAngleStep / 2;
+            const lowEndAngle = (i + 8) * segmentAngleStep + segmentAngleStep / 2;
 
             return (
               <g key={`floor-bg-${feature}`}>
@@ -991,23 +1014,23 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Disco floor - connected polygon based on feature weights */}
+          {/* Disco floor - connected 16-point polygon based on feature weights */}
           {focusedNodeFeatureWeights && (() => {
             const feature_angles = manifest?.global?.display?.feature_angles;
             if (!feature_angles) return null;
 
-            const angleStep = (Math.PI * 2) / feature_angles.length; // 45° for 8 features
+            const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment for even spacing
             const maxRadius = 250;
             const minRadius = 50;
 
-            // Create points at positioning angles (matching node positioning)
+            // Create 16 points at evenly-spaced angles
             const points = [];
 
             feature_angles.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
-              // High end point
-              const highAngle = i * angleStep;
+              // High end point at evenly-spaced position i
+              const highAngle = i * segmentAngleStep;
               const highRadius = minRadius + (weight * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(highAngle) * highRadius,
@@ -1020,8 +1043,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             feature_angles.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
-              // Low end point 180° opposite
-              const lowAngle = i * angleStep + Math.PI;
+              // Low end point 180° opposite (8 segments away)
+              const lowAngle = (i + 8) * segmentAngleStep;
               const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(lowAngle) * lowRadius,
@@ -1560,8 +1583,8 @@ export function GenreConstellationSelect({ onLaunch }) {
               <text
                 key={`desc-${label.feature}-${label.end}`}
                 fill="white"
-                fontSize={FONT_STYLES.medium.fontSize}
-                fontWeight={FONT_STYLES.medium.fontWeight}
+                fontSize={FONT_STYLES.small.fontSize}
+                fontWeight={FONT_STYLES.small.fontWeight}
                 opacity="0.9"
                 style={{ pointerEvents: 'none' }}
               >
@@ -1572,19 +1595,19 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Back navigation hint text (shown on hover after delay) */}
+          {/* Back navigation hint text (shown at mouse position after delay) */}
           {showBackHint && viewStack.length > 0 && (
             <text
-              x={CENTER_X}
-              y={CENTER_Y}
+              x={backHintPosition.x}
+              y={backHintPosition.y}
               textAnchor="middle"
               fill="white"
               fontSize={FONT_STYLES.medium.fontSize}
               fontWeight={FONT_STYLES.medium.fontWeight}
-              opacity="0.7"
+              opacity="0.8"
               style={{
                 pointerEvents: 'none',
-                animation: 'fadeIn 0.3s ease-in'
+                animation: 'fadeIn 0.3s ease-in, fadeOut 0.3s ease-out 0.7s'
               }}
             >
               Click anywhere to back up a level
@@ -1639,6 +1662,10 @@ export function GenreConstellationSelect({ onLaunch }) {
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: inherit; }
+        }
+        @keyframes fadeOut {
+          from { opacity: inherit; }
+          to { opacity: 0; }
         }
 
         /* Fade-in transition for hover effects */
