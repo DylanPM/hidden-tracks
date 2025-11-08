@@ -107,8 +107,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [hoveredAxisLabel, setHoveredAxisLabel] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(0.85); // Start zoomed out to prevent clipping
   const [showBackHint, setShowBackHint] = useState(false);
-  const [backHintInterval, setBackHintInterval] = useState(null);
-  const [backHintInitialTimeout, setBackHintInitialTimeout] = useState(null);
+  const [backHintTimeout, setBackHintTimeout] = useState(null);
   const [backHintPosition, setBackHintPosition] = useState({ x: 0, y: 0 });
 
   // Active features (all enabled by default)
@@ -192,6 +191,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const { positions: rawGlobalPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, null);
 
   // Compute positions with local normalization (for nested levels)
+  // Use current level's children for actual positions
   const siblingFeatures = viewStack.length > 0 && children.length > 0
     ? children.map(c => c.data?.features).filter(f => f)
     : null;
@@ -245,6 +245,48 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Use global positions for root, local for nested levels
   const positions = viewStack.length === 0 ? globalPositions : localPositions;
 
+  // Compute preview-specific local positions when hovering
+  const getPreviewSiblings = () => {
+    if (!hoveredItem || !manifest?.global) return null;
+
+    const nextViewStack = hoveredItem.isParent ? viewStack : [...viewStack, hoveredItem.key];
+    let previewNode = manifest;
+    for (const part of nextViewStack) {
+      if (previewNode[part]) previewNode = previewNode[part];
+      else if (previewNode.subgenres?.[part]) previewNode = previewNode.subgenres[part];
+      else return null;
+    }
+
+    if (!previewNode?.subgenres) return null;
+    return Object.values(previewNode.subgenres)
+      .map(sg => sg?.features)
+      .filter(f => f);
+  };
+
+  const previewSiblings = getPreviewSiblings();
+  const { positions: rawPreviewPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, previewSiblings);
+
+  const previewPositions = useMemo(() => {
+    if (!previewSiblings) return globalPositions;
+
+    const AXIS_RADIUS = 250;
+    const MAX_DISTANCE = AXIS_RADIUS - 60;
+    const clamped = {};
+
+    Object.keys(rawPreviewPositions).forEach(key => {
+      const pos = rawPreviewPositions[key];
+      const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+
+      if (distance > MAX_DISTANCE) {
+        const scale = MAX_DISTANCE / distance;
+        clamped[key] = { x: pos.x * scale, y: pos.y * scale };
+      } else {
+        clamped[key] = pos;
+      }
+    });
+    return clamped;
+  }, [rawPreviewPositions, previewSiblings]);
+
   // Description text
   const currentGenre = viewStack.length > 0 ? viewStack[viewStack.length - 1] : null;
   const genreDescription = currentGenre ? getGenreDescription(currentGenre) : 'Choose a genre to explore';
@@ -275,8 +317,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     setLoadedTracks([]);
     setHoveredItem(null); // Reset hover to prevent ghosting
     setShowBackHint(false); // Hide hint when going back
-    if (backHintInitialTimeout) clearTimeout(backHintInitialTimeout);
-    if (backHintInterval) clearInterval(backHintInterval);
+    if (backHintTimeout) clearTimeout(backHintTimeout);
 
     // Progressive zoom: reduce by 20% for each level back from 0.85 base
     setZoomLevel(0.85 + (newStack.length * 0.2));
@@ -629,14 +670,17 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // Show subgenres at their positions (use global positions for preview)
+      // Show subgenres at their positions using the same logic as actual view
+      // After clicking, we'll be at nextViewStack level, so use appropriate positions
       const subgenreKeys = Object.keys(previewNode.subgenres);
       const previews = [];
 
       subgenreKeys.forEach((key) => {
         // Calculate full path to this subgenre
         const subgenrePath = [...nextViewStack, key].join('.');
-        const pos = globalPositions[subgenrePath]; // Use global positions for preview
+
+        // Use preview-specific positions that match what will be shown after clicking
+        const pos = previewPositions[subgenrePath];
 
         if (!pos) return;
 
@@ -945,28 +989,21 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pt.y = e.clientY;
                 const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
                 setBackHintPosition({ x: svgP.x, y: svgP.y });
-              }}
-              onMouseEnter={() => {
-                // Cycle: 2.5s hidden, 2.5s visible, repeat
 
-                // Initial delay before first show
-                const initialDelay = setTimeout(() => {
+                // Hide hint when mouse moves
+                setShowBackHint(false);
+
+                // Clear existing timeout
+                if (backHintTimeout) clearTimeout(backHintTimeout);
+
+                // Show hint after mouse stops for 2.5 seconds
+                const timeout = setTimeout(() => {
                   setShowBackHint(true);
-
-                  // After showing for the first time, start cycling interval
-                  const interval = setInterval(() => {
-                    setShowBackHint(prev => !prev);
-                  }, 2500);
-                  setBackHintInterval(interval);
                 }, 2500);
-
-                setBackHintInitialTimeout(initialDelay);
+                setBackHintTimeout(timeout);
               }}
               onMouseLeave={() => {
-                if (backHintInitialTimeout) clearTimeout(backHintInitialTimeout);
-                if (backHintInterval) clearInterval(backHintInterval);
-                setBackHintInterval(null);
-                setBackHintInitialTimeout(null);
+                if (backHintTimeout) clearTimeout(backHintTimeout);
                 setShowBackHint(false);
               }}
             />
@@ -1144,12 +1181,12 @@ export function GenreConstellationSelect({ onLaunch }) {
           >
           {axisConfig.map((label, idx) => {
             const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
-            // Also light up if the opposite end is hovered
+            // Also light up and extrude if the opposite end is hovered
             const oppositeEnd = label.end === 'high' ? 'low' : 'high';
             const isOppositeHovered = hoveredAxisLabel === `${label.feature}-${oppositeEnd}`;
 
-            // Hover pushes segment outward by 30px
-            const outerRadius = isHovered ? 315 : 285;
+            // Hover or opposite hover pushes segment outward by 30px
+            const outerRadius = (isHovered || isOppositeHovered) ? 315 : 285;
             const innerRadius = 245;
 
             // Calculate arc angles for this segment
@@ -1436,7 +1473,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Preview node */}
                 <g
                   transform={`translate(${CENTER_X + previewItem.x}, ${CENTER_Y + previewItem.y})`}
-                  opacity="0.5"
+                  opacity="0.7"
                   style={{ pointerEvents: 'none' }}
                 >
                   {/* Node circle */}
@@ -1445,7 +1482,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                     fill="#18181b"
                     stroke="#1DB954"
                     strokeWidth="2"
-                    strokeOpacity="0.6"
+                    strokeOpacity="0.8"
                   />
 
                   {/* Node label */}
@@ -1462,7 +1499,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   </defs>
                   <text
                     fill="white"
-                    fillOpacity="0.6"
+                    fillOpacity="0.9"
                     fontSize={FONT_STYLES.medium.fontSize}
                     fontWeight={FONT_STYLES.medium.fontWeight}
                   >
@@ -1569,63 +1606,6 @@ export function GenreConstellationSelect({ onLaunch }) {
             </>
           )}
 
-          {/* Ring label descriptions (tooltip box) */}
-          {axisConfig.map((label) => {
-            const isHovered = hoveredAxisLabel === `${label.feature}-${label.end}`;
-            if (!isHovered) return null;
-
-            // Position tooltip box near the segment
-            const tooltipX = CENTER_X + Math.cos(label.angle) * 350;
-            const tooltipY = CENTER_Y + Math.sin(label.angle) * 350;
-
-            // Wrap text into multiple lines (approx 40 chars per line)
-            const words = label.info.split(' ');
-            const lines = [];
-            let currentLine = '';
-
-            words.forEach(word => {
-              if ((currentLine + word).length > 40) {
-                lines.push(currentLine.trim());
-                currentLine = word + ' ';
-              } else {
-                currentLine += word + ' ';
-              }
-            });
-            if (currentLine) lines.push(currentLine.trim());
-
-            return (
-              <g key={`desc-${label.feature}-${label.end}`}>
-                {/* Tooltip background */}
-                <rect
-                  x={tooltipX - 110}
-                  y={tooltipY - 15 - (lines.length * 6)}
-                  width="220"
-                  height={lines.length * 12 + 10}
-                  fill="rgba(0, 0, 0, 0.9)"
-                  stroke="white"
-                  strokeWidth="1"
-                  rx="4"
-                  style={{ pointerEvents: 'none' }}
-                />
-                {/* Tooltip text (multiple lines) */}
-                {lines.map((line, i) => (
-                  <text
-                    key={i}
-                    x={tooltipX}
-                    y={tooltipY - (lines.length - i - 1) * 12}
-                    textAnchor="middle"
-                    fill="white"
-                    fontSize="10"
-                    fontWeight="400"
-                    opacity="0.95"
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    {line}
-                  </text>
-                ))}
-              </g>
-            );
-          })}
 
           {/* Back navigation hint text (shown at mouse position after delay) */}
           {showBackHint && viewStack.length > 0 && (
