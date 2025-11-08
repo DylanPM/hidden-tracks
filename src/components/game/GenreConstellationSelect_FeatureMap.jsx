@@ -1009,6 +1009,44 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
+          {/* Center LAUNCH button */}
+          <g>
+            <circle
+              cx={CENTER_X}
+              cy={CENTER_Y}
+              r={100}
+              fill={canLaunch() ? '#22c55e' : '#27272a'}
+              stroke={canLaunch() ? '#16a34a' : '#3f3f46'}
+              strokeWidth="4"
+              className={canLaunch() ? 'cursor-pointer' : 'cursor-not-allowed'}
+              onClick={canLaunch() ? handleLaunch : undefined}
+            />
+            <text
+              x={CENTER_X}
+              y={CENTER_Y - 6}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={canLaunch() ? 'black' : '#a1a1aa'}
+              fontSize="32"
+              fontWeight="900"
+              style={{ letterSpacing: '0.5px', pointerEvents: 'none' }}
+            >
+              LAUNCH
+            </text>
+            <text
+              x={CENTER_X}
+              y={CENTER_Y + 22}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={canLaunch() ? 'black' : '#71717a'}
+              fontSize="12"
+              fontWeight="600"
+              style={{ pointerEvents: 'none' }}
+            >
+              {selectedTrack ? `Play: ${selectedTrack.name}` : seeds.length > 0 ? `${seeds.length} track${seeds.length !== 1 ? 's' : ''}` : 'Select a track'}
+            </text>
+          </g>
+
           {/* Subtle background floor coloring - 16 evenly-spaced segments */}
           {manifest?.global?.display?.feature_angles.map((feature, i) => {
             const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment
