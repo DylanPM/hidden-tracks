@@ -714,6 +714,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         emoji: config.high.emoji,
         name: config.high.name,
         desc: config.high.desc,
+        info: config.high.info,
         enabled
       });
 
@@ -728,6 +729,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         emoji: config.low.emoji,
         name: config.low.name,
         desc: config.low.desc,
+        info: config.low.info,
         enabled
       });
     });
@@ -1556,13 +1558,13 @@ export function GenreConstellationSelect({ onLaunch }) {
               <text
                 key={`desc-${label.feature}-${label.end}`}
                 fill="white"
-                fontSize={FONT_STYLES.small.fontSize}
-                fontWeight={FONT_STYLES.small.fontWeight}
+                fontSize={FONT_STYLES.medium.fontSize}
+                fontWeight={FONT_STYLES.medium.fontWeight}
                 opacity="0.9"
                 style={{ pointerEvents: 'none' }}
               >
                 <textPath href={`#arc-desc-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
-                  {label.desc}
+                  {label.info}
                 </textPath>
               </text>
             );
