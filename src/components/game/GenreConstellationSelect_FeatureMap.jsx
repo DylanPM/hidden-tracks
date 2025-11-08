@@ -898,7 +898,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           style={{
             transformOrigin: `${CENTER_X + selectedNodePos.x}px ${CENTER_Y + selectedNodePos.y}px`,
             transform: `scale(${zoomLevel})`,
-            transition: 'transform 0.7s cubic-bezier(0.25, 0.1, 0.25, 1), transform-origin 0.7s cubic-bezier(0.25, 0.1, 0.25, 1)'
+            transition: 'transform 1.2s cubic-bezier(0.23, 1, 0.32, 1), transform-origin 1.2s cubic-bezier(0.23, 1, 0.32, 1)'
           }}
         >
           <defs>
@@ -1090,7 +1090,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 strokeWidth="2"
                 strokeOpacity={opacity * 1.5}
                 style={{
-                  transition: 'opacity 0.5s ease, fill 0.5s ease, d 0.5s ease',
+                  transition: 'opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), fill 0.8s cubic-bezier(0.23, 1, 0.32, 1), d 0.8s cubic-bezier(0.23, 1, 0.32, 1)',
                   pointerEvents: 'none'
                 }}
               />
@@ -1159,7 +1159,8 @@ export function GenreConstellationSelect({ onLaunch }) {
                   fillOpacity={label.enabled ? (isHovered || isOppositeHovered ? 0.6 : 0.4) : 0.2}
                   stroke={featureColor}
                   strokeWidth="2"
-                  className="cursor-pointer transition-all duration-200"
+                  className="cursor-pointer"
+                  style={{ transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)' }}
                   onClick={viewStack.length > 0 ? handleBack : undefined}
                   onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
                   onMouseLeave={() => setHoveredAxisLabel(null)}
@@ -1192,8 +1193,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   fontSize={isHovered ? FONT_STYLES.large.fontSize + 1 : FONT_STYLES.large.fontSize}
                   fontWeight={FONT_STYLES.large.fontWeight}
                   letterSpacing={FONT_STYLES.large.letterSpacing}
-                  className="transition-all duration-200"
-                  style={{ pointerEvents: 'none' }}
+                  style={{ pointerEvents: 'none', transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)' }}
                 >
                   <textPath href={`#arc-title-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
                     {label.name}
@@ -1238,7 +1238,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               opacity={hoveredItem?.key === item.key ? 0.8 : 0.2}
               strokeDasharray={hoveredItem?.key === item.key ? "0" : "2 2"}
               style={{
-                transition: 'all 0.2s ease'
+                transition: 'all 0.5s cubic-bezier(0.23, 1, 0.32, 1)'
               }}
             />
           ))}
@@ -1325,7 +1325,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   filter={isHovered ? 'url(#textGlow)' : undefined}
                   style={{
                     pointerEvents: 'none',
-                    transition: 'font-size 0.15s ease, fill-opacity 0.15s ease'
+                    transition: 'font-size 0.4s cubic-bezier(0.23, 1, 0.32, 1), fill-opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1)'
                   }}
                 >
                   <textPath href={`#nodePath-${item.key}`} startOffset="0%">

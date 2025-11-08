@@ -50,10 +50,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Use local quantiles if siblings provided, otherwise global
     const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : globalQuantiles;
 
-    // Compute angle for each feature (octagonal: 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
-    const angleStep = (Math.PI * 2) / feature_angles.length;
+    // Compute angle for each feature to match ring segments (16 segments at 22.5° intervals)
+    // Each feature's high end gets positioned at: 0°, 22.5°, 45°, 67.5°, 90°, 112.5°, 135°, 157.5°
+    const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment
     const featureAngles = feature_angles.reduce((acc, feature, i) => {
-      acc[feature] = i * angleStep;
+      acc[feature] = i * segmentAngleStep; // Use 22.5° spacing to match ring labels
       return acc;
     }, {});
 
@@ -175,9 +176,9 @@ export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2
     quantiles = localQ;
   }
 
-  const angleStep = (Math.PI * 2) / feature_angles.length;
+  const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment to match ring display
   const featureAngles = feature_angles.reduce((acc, feature, i) => {
-    acc[feature] = i * angleStep;
+    acc[feature] = i * segmentAngleStep; // Use 22.5° spacing to match ring labels
     return acc;
   }, {});
 
