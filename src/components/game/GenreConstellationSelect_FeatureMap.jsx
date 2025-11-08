@@ -376,9 +376,9 @@ export function GenreConstellationSelect({ onLaunch }) {
     const items = [];
 
     if (children.length > 0) {
-      // Two modes: root level (feature-based) vs nested levels (circle-based)
+      // Two modes: root level (absolute positions) vs nested levels (centered with relative positions)
       if (viewStack.length === 0) {
-        // ROOT LEVEL: Show genres at their feature positions
+        // ROOT LEVEL: Show genres at their absolute feature positions
         children.forEach(child => {
           const path = child.key;
           const pos = positions[path];
@@ -401,7 +401,9 @@ export function GenreConstellationSelect({ onLaunch }) {
           });
         });
       } else {
-        // NESTED LEVEL: Center parent and arrange children in circle
+        // NESTED LEVEL: Center parent and show children at relative attribute positions
+        const parentPath = viewStack.join('.');
+        const parentPos = positions[parentPath] || { x: 0, y: 0 };
         const parentKey = `parent-${viewStack[viewStack.length - 1]}`;
         const parentData = getCurrentNode();
 
@@ -419,14 +421,16 @@ export function GenreConstellationSelect({ onLaunch }) {
           }
         });
 
-        // Arrange children in circle around parent
-        const circleRadius = 120;
-        const angleStep = (Math.PI * 2) / children.length;
+        // Show children at positions relative to parent
+        children.forEach((child) => {
+          const childPath = [...viewStack, child.key].join('.');
+          const childPos = positions[childPath];
 
-        children.forEach((child, i) => {
-          const angle = i * angleStep;
-          const x = Math.cos(angle) * circleRadius;
-          const y = Math.sin(angle) * circleRadius;
+          if (!childPos) return;
+
+          // Calculate offset from parent (this becomes the relative position)
+          const relativeX = childPos.x - parentPos.x;
+          const relativeY = childPos.y - parentPos.y;
 
           const childData = child.data;
           const hasSubgenresData = childData?.subgenres && Object.keys(childData.subgenres).length > 0;
@@ -436,8 +440,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           items.push({
             key: child.key,
             label: child.key,
-            x,
-            y,
+            x: relativeX,
+            y: relativeY,
             type: child.type,
             hasSubgenres,
             hasSeeds,
@@ -603,19 +607,18 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // CIRCLE CODE: Arrange subgenre previews in a circle around parent (centered at origin)
+      // Show subgenres at their attribute positions (relative to where they'll appear)
       const subgenreKeys = Object.keys(previewNode.subgenres);
       const previews = [];
 
-      // Arrange in a circle around center
-      const circleRadius = 100; // Distance from center
-      const angleStep = (Math.PI * 2) / subgenreKeys.length;
+      subgenreKeys.forEach((key) => {
+        // Calculate full path to this subgenre
+        const subgenrePath = [...nextViewStack, key].join('.');
+        const pos = positions[subgenrePath];
 
-      subgenreKeys.forEach((key, i) => {
-        const angle = i * angleStep;
-        const x = Math.cos(angle) * circleRadius;
-        const y = Math.sin(angle) * circleRadius;
+        if (!pos) return;
 
+        // For preview, show at actual position (not relative)
         const subgenreData = previewNode.subgenres[key];
         const hasSubgenresData = subgenreData?.subgenres && Object.keys(subgenreData.subgenres).length > 0;
         const hasSeeds = (subgenreData?.seeds || subgenreData?._seeds)?.length > 0;
@@ -623,8 +626,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         previews.push({
           key: key,
           label: key,
-          x,
-          y,
+          x: pos.x,
+          y: pos.y,
           type: 'subgenre',
           hasSubgenres: hasSubgenresData || hasSeeds,
           isPreview: true
@@ -927,10 +930,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                 const timeout = setTimeout(() => {
                   if (!hoveredItem) {
                     setShowBackHint(true);
-                    // Auto-fade after 1 second
+                    // Auto-fade after 2 seconds
                     const fadeTimeout = setTimeout(() => {
                       setShowBackHint(false);
-                    }, 1000);
+                    }, 2000);
                     setBackHintFadeTimeout(fadeTimeout);
                   }
                 }, 800);
@@ -1071,6 +1074,42 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })()}
 
+          {/* Preview lines (rendered early so they appear underneath everything) */}
+          {previewItems.length > 0 && hoveredItem && previewItems.map((previewItem) => {
+            return (
+              <g key={`preview-line-${previewItem.key}`}>
+                {/* Static dotted line */}
+                <line
+                  x1={CENTER_X + hoveredItem.x}
+                  y1={CENTER_Y + hoveredItem.y}
+                  x2={CENTER_X + previewItem.x}
+                  y2={CENTER_Y + previewItem.y}
+                  stroke="#1DB954"
+                  strokeWidth="1"
+                  strokeDasharray="6 4"
+                  opacity="0.2"
+                  style={{ pointerEvents: 'none' }}
+                />
+
+                {/* Animated "zipper" dashes traveling along the line */}
+                <line
+                  x1={CENTER_X + hoveredItem.x}
+                  y1={CENTER_Y + hoveredItem.y}
+                  x2={CENTER_X + previewItem.x}
+                  y2={CENTER_Y + previewItem.y}
+                  stroke="#1DB954"
+                  strokeWidth="2"
+                  strokeDasharray="6 4"
+                  opacity="0.8"
+                  style={{
+                    pointerEvents: 'none',
+                    animation: `dashPulse 1.5s linear infinite`
+                  }}
+                />
+              </g>
+            );
+          })}
+
           {/* Circular ring with embedded 16 axis label segments (Trivial Pursuit style) */}
           <g
             style={{
@@ -1150,13 +1189,13 @@ export function GenreConstellationSelect({ onLaunch }) {
                       A ${textRadius} ${textRadius} 0 0 1 ${CENTER_X + Math.cos(endAngle) * textRadius} ${CENTER_Y + Math.sin(endAngle) * textRadius}
                     `}
                   />
-                  {/* Description path (extended to canvas edge when hovering) */}
+                  {/* Description path (inside ring segment, below title) */}
                   {isHovered && (
                     <path
                       id={`arc-desc-${label.feature}-${label.end}`}
                       d={`
-                        M ${CENTER_X + Math.cos(startAngle) * 330} ${CENTER_Y + Math.sin(startAngle) * 330}
-                        A 330 330 0 0 1 ${CENTER_X + Math.cos(endAngle) * 330} ${CENTER_Y + Math.sin(endAngle) * 330}
+                        M ${CENTER_X + Math.cos(startAngle) * 255} ${CENTER_Y + Math.sin(startAngle) * 255}
+                        A 255 255 0 0 1 ${CENTER_X + Math.cos(endAngle) * 255} ${CENTER_Y + Math.sin(endAngle) * 255}
                       `}
                     />
                   )}
@@ -1178,23 +1217,19 @@ export function GenreConstellationSelect({ onLaunch }) {
           })}
           </g>
 
-          {/* Axis lines (8 total) - point to center of ring segments */}
-          {manifest?.global?.display?.feature_angles.map((feature, i) => {
-            const angleStep = (Math.PI * 2) / 8;
-            const angle = i * angleStep;
-            const enabled = activeFeatures[feature] !== false;
-
+          {/* Axis lines (16 total) - one to each ring segment */}
+          {axisConfig.map((label) => {
             return (
               <line
-                key={`axis-${feature}`}
+                key={`axis-${label.feature}-${label.end}`}
                 x1={CENTER_X}
                 y1={CENTER_Y}
-                x2={CENTER_X + Math.cos(angle) * 270}
-                y2={CENTER_Y + Math.sin(angle) * 270}
+                x2={CENTER_X + Math.cos(label.angle) * 270}
+                y2={CENTER_Y + Math.sin(label.angle) * 270}
                 stroke="#3f3f46"
                 strokeWidth="1"
                 strokeDasharray="4 4"
-                opacity={enabled ? 0.3 : 0.1}
+                opacity={label.enabled ? 0.3 : 0.1}
               />
             );
           })}
@@ -1377,41 +1412,12 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Preview items (shown when hovering a node with children) */}
-          {previewItems.length > 0 && hoveredItem && previewItems.map((previewItem, idx) => {
+          {/* Preview nodes (shown when hovering a node with children) */}
+          {previewItems.length > 0 && hoveredItem && previewItems.map((previewItem) => {
             const nodeRadius = 27;
 
             return (
-              <g key={`preview-${previewItem.key}`}>
-                {/* Static dotted line */}
-                <line
-                  x1={CENTER_X + hoveredItem.x}
-                  y1={CENTER_Y + hoveredItem.y}
-                  x2={CENTER_X + previewItem.x}
-                  y2={CENTER_Y + previewItem.y}
-                  stroke="#1DB954"
-                  strokeWidth="1"
-                  strokeDasharray="6 4"
-                  opacity="0.2"
-                  style={{ pointerEvents: 'none' }}
-                />
-
-                {/* Animated "zipper" dashes traveling along the line */}
-                <line
-                  x1={CENTER_X + hoveredItem.x}
-                  y1={CENTER_Y + hoveredItem.y}
-                  x2={CENTER_X + previewItem.x}
-                  y2={CENTER_Y + previewItem.y}
-                  stroke="#1DB954"
-                  strokeWidth="2"
-                  strokeDasharray="6 4"
-                  opacity="0.8"
-                  style={{
-                    pointerEvents: 'none',
-                    animation: `dashPulse 1.5s linear infinite`
-                  }}
-                />
-
+              <g key={`preview-node-${previewItem.key}`}>
                 {/* Preview node */}
                 <g
                   transform={`translate(${CENTER_X + previewItem.x}, ${CENTER_Y + previewItem.y})`}
