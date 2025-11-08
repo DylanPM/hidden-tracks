@@ -1553,6 +1553,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           {/* Orbiting description text (follows hover, shows genre descriptions) */}
           {(hoveredItem || selectedNode) && (
             <g
+              key={`orbit-${hoveredItem?.key || selectedNode?.key || 'default'}`}
               style={{
                 transformOrigin: `${CENTER_X + (hoveredItem?.x || selectedNodePos.x)}px ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}px`,
                 animation: `orbit 11000ms linear infinite`,
