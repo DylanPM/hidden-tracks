@@ -430,14 +430,8 @@ export function GenreConstellationSelect({ onLaunch }) {
               if (hasSubgenresData) {
                 handleGenreClick(child.key);
               } else if (hasSeeds) {
-                // Only launch if seeds have valid filenames (profile JSONs exist)
-                const seeds = childData.seeds || childData._seeds;
-                const hasValidSeeds = seeds && seeds.length > 0 && seeds[0]?.filename;
-                if (hasValidSeeds) {
-                  onLaunch(seeds, difficulty);
-                } else {
-                  console.warn(`Cannot launch ${child.key}: missing profile files`);
-                }
+                // If node has only seeds (no subgenres), drill down to show track selection view
+                handleGenreClick(child.key);
               }
             }
           });
@@ -459,12 +453,13 @@ export function GenreConstellationSelect({ onLaunch }) {
           hasSubgenres: false,
           hasSeeds: parentHasSeeds,
           onClick: () => {
-            // Parent nodes can be clicked to launch if they have valid seeds
+            // Parent nodes can be clicked to launch with random seed
             if (parentHasSeeds) {
               const seeds = parentData.seeds || parentData._seeds;
               const hasValidSeeds = seeds && seeds.length > 0 && seeds[0]?.filename;
               if (hasValidSeeds) {
-                onLaunch(seeds, difficulty);
+                const randomSeed = seeds[Math.floor(Math.random() * seeds.length)];
+                onLaunch([randomSeed], difficulty);
               } else {
                 console.warn(`Cannot launch parent: missing profile files`);
               }
@@ -497,14 +492,8 @@ export function GenreConstellationSelect({ onLaunch }) {
               if (hasSubgenresData) {
                 handleGenreClick(child.key);
               } else if (hasSeeds) {
-                // Only launch if seeds have valid filenames (profile JSONs exist)
-                const seeds = childData.seeds || childData._seeds;
-                const hasValidSeeds = seeds && seeds.length > 0 && seeds[0]?.filename;
-                if (hasValidSeeds) {
-                  onLaunch(seeds, difficulty);
-                } else {
-                  console.warn(`Cannot launch ${child.key}: missing profile files`);
-                }
+                // If node has only seeds (no subgenres), drill down to show track selection view
+                handleGenreClick(child.key);
               }
             }
           });
@@ -528,9 +517,11 @@ export function GenreConstellationSelect({ onLaunch }) {
         hasSubgenres: false,
         hasSeeds: parentHasSeeds,
         onClick: () => {
-          // Parent in track view can be clicked to launch with all seeds
+          // Parent in track view can be clicked to launch with random seed
           if (parentHasSeeds) {
-            onLaunch(parentData.seeds || parentData._seeds, difficulty);
+            const seeds = parentData.seeds || parentData._seeds;
+            const randomSeed = seeds[Math.floor(Math.random() * seeds.length)];
+            onLaunch([randomSeed], difficulty);
           }
         }
       });

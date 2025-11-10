@@ -1251,18 +1251,18 @@
       "techno": {
         "seeds": [
           {
-            "uri": "spotify:track:7g8cjrj0sXScNE727685JE",
-            "name": "Kernkra00 - DJ Gius Mix, Radio Edit",
-            "artist": "Zombie Nation",
-            "popularity": 64,
-            "filename": "zombie-nation_kernkra00-dj-gius-mix-radio-edit.json"
-          },
-          {
             "uri": "spotify:track:1fmoCZ6mtMiqA5GHWPcZz9",
             "name": "A New Error",
             "artist": "Moderat",
             "popularity": 64,
             "filename": "moderat_a-new-error.json"
+          },
+          {
+            "uri": "spotify:track:7g8cjrj0sXScNE727685JE",
+            "name": "Kernkra00 - DJ Gius Mix, Radio Edit",
+            "artist": "Zombie Nation",
+            "popularity": 64,
+            "filename": "zombie-nation_kernkra00-dj-gius-mix-radio-edit.json"
           },
           {
             "uri": "spotify:track:79CUrU5o2KAVDTNm4x3eGU",
@@ -2698,18 +2698,18 @@
           "quiet storm": {
             "seeds": [
               {
-                "uri": "spotify:track:5GvWrvLIqoHroq7YvO260M",
-                "name": "I Keep Forgettin' (Every Time You're Near)",
-                "artist": "Michael McDonald",
-                "popularity": 64,
-                "filename": "michael-mcdonald_i-keep-forgettin-every-time-you-re-near.json"
-              },
-              {
                 "uri": "spotify:track:6SMHgPgNkhe9lneNTbgtel",
                 "name": "Love and Happiness",
                 "artist": "Al Green",
                 "popularity": 65,
                 "filename": "al-green_love-and-happiness.json"
+              },
+              {
+                "uri": "spotify:track:5GvWrvLIqoHroq7YvO260M",
+                "name": "I Keep Forgettin' (Every Time You're Near)",
+                "artist": "Michael McDonald",
+                "popularity": 64,
+                "filename": "michael-mcdonald_i-keep-forgettin-every-time-you-re-near.json"
               },
               {
                 "uri": "spotify:track:58r4JuwHhXLAkttkaUZfLw",
@@ -3857,6 +3857,13 @@
   },
   "latin": {
     "seeds": [
+      {
+        "uri": "spotify:track:3rsVX2Pd8UkjqF2MAZqeif",
+        "name": "La Quiero A Morir",
+        "artist": "DLG",
+        "popularity": 66,
+        "filename": "dlg_la-quiero-a-morir.json"
+      },
       {
         "uri": "spotify:track:2naJy8SKJ27gj6ZhRPDKaz",
         "name": "Si Tu Lo Dejas",
