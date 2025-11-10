@@ -189,9 +189,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     });
 
     // COLLISION AVOIDANCE: Push overlapping nodes in direction of strongest attribute
-    const MIN_DISTANCE = 50; // Minimum distance between node centers
-    const PUSH_STRENGTH = 0.9; // How much to push (0-1)
-    const MAX_ITERATIONS = 5;
+    const MIN_DISTANCE = 40; // Minimum distance between node centers (reduced from 50)
+    const PUSH_STRENGTH = 0.3; // How much to push (0-1) - reduced from 0.9 to prevent spiraling
+    const MAX_ITERATIONS = 3; // Reduced from 5
+    const DAMPING = 0.85; // Reduce push strength each iteration to stabilize
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const keys = Object.keys(scaledResult);
@@ -245,8 +246,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             const push2Dir = getPushDirection(node2.features);
 
             // Push nodes apart, biased toward their strongest attribute direction
+            // Apply damping: pushes get weaker each iteration to prevent spiraling
+            const currentStrength = PUSH_STRENGTH * Math.pow(DAMPING, iteration);
             const overlap = MIN_DISTANCE - distance;
-            const pushDist = overlap * PUSH_STRENGTH / 2;
+            const pushDist = overlap * currentStrength / 2;
 
             // If no feature direction, fall back to direct separation
             const push1X = push1Dir.x !== 0 ? push1Dir.x * pushDist : -(dx / distance) * pushDist;
