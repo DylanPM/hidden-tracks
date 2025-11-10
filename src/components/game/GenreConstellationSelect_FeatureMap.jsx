@@ -1093,7 +1093,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               x2={CENTER_X + item.x}
               y2={CENTER_Y + item.y}
               stroke="#1DB954"
-              strokeWidth={hoveredItem?.key === item.key ? "3" : "1"}
+              strokeWidth={hoveredItem?.key === item.key ? "4" : "2"}
               opacity={hoveredItem?.key === item.key ? 0.8 : 0.2}
               strokeDasharray={hoveredItem?.key === item.key ? "0" : "2 2"}
               style={{
@@ -1339,12 +1339,12 @@ export function GenreConstellationSelect({ onLaunch }) {
               >
                 <text fontSize={FONT_STYLES.largest.fontSize} fill="#a1a1aa" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="0%">
-                    Click anywhere outside the ring to go back
+                    You're in {viewStack.join(' > ')} • click anywhere inside or outside the circle to zoom out a level
                   </textPath>
                 </text>
                 <text fontSize={FONT_STYLES.largest.fontSize} fill="#a1a1aa" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="50%">
-                    Click anywhere outside the ring to go back
+                    You're in {viewStack.join(' > ')} • click anywhere inside or outside the circle to zoom out a level
                   </textPath>
                 </text>
               </g>
