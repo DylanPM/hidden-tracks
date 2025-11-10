@@ -90,12 +90,20 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       let x = 0;
       let y = 0;
 
+      // Count active features
+      const activeCount = feature_angles.filter(f => activeFeatures[f] !== false).length;
+
       // Apply stronger exaggeration for root-level genres
       // Root (depth 0): 1.6x to make them more distinct
       // Level 1: 1.2x (normal)
       // Level 2+: 1.1x (pushed 10% further for better spacing with ring text)
       const depthExaggeration = depth === 0 ? 1.6 : (depth === 1 ? 1.2 : 1.1);
-      const effectiveExaggeration = exaggeration * depthExaggeration;
+
+      // Feature-count exaggeration: boost spread when fewer features active
+      // 1 feature: 2.5x, 2 features: 1.8x, 3+: 1.0x
+      const featureCountExaggeration = activeCount === 1 ? 2.5 : (activeCount === 2 ? 1.8 : 1.0);
+
+      const effectiveExaggeration = exaggeration * depthExaggeration * featureCountExaggeration;
 
       feature_angles.forEach(featureName => {
         // Skip if this feature is disabled
@@ -147,7 +155,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     });
 
     // ADAPTIVE SCALING with log transform and collision avoidance
-    const TARGET_RADIUS = 220; // Use more of the available space (ring is at 245px)
+    const TARGET_RADIUS = 195; // Reduced from 220 to add padding (ring is at 245px, inner at 245)
 
     // Find maximum distance from center
     let maxRadius = 0;
