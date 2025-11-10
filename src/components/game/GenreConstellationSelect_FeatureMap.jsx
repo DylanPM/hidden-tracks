@@ -1149,12 +1149,14 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Main node circle */}
                 <circle
                   r={nodeRadius}
-                  fill={isSelected ? '#1DB954' : '#18181b'}
+                  fill={isSelected ? '#1DB954' : isHovered ? '#27272a' : '#18181b'}
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   stroke={isSelected ? '#1DB954' : item.isSelected ? '#eab308' : isHovered ? '#1DB954' : '#1DB954'}
                   strokeWidth={isSelected ? '4' : item.isSelected ? '4' : isHovered ? '3' : '2'}
                   strokeOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  className="hover:fill-zinc-800 transition-all"
+                  style={{
+                    transition: 'fill 0.2s ease-in, fill-opacity 0.2s ease-in, stroke-opacity 0.2s ease-in'
+                  }}
                   filter={isHovered ? 'url(#glow)' : undefined}
                   onClick={item.onClick}
                 />
