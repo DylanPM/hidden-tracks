@@ -136,7 +136,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       processNode(manifest[genreKey], [genreKey]);
     });
 
-    // ADAPTIVE SCALING: Auto-scale to fit within target boundary
+    // ADAPTIVE SCALING with log transform and collision avoidance
+    const TARGET_RADIUS = 220; // Use more of the available space (ring is at 245px)
+
     // Find maximum distance from center
     let maxRadius = 0;
     Object.values(rawResult).forEach(pos => {
@@ -144,16 +146,141 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       if (distance > maxRadius) maxRadius = distance;
     });
 
-    // Calculate adaptive scale factor to fit within target radius
-    const TARGET_RADIUS = 190; // Fit comfortably inside the 250px ring with some padding
+    // Calculate adaptive scale factor
     const adaptiveScale = maxRadius > 0 ? TARGET_RADIUS / maxRadius : 1;
 
-    // Apply adaptive scaling to all positions
-    const result = {};
+    // Apply log scaling to spread outer nodes more (0.5 closer to 1 than to 0)
+    // This uncrowds nodes by giving more space to nodes further from center
+    const applyLogScale = (distance, maxDist) => {
+      if (maxDist === 0) return 0;
+      const normalized = distance / maxDist; // 0 to 1
+      // Apply logarithmic transform: log2(1 + x) makes 0.5 → ~0.58
+      const logged = Math.log2(1 + normalized) / Math.log2(2); // 0 to 1, curved
+      return logged * maxDist;
+    };
+
+    // First pass: apply adaptive scaling with log transform
+    const scaledResult = {};
     Object.keys(rawResult).forEach(key => {
+      const x = rawResult[key].x * adaptiveScale;
+      const y = rawResult[key].y * adaptiveScale;
+      const distance = Math.sqrt(x * x + y * y);
+      const logDistance = applyLogScale(distance, TARGET_RADIUS);
+      const scale = distance > 0 ? logDistance / distance : 1;
+
+      scaledResult[key] = {
+        x: x * scale,
+        y: y * scale,
+        features: null // Will store features for collision resolution
+      };
+    });
+
+    // Store features for collision resolution
+    Object.keys(rawResult).forEach(key => {
+      const pathParts = key.split('.');
+      let node = manifest;
+      for (const part of pathParts) {
+        if (node[part]) node = node[part];
+        else if (node.subgenres?.[part]) node = node.subgenres[part];
+      }
+      if (node?.features) {
+        scaledResult[key].features = node.features;
+      }
+    });
+
+    // COLLISION AVOIDANCE: Push overlapping nodes in direction of strongest attribute
+    const MIN_DISTANCE = 35; // Minimum distance between node centers
+    const PUSH_STRENGTH = 0.6; // How much to push (0-1)
+    const MAX_ITERATIONS = 3;
+
+    for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+      const keys = Object.keys(scaledResult);
+      let hadCollision = false;
+
+      for (let i = 0; i < keys.length; i++) {
+        for (let j = i + 1; j < keys.length; j++) {
+          const node1 = scaledResult[keys[i]];
+          const node2 = scaledResult[keys[j]];
+
+          const dx = node2.x - node1.x;
+          const dy = node2.y - node1.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < MIN_DISTANCE && distance > 0) {
+            hadCollision = true;
+
+            // Calculate push direction for each node based on strongest attribute
+            const getPushDirection = (features) => {
+              if (!features) return { x: 0, y: 0 };
+
+              let strongestFeature = null;
+              let strongestWeight = 0;
+
+              feature_angles.forEach(featureName => {
+                const value = features[featureName];
+                if (value == null) return;
+
+                // Normalize to see which feature is most extreme
+                const weight = Math.abs(value - 0.5);
+                if (weight > strongestWeight) {
+                  strongestWeight = weight;
+                  strongestFeature = featureName;
+                }
+              });
+
+              if (!strongestFeature) return { x: 0, y: 0 };
+
+              // Get direction of strongest feature
+              const angle = featureAngles[strongestFeature];
+              const isHigh = features[strongestFeature] > 0.5;
+              const direction = isHigh ? 1 : -1;
+
+              return {
+                x: Math.cos(angle) * direction,
+                y: Math.sin(angle) * direction
+              };
+            };
+
+            const push1Dir = getPushDirection(node1.features);
+            const push2Dir = getPushDirection(node2.features);
+
+            // Push nodes apart, biased toward their strongest attribute direction
+            const overlap = MIN_DISTANCE - distance;
+            const pushDist = overlap * PUSH_STRENGTH / 2;
+
+            // If no feature direction, fall back to direct separation
+            const push1X = push1Dir.x !== 0 ? push1Dir.x * pushDist : -(dx / distance) * pushDist;
+            const push1Y = push1Dir.y !== 0 ? push1Dir.y * pushDist : -(dy / distance) * pushDist;
+            const push2X = push2Dir.x !== 0 ? push2Dir.x * pushDist : (dx / distance) * pushDist;
+            const push2Y = push2Dir.y !== 0 ? push2Dir.y * pushDist : (dy / distance) * pushDist;
+
+            node1.x += push1X;
+            node1.y += push1Y;
+            node2.x += push2X;
+            node2.y += push2Y;
+
+            // Clamp to boundary
+            [node1, node2].forEach(node => {
+              const dist = Math.sqrt(node.x * node.x + node.y * node.y);
+              if (dist > TARGET_RADIUS) {
+                const scale = TARGET_RADIUS / dist;
+                node.x *= scale;
+                node.y *= scale;
+              }
+            });
+          }
+        }
+      }
+
+      if (!hadCollision) break;
+    }
+
+    // Final result without features metadata
+    const result = {};
+    Object.keys(scaledResult).forEach(key => {
       result[key] = {
-        x: rawResult[key].x * adaptiveScale,
-        y: rawResult[key].y * adaptiveScale
+        x: scaledResult[key].x,
+        y: scaledResult[key].y
       };
     });
 

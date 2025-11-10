@@ -1522,14 +1522,20 @@ export function GenreConstellationSelect({ onLaunch }) {
           })}
 
           {/* Preview nodes (shown when hovering a node with children) */}
-          {/* Wrap all preview items in a container that clears hover when mouse leaves */}
+          {/* Large invisible circle around preview area to keep it active */}
           {previewItems.length > 0 && hoveredItem && (
-            <g
-              onMouseLeave={() => {
-                // Clear hover when mouse leaves the entire preview area
-                setHoveredItem(null);
-              }}
-            >
+            <>
+              <circle
+                cx={CENTER_X}
+                cy={CENTER_Y}
+                r={180}
+                fill="transparent"
+                style={{ pointerEvents: 'auto' }}
+                onMouseLeave={() => {
+                  // Clear hover when mouse exits the activation zone
+                  setHoveredItem(null);
+                }}
+              />
               {previewItems.map((previewItem) => {
                 const nodeRadius = 27;
 
@@ -1576,7 +1582,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               </g>
             );
           })}
-            </g>
+            </>
           )}
 
           {/* Orbiting description text (follows hover, shows genre descriptions) */}
