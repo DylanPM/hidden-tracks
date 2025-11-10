@@ -1182,7 +1182,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   }}
                 >
                   <textPath href={`#nodePath-${item.key}`} startOffset="0%">
-                    {item.label.length > 20 ? item.label.slice(0, 20) + '…' : item.label}
+                    {item.label.length > 20 ? item.label.toLowerCase().slice(0, 20) + '…' : item.label.toLowerCase()}
                   </textPath>
                 </text>
 
