@@ -189,9 +189,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     });
 
     // COLLISION AVOIDANCE: Push overlapping nodes in direction of strongest attribute
-    const MIN_DISTANCE = 35; // Minimum distance between node centers
-    const PUSH_STRENGTH = 0.6; // How much to push (0-1)
-    const MAX_ITERATIONS = 3;
+    const MIN_DISTANCE = 50; // Minimum distance between node centers
+    const PUSH_STRENGTH = 0.9; // How much to push (0-1)
+    const MAX_ITERATIONS = 5;
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const keys = Object.keys(scaledResult);
