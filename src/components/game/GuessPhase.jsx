@@ -164,9 +164,9 @@ export function GuessPhase({
               <div className="bg-zinc-900 rounded-lg p-3 border-2 border-green-500 relative">
                 <button
                   onClick={() => window.location.reload()}
-                  className="absolute top-2 right-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium rounded-md border border-zinc-600 hover:border-zinc-500 shadow-sm hover:shadow-md transition-all cursor-pointer z-10"
+                  className="absolute -top-8 right-0 px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded border border-zinc-600 hover:border-zinc-500 transition-all cursor-pointer z-10"
                 >
-                  Back to Map
+                  return to map to pick a different seed
                 </button>
                 <h2 className="text-green-400 font-bold mb-2 text-sm">Seed Track</h2>
                 <div className="relative">

@@ -698,7 +698,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 Explore how algorithmic recommendation systems curate music.
               </p>
               <p className="text-zinc-400 mb-4">
-                Pick a genre, sub-genre, or a song, hit Play, then try to guess which songs would be recommended for a playlist.
+                Pick a genre, sub-genre, or a song, hit ▶ Play, then try to guess which songs would be recommended for a playlist.
               </p>
               <p className="text-zinc-500 text-xs mb-6">
                 Built with help from Anthropic's Claude.
@@ -1086,8 +1086,8 @@ export function GenreConstellationSelect({ onLaunch }) {
                       fill="#1DB954"
                       opacity="0.15"
                       style={{
-                        animation: 'pulse 2s ease-in-out infinite, fadeIn 0.2s ease-in',
-                        pointerEvents: 'none'
+                        pointerEvents: 'none',
+                        transition: 'opacity 0.2s ease-in'
                       }}
                     />
                     {/* Green stroke ring */}
@@ -1099,7 +1099,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                       opacity="0.6"
                       style={{
                         pointerEvents: 'none',
-                        animation: 'fadeIn 0.2s ease-in'
+                        transition: 'opacity 0.2s ease-in'
                       }}
                     />
                   </>
@@ -1182,16 +1182,21 @@ export function GenreConstellationSelect({ onLaunch }) {
                         </text>
                       </>
                     ) : (
-                      /* Leaf node: show play triangle icon */
+                      /* Leaf node: show ▶ "Play" */
                       <>
-                        <polygon
-                          points="-6,-8 -6,8 8,0"
+                        <text
+                          textAnchor="middle"
+                          y="-6"
                           fill="white"
+                          fontSize="20"
+                          fontWeight="900"
                           style={{
                             pointerEvents: 'none',
                             animation: 'fadeIn 0.2s ease-in'
                           }}
-                        />
+                        >
+                          ▶
+                        </text>
                         <text
                           textAnchor="middle"
                           y="10"
@@ -1330,6 +1335,26 @@ export function GenreConstellationSelect({ onLaunch }) {
         </svg>
       </div>
 
+      {/* Hidden audio preview iframe for UK garage tracks on hover */}
+      {hoveredItem?.type === 'track' &&
+       hoveredItem?.track?.uri &&
+       viewStack.some(path => path.toLowerCase().includes('uk garage')) && (
+        <iframe
+          key={hoveredItem.track.uri}
+          src={`https://open.spotify.com/embed/track/${hoveredItem.track.uri.split(':')[2]}?utm_source=generator`}
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: '-9999px',
+            width: '300px',
+            height: '80px'
+          }}
+          frameBorder="0"
+          allow="autoplay; encrypted-media"
+          title="Audio Preview"
+        />
+      )}
+
       {/* Animations */}
       <style>{`
         @keyframes orbit {
@@ -1408,9 +1433,13 @@ function getGenreDescription(genreName) {
     'jazz fusion': 'Electric instruments, rock/funk energy, extended solos.',
     swing: 'Big band arrangements, danceable pulse, riff-based melodies.',
     'bossa nova': 'Samba slowed, whisper vocals, jazz chords, gentle movement.',
-    // Rock subgenres
+    // Rock subgenres and parent categories
+    heavy: 'Downtuned power, aggressive delivery, extended techniques.',
+    modern: 'Post-2000 sensibilities, indie-influenced, textural depth.',
+    retro: 'Blues roots, analog warmth, classic songwriting structures.',
     'alternative rock': 'Indie spirit, wider palette than classic rock. Hooks with bite.',
     'indie rock': 'DIY ethos, melodic focus, jangly guitars, earnest delivery.',
+    'post-rock': 'Instrumental crescendos, texture over riffs, cinematic arcs.',
     shoegaze: 'Wall-of-sound guitars, buried vocals, texture over clarity.',
     'classic rock': 'Blues-based riffs, anthem choruses, guitar solos. Stadium-ready.',
     'garage rock': 'Raw, lo-fi, energetic. Three chords and attitude.',
@@ -1437,7 +1466,11 @@ function getGenreDescription(genreName) {
     'dance pop': 'Four-on-floor beats, catchy vocals, club-ready energy.',
     'indie pop': 'Jangly, melodic, DIY charm, lighter touch than indie rock.',
     electropop: 'Synth-driven pop, bright production, electronic textures.',
-    // Hip Hop subgenres
+    'k-pop': 'Korean pop, choreographed performance, mix of genres, global reach.',
+    // Hip Hop subgenres and parent categories
+    'alternative hip hop': 'Jazz/funk fusion, experimental, conscious. Tribe/Roots vibe.',
+    'regional hip hop': 'Coast-specific sounds, local slang, geographical identity.',
+    'trap & bass': 'Fast hats, 808 subs, dark energy, modern street sound.',
     drill: 'Dark, aggressive, sliding 808s, street narratives, ominous.',
     'gangsta rap': 'Hard beats, street stories, G-funk or boom-bap, raw energy.',
     'east coast hip hop': 'Sample-heavy, boom-bap drums, lyrical focus, NYC swagger.',
@@ -1457,7 +1490,9 @@ function getGenreDescription(genreName) {
     dancehall: 'Digital riddims, DJ toasts, upbeat energy, Jamaican patois.',
     ska: 'Upstroke guitars, walking bass, horn sections, reggae precursor.',
     dub: 'Remix culture, heavy reverb/delay, bass emphasis, stripped.',
-    // Latin subgenres
+    // Latin subgenres and parent categories
+    'classic dance': 'Salsa, mambo, cumbia. Vintage Latin ballroom and social dance.',
+    'modern latin': 'Reggaeton, Latin trap, urban beats with Spanish vocals.',
     salsa: 'Clave-driven, horn sections, piano montunos, Afro-Cuban roots.',
     cumbia: 'Colombian rhythms, accordion/synths, dancing groove, infectious.',
     mambo: 'Big band Latin jazz, syncopated brass, dance-floor energy.',
