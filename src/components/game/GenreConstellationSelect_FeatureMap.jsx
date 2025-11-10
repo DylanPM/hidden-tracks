@@ -1054,8 +1054,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <text
                   fill="white"
                   fontSize={isHovered ? FONT_STYLES.large.fontSize + 1 : FONT_STYLES.large.fontSize}
-                  fontWeight={FONT_STYLES.large.fontWeight}
-                  letterSpacing={FONT_STYLES.large.letterSpacing}
+                  fontWeight="400"
+                  letterSpacing="1px"
+                  dominantBaseline="middle"
                   style={{ pointerEvents: 'none', transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)' }}
                 >
                   <textPath href={`#arc-title-${label.feature}-${label.end}`} startOffset="50%" textAnchor="middle">
