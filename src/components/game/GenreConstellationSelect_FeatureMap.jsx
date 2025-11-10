@@ -1522,37 +1522,25 @@ export function GenreConstellationSelect({ onLaunch }) {
           })}
 
           {/* Preview nodes (shown when hovering a node with children) */}
-          {/* Invisible background to clear hover when moving away from preview */}
-          {previewItems.length > 0 && (
-            <circle
-              cx={CENTER_X}
-              cy={CENTER_Y}
-              r={250}
-              fill="transparent"
-              style={{ cursor: 'default' }}
-              onMouseEnter={() => setHoveredItem(null)}
-            />
-          )}
+          {/* Wrap all preview items in a container that clears hover when mouse leaves */}
+          {previewItems.length > 0 && hoveredItem && (
+            <g
+              onMouseLeave={() => {
+                // Clear hover when mouse leaves the entire preview area
+                setHoveredItem(null);
+              }}
+            >
+              {previewItems.map((previewItem) => {
+                const nodeRadius = 27;
 
-          {previewItems.length > 0 && hoveredItem && previewItems.map((previewItem) => {
-            const nodeRadius = 27;
-
-            return (
-              <g key={`preview-node-${previewItem.key}`}>
-                {/* Preview node */}
-                <g
-                  transform={`translate(${CENTER_X + previewItem.x}, ${CENTER_Y + previewItem.y})`}
-                  opacity="0.7"
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => {
-                    e.stopPropagation();
-                    // Keep hover active when over preview nodes
-                  }}
-                  onMouseLeave={() => {
-                    // Clear hover when leaving a preview node
-                    setHoveredItem(null);
-                  }}
-                >
+                return (
+                  <g key={`preview-node-${previewItem.key}`}>
+                    {/* Preview node */}
+                    <g
+                      transform={`translate(${CENTER_X + previewItem.x}, ${CENTER_Y + previewItem.y})`}
+                      opacity="0.7"
+                      style={{ pointerEvents: 'auto' }}
+                    >
                   {/* Node circle */}
                   <circle
                     r={nodeRadius}
@@ -1588,6 +1576,8 @@ export function GenreConstellationSelect({ onLaunch }) {
               </g>
             );
           })}
+            </g>
+          )}
 
           {/* Orbiting description text (follows hover, shows genre descriptions) */}
           {(hoveredItem || selectedNode) && (
