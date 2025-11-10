@@ -695,7 +695,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 Explore how algorithmic recommendation systems curate music.
               </p>
               <p className="text-zinc-400 mb-4">
-                Pick a genre, sub-genre, or a song, hit LAUNCH, then try to guess which songs would be recommended for a playlist.
+                Pick a genre, sub-genre, or a song, hit |> Play, then try to guess which songs would be recommended for a playlist.
               </p>
               <p className="text-zinc-500 text-xs mb-6">
                 Built with help from Anthropic's Claude.
