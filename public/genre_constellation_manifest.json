@@ -3187,6 +3187,13 @@
             "artist": "Jimmy Smith",
             "popularity": 55,
             "filename": "jimmy-smith_midnight-special-rudy-van-gelder-digital-remaster-2007.json"
+          },
+          {
+            "uri": "spotify:track:5p6me2mwQrGfH30eExHn6v",
+            "name": "Take Five",
+            "artist": "Dave Brubeck",
+            "popularity": 54,
+            "filename": "dave-brubeck_take-five.json"
           }
         ],
         "features": {
@@ -4990,13 +4997,6 @@
             "artist": "Dmitri Shostakovich",
             "popularity": 55,
             "filename": "dmitri-shostakovich_jazz-suite-no-2-6-waltz-ii.json"
-          },
-          {
-            "uri": "spotify:track:5p6me2mwQrGfH30eExHn6v",
-            "name": "Take Five",
-            "artist": "Dave Brubeck",
-            "popularity": 54,
-            "filename": "dave-brubeck_take-five.json"
           }
         ],
         "features": {
