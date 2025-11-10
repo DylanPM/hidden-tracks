@@ -1522,6 +1522,18 @@ export function GenreConstellationSelect({ onLaunch }) {
           })}
 
           {/* Preview nodes (shown when hovering a node with children) */}
+          {/* Invisible background to clear hover when moving away from preview */}
+          {previewItems.length > 0 && (
+            <circle
+              cx={CENTER_X}
+              cy={CENTER_Y}
+              r={250}
+              fill="transparent"
+              style={{ cursor: 'default' }}
+              onMouseEnter={() => setHoveredItem(null)}
+            />
+          )}
+
           {previewItems.length > 0 && hoveredItem && previewItems.map((previewItem) => {
             const nodeRadius = 27;
 
@@ -1531,7 +1543,15 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <g
                   transform={`translate(${CENTER_X + previewItem.x}, ${CENTER_Y + previewItem.y})`}
                   opacity="0.7"
-                  style={{ pointerEvents: 'none' }}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={(e) => {
+                    e.stopPropagation();
+                    // Keep hover active when over preview nodes
+                  }}
+                  onMouseLeave={() => {
+                    // Clear hover when leaving a preview node
+                    setHoveredItem(null);
+                  }}
                 >
                   {/* Node circle */}
                   <circle
