@@ -1292,18 +1292,18 @@ export function GenreConstellationSelect({ onLaunch }) {
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 22000ms linear infinite`,
+                  animation: `orbit 18000ms linear infinite`,
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize={FONT_STYLES.largest.fontSize} fill="#a1a1aa" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
+                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="0%">
-                    You're in {viewStack.join(' > ')} • click anywhere inside or outside the circle to zoom out a level
+                    You're in {viewStack.join(' > ')} • click anywhere inside the ring to zoom out a level
                   </textPath>
                 </text>
-                <text fontSize={FONT_STYLES.largest.fontSize} fill="#a1a1aa" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
+                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="50%">
-                    You're in {viewStack.join(' > ')} • click anywhere inside or outside the circle to zoom out a level
+                    You're in {viewStack.join(' > ')} • click anywhere inside the ring to zoom out a level
                   </textPath>
                 </text>
               </g>
