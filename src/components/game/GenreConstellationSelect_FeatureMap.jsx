@@ -65,11 +65,6 @@ const FEATURE_CONFIG = {
     low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare', info: 'Based on play count and recency. Niche is underground; popular is mainstream hits.' },
     high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits', info: 'Based on play count and recency. Niche is underground; popular is mainstream hits.' },
     color: '#FBBF24' // Yellow
-  },
-  instrumentalness: {
-    low: { emoji: '🎤', name: 'Vocal', desc: 'With singing', info: 'Predicts absence of vocals. Vocal has singing/lyrics; instrumental is purely musical.' },
-    high: { emoji: '🎼', name: 'Instrumental', desc: 'No vocals', info: 'Predicts absence of vocals. Vocal has singing/lyrics; instrumental is purely musical.' },
-    color: '#3B82F6' // Blue
   }
 };
 
@@ -110,7 +105,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [backHintTimeout, setBackHintTimeout] = useState(null);
   const [backHintPosition, setBackHintPosition] = useState({ x: 0, y: 0 });
 
-  // Active features (all enabled by default)
+  // Active features (all enabled by default) - instrumentalness excluded from display
   const [activeFeatures, setActiveFeatures] = useState({
     danceability: true,
     energy: true,
@@ -118,12 +113,17 @@ export function GenreConstellationSelect({ onLaunch }) {
     acousticness: true,
     valence: true,
     tempo_norm: true,
-    popularity: true,
-    instrumentalness: true
+    popularity: true
   });
 
   // Difficulty (kept for compatibility)
   const [difficulty] = useState('medium');
+
+  // Filter out instrumentalness from feature_angles for display
+  const displayFeatures = useMemo(() => {
+    if (!manifest?.global?.display?.feature_angles) return [];
+    return manifest.global.display.feature_angles.filter(f => f !== 'instrumentalness');
+  }, [manifest]);
 
   // Load manifest
   useEffect(() => {
@@ -605,11 +605,15 @@ export function GenreConstellationSelect({ onLaunch }) {
   const items = renderItems();
 
   // Compute preview items when hovering a node with children
+  // This shows EXACTLY what the next screen will look like after clicking
   const previewItems = useMemo(() => {
     if (!hoveredItem || !manifest?.global) return [];
 
+    // Don't show preview for parent nodes (already at that level)
+    if (hoveredItem.isParent) return [];
+
     // Determine what would be shown if we clicked this node
-    const nextViewStack = hoveredItem.isParent ? viewStack : [...viewStack, hoveredItem.key];
+    const nextViewStack = [...viewStack, hoveredItem.key];
 
     // Get the node we're previewing
     let previewNode = manifest;
@@ -711,12 +715,27 @@ export function GenreConstellationSelect({ onLaunch }) {
     };
     */
 
+    // Preview array will contain parent at (0,0) + children
+    const previews = [];
+
+    // Add the parent node at center (0,0) - this is where it will be after clicking
+    const parentHasSeeds = (previewNode?.seeds || previewNode?._seeds)?.length > 0;
+    previews.push({
+      key: `preview-parent-${hoveredItem.key}`,
+      label: hoveredItem.key,
+      x: 0,
+      y: 0,
+      type: 'parent',
+      isParent: true,
+      hasSubgenres: false,
+      hasSeeds: parentHasSeeds,
+      isPreview: true
+    });
+
     // Check if it has subgenres
     if (previewNode.subgenres && Object.keys(previewNode.subgenres).length > 0) {
-      // Show subgenres at their positions using the same logic as actual view
-      // After clicking, we'll be at nextViewStack level, so use appropriate positions
+      // Show subgenres at their local positions (relative to parent at 0,0)
       const subgenreKeys = Object.keys(previewNode.subgenres);
-      const previews = [];
 
       subgenreKeys.forEach((key) => {
         // Calculate full path to this subgenre
@@ -732,7 +751,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         const hasSeeds = (subgenreData?.seeds || subgenreData?._seeds)?.length > 0;
 
         previews.push({
-          key: key,
+          key: `preview-${key}`,
           label: key,
           x: pos.x,
           y: pos.y,
@@ -746,22 +765,16 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // Check if it has seeds (tracks)
     const seeds = previewNode?.seeds || previewNode?._seeds || [];
-    if (seeds.length > 0 && loadedTracks.length === 0) {
-      // CENTER CODE: Cluster track previews in center of ring
+    if (seeds.length > 0) {
+      // Show tracks in a circle around the parent (like the actual view will show)
       const numTracks = Math.min(seeds.length, 5); // Show up to 5 track previews
-      const previews = [];
-
-      // Arrange in a tight grid centered at origin
-      const cols = Math.ceil(Math.sqrt(numTracks));
-      const spacing = 60;
-      const gridWidth = (cols - 1) * spacing;
-      const gridHeight = (Math.ceil(numTracks / cols) - 1) * spacing;
+      const circleRadius = 120;
+      const angleStep = (Math.PI * 2) / numTracks;
 
       for (let i = 0; i < numTracks; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const x = (col * spacing) - (gridWidth / 2);
-        const y = (row * spacing) - (gridHeight / 2);
+        const angle = i * angleStep;
+        const x = Math.cos(angle) * circleRadius;
+        const y = Math.sin(angle) * circleRadius;
 
         previews.push({
           key: `preview-track-${i}`,
@@ -773,33 +786,32 @@ export function GenreConstellationSelect({ onLaunch }) {
           isPreview: true
         });
       }
-      return previews;
     }
 
-    return [];
-  }, [hoveredItem, manifest, positions, viewStack, loadedTracks, exaggeration, activeFeatures]);
+    return previews;
+  }, [hoveredItem, manifest, previewPositions, viewStack, loadedTracks, exaggeration, activeFeatures]);
 
   // Get selected node position for connection lines and LAUNCH overlay
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
 
-  // Axis configuration (bidirectional labels) - 16 evenly-spaced segments
+  // Axis configuration (bidirectional labels) - segments based on feature count
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
-    const { feature_angles } = manifest.global.display;
-    const segmentAngleStep = (Math.PI * 2) / 16; // 16 segments = 22.5° each
+    const numSegments = displayFeatures.length * 2; // Each feature has high and low ends
+    const segmentAngleStep = (Math.PI * 2) / numSegments;
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
 
-    feature_angles.forEach((feature, i) => {
+    displayFeatures.forEach((feature, i) => {
       const config = FEATURE_CONFIG[feature];
       const enabled = activeFeatures[feature] !== false;
 
       if (!config) return;
 
-      // High end at evenly-spaced positions (0°, 22.5°, 45°, 67.5°, 90°, 112.5°, 135°, 157.5°)
+      // High end at evenly-spaced positions around the circle
       const highAngle = i * segmentAngleStep;
       labels.push({
         feature,
@@ -814,8 +826,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         enabled
       });
 
-      // Low end 180° opposite (8 segments away: 180°, 202.5°, 225°, 247.5°, 270°, 292.5°, 315°, 337.5°)
-      const lowAngle = (i + 8) * segmentAngleStep;
+      // Low end 180° opposite (half the total segments away)
+      const lowAngle = (i + displayFeatures.length) * segmentAngleStep;
       labels.push({
         feature,
         end: 'low',
@@ -831,7 +843,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     });
 
     return labels;
-  }, [manifest, activeFeatures]);
+  }, [manifest, activeFeatures, displayFeatures]);
 
   // Compute feature weights for focused node (for disco floor effect)
   const focusedNodeFeatureWeights = useMemo(() => {
@@ -847,12 +859,11 @@ export function GenreConstellationSelect({ onLaunch }) {
     const nodeFeatures = node?.features;
     if (!nodeFeatures) return null;
 
-    const { feature_angles } = manifest.global.display;
     const { quantiles } = manifest.global;
 
     // Normalize each feature to 0-1 using quantiles
     const weights = {};
-    feature_angles.forEach(feature => {
+    displayFeatures.forEach(feature => {
       const value = nodeFeatures[feature];
       if (value == null || isNaN(value)) {
         weights[feature] = 0.5;
@@ -876,7 +887,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     });
 
     return weights;
-  }, [hoveredItem, selectedNode, manifest, viewStack]);
+  }, [hoveredItem, selectedNode, manifest, viewStack, displayFeatures]);
 
   // Toggle feature
   const toggleFeature = (feature) => {
@@ -940,7 +951,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       <div className="fixed right-4 top-4 z-20 bg-zinc-900/90 rounded-lg p-3 max-w-xs border border-zinc-700">
         <div className="text-xs font-bold text-zinc-400 mb-2">FEATURES</div>
         <div className="space-y-1">
-          {manifest?.global?.display?.feature_angles.map(feature => {
+          {displayFeatures.map(feature => {
             const config = FEATURE_CONFIG[feature];
             const enabled = activeFeatures[feature] !== false;
             if (!config) return null;
@@ -1052,9 +1063,10 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Subtle background floor coloring - 16 evenly-spaced segments */}
-          {manifest?.global?.display?.feature_angles.map((feature, i) => {
-            const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment
+          {/* Subtle background floor coloring - segments based on feature count */}
+          {displayFeatures.map((feature, i) => {
+            const numSegments = displayFeatures.length * 2;
+            const segmentAngleStep = (Math.PI * 2) / numSegments;
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
@@ -1062,9 +1074,9 @@ export function GenreConstellationSelect({ onLaunch }) {
             const highStartAngle = i * segmentAngleStep - segmentAngleStep / 2;
             const highEndAngle = i * segmentAngleStep + segmentAngleStep / 2;
 
-            // Low end segment 180° opposite (8 segments away)
-            const lowStartAngle = (i + 8) * segmentAngleStep - segmentAngleStep / 2;
-            const lowEndAngle = (i + 8) * segmentAngleStep + segmentAngleStep / 2;
+            // Low end segment 180° opposite (half the segments away)
+            const lowStartAngle = (i + displayFeatures.length) * segmentAngleStep - segmentAngleStep / 2;
+            const lowEndAngle = (i + displayFeatures.length) * segmentAngleStep + segmentAngleStep / 2;
 
             return (
               <g key={`floor-bg-${feature}`}>
@@ -1096,19 +1108,19 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Disco floor - connected 16-point polygon based on feature weights */}
+          {/* Disco floor - connected polygon based on feature weights */}
           {focusedNodeFeatureWeights && (() => {
-            const feature_angles = manifest?.global?.display?.feature_angles;
-            if (!feature_angles) return null;
+            if (displayFeatures.length === 0) return null;
 
-            const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment for even spacing
+            const numSegments = displayFeatures.length * 2;
+            const segmentAngleStep = (Math.PI * 2) / numSegments;
             const maxRadius = 250;
             const minRadius = 50;
 
-            // Create 16 points at evenly-spaced angles
+            // Create points at evenly-spaced angles (one for each feature's high and low)
             const points = [];
 
-            feature_angles.forEach((feature, i) => {
+            displayFeatures.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
               // High end point at evenly-spaced position i
@@ -1122,11 +1134,11 @@ export function GenreConstellationSelect({ onLaunch }) {
               });
             });
 
-            feature_angles.forEach((feature, i) => {
+            displayFeatures.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
-              // Low end point 180° opposite (8 segments away)
-              const lowAngle = (i + 8) * segmentAngleStep;
+              // Low end point 180° opposite (half the segments away)
+              const lowAngle = (i + displayFeatures.length) * segmentAngleStep;
               const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(lowAngle) * lowRadius,
@@ -1136,15 +1148,15 @@ export function GenreConstellationSelect({ onLaunch }) {
               });
             });
 
-            // Create path connecting all 16 points in order
+            // Create path connecting all points in order
             const pathData = points.map((p, i) =>
               `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
             ).join(' ') + ' Z';
 
             // Find dominant feature (highest strength from either high or low)
-            let dominantFeature = feature_angles[0];
+            let dominantFeature = displayFeatures[0];
             let maxStrength = 0;
-            feature_angles.forEach((feature, i) => {
+            displayFeatures.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
               const highStrength = weight;
               const lowStrength = 1 - weight;
@@ -1181,12 +1193,15 @@ export function GenreConstellationSelect({ onLaunch }) {
 
           {/* Preview lines (rendered early so they appear underneath everything) */}
           {previewItems.length > 0 && hoveredItem && previewItems.map((previewItem) => {
+            // Skip drawing line to the parent itself (it's at 0,0)
+            if (previewItem.isParent) return null;
+
             return (
               <g key={`preview-line-${previewItem.key}`}>
-                {/* Static dotted line */}
+                {/* Static dotted line from parent (0,0) to child */}
                 <line
-                  x1={CENTER_X + hoveredItem.x}
-                  y1={CENTER_Y + hoveredItem.y}
+                  x1={CENTER_X}
+                  y1={CENTER_Y}
                   x2={CENTER_X + previewItem.x}
                   y2={CENTER_Y + previewItem.y}
                   stroke="#1DB954"
@@ -1198,8 +1213,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
                 {/* Animated "zipper" dashes traveling along the line */}
                 <line
-                  x1={CENTER_X + hoveredItem.x}
-                  y1={CENTER_Y + hoveredItem.y}
+                  x1={CENTER_X}
+                  y1={CENTER_Y}
                   x2={CENTER_X + previewItem.x}
                   y2={CENTER_Y + previewItem.y}
                   stroke="#1DB954"
@@ -1215,7 +1230,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Circular ring with embedded 16 axis label segments (Trivial Pursuit style) */}
+          {/* Circular ring with embedded axis label segments (Trivial Pursuit style) */}
           <g
             style={{
               transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
@@ -1233,7 +1248,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             const innerRadius = 245;
 
             // Calculate arc angles for this segment
-            const angleStep = (Math.PI * 2) / 16; // 16 segments total
+            const numSegments = displayFeatures.length * 2;
+            const angleStep = (Math.PI * 2) / numSegments;
             const startAngle = label.angle - angleStep / 2;
             const endAngle = label.angle + angleStep / 2;
 
@@ -1312,7 +1328,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           })}
           </g>
 
-          {/* Axis lines (16 total) - one to each ring segment */}
+          {/* Axis lines - one to each ring segment */}
           {axisConfig.map((label) => {
             return (
               <line
@@ -1354,11 +1370,9 @@ export function GenreConstellationSelect({ onLaunch }) {
             const nodeRadius = 27; // Same size for all nodes
             const focusRingRadius = 75; // Green ring radius
 
-            // Hide siblings when preview is active (only show hovered item + parent nodes)
+            // Hide ALL items when preview is active (preview shows complete next state)
             const hasPreview = previewItems.length > 0;
-            const shouldHide = hasPreview && !isHovered && !item.isParent;
-
-            if (shouldHide) return null;
+            if (hasPreview) return null;
 
             return (
               <g

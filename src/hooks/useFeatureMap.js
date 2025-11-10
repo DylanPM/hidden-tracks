@@ -15,8 +15,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
   const positions = useMemo(() => {
     if (!manifest?.global) return {};
 
-    const { feature_angles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
+    const { feature_angles: rawFeatureAngles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
     const { quantiles: globalQuantiles } = manifest.global;
+
+    // Filter out instrumentalness from display
+    const feature_angles = rawFeatureAngles.filter(f => f !== 'instrumentalness');
 
     // Compute local quantiles from siblings if provided
     const computeLocalQuantiles = (siblings) => {
@@ -50,11 +53,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Use local quantiles if siblings provided, otherwise global
     const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : globalQuantiles;
 
-    // Compute angle for each feature to match ring segments (16 segments at 22.5° intervals)
-    // Each feature's high end gets positioned at: 0°, 22.5°, 45°, 67.5°, 90°, 112.5°, 135°, 157.5°
-    const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment
+    // Compute angle for each feature to match ring segments
+    // Each feature has high and low ends, so total segments = feature_angles.length * 2
+    const numSegments = feature_angles.length * 2;
+    const segmentAngleStep = (Math.PI * 2) / numSegments;
     const featureAngles = feature_angles.reduce((acc, feature, i) => {
-      acc[feature] = i * segmentAngleStep; // Use 22.5° spacing to match ring labels
+      acc[feature] = i * segmentAngleStep; // Evenly space features around the circle
       return acc;
     }, {});
 
@@ -111,12 +115,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     };
 
     // Compute positions for all genres and subgenres
-    const result = {};
+    const rawResult = {};
 
     const processNode = (node, path = []) => {
       const key = path.join('.');
       if (node.features) {
-        result[key] = projectTo2D(node.features);
+        rawResult[key] = projectTo2D(node.features);
       }
 
       if (node.subgenres) {
@@ -132,6 +136,27 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       processNode(manifest[genreKey], [genreKey]);
     });
 
+    // ADAPTIVE SCALING: Auto-scale to fit within target boundary
+    // Find maximum distance from center
+    let maxRadius = 0;
+    Object.values(rawResult).forEach(pos => {
+      const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+      if (distance > maxRadius) maxRadius = distance;
+    });
+
+    // Calculate adaptive scale factor to fit within target radius
+    const TARGET_RADIUS = 190; // Fit comfortably inside the 250px ring with some padding
+    const adaptiveScale = maxRadius > 0 ? TARGET_RADIUS / maxRadius : 1;
+
+    // Apply adaptive scaling to all positions
+    const result = {};
+    Object.keys(rawResult).forEach(key => {
+      result[key] = {
+        x: rawResult[key].x * adaptiveScale,
+        y: rawResult[key].y * adaptiveScale
+      };
+    });
+
     return result;
   }, [manifest, exaggeration, activeFeatures, siblingFeatures]);
 
@@ -145,8 +170,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2, activeFeatures = {}, siblingFeatures = null) {
   if (!manifest?.global) return { x: 0, y: 0 };
 
-  const { feature_angles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
+  const { feature_angles: rawFeatureAngles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
   const { quantiles: globalQuantiles } = manifest.global;
+
+  // Filter out instrumentalness from display
+  const feature_angles = rawFeatureAngles.filter(f => f !== 'instrumentalness');
 
   // Compute local quantiles from siblings if provided
   let quantiles = globalQuantiles;
@@ -176,9 +204,11 @@ export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2
     quantiles = localQ;
   }
 
-  const segmentAngleStep = (Math.PI * 2) / 16; // 22.5° per segment to match ring display
+  // Each feature has high and low ends, so total segments = feature_angles.length * 2
+  const numSegments = feature_angles.length * 2;
+  const segmentAngleStep = (Math.PI * 2) / numSegments;
   const featureAngles = feature_angles.reduce((acc, feature, i) => {
-    acc[feature] = i * segmentAngleStep; // Use 22.5° spacing to match ring labels
+    acc[feature] = i * segmentAngleStep; // Evenly space features around the circle
     return acc;
   }, {});
 
