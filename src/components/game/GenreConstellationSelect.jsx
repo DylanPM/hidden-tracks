@@ -324,10 +324,12 @@ const HIDDEN_GENRES = ['folk', 'brostep', 'spoken-word', 'audiobook'];
   const leftStopPx = Math.max(0, CENTER_X - (baseRadius + circleRadius + 12));
 
   // orbiting text content and speed (slowed ~33%)
-  const genreDescription = `${getGenreDescription(currentGenre)}`; 
+  const genreDescription = `${getGenreDescription(currentGenre)}`;
   // took the loop out to see how it looks • ${getGenreDescription(currentGenre)}`;
-  const TICKER_MS = 11000;
-  // was 24000 and before that 18000. 
+
+  // Outer ring text speed (decreased by 15% = slower = longer duration)
+  const OUTER_RING_MS = 11000 * 1.176; // ~12936ms
+  // was 11000, then 24000, then 18000. 
 
   // precompute positions
   const items = useMemo(() => {
@@ -484,7 +486,7 @@ const HIDDEN_GENRES = ['folk', 'brostep', 'spoken-word', 'audiobook'];
             <g
             style={{
               transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-              animation: `orbit ${TICKER_MS}ms linear infinite`,
+              animation: `orbit ${OUTER_RING_MS}ms linear infinite`,
               pointerEvents: 'none',       // <-- added this to stop stealing pointer events
             }}
           >
