@@ -93,8 +93,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       // Apply stronger exaggeration for root-level genres
       // Root (depth 0): 1.6x to make them more distinct
       // Level 1: 1.2x (normal)
-      // Level 2+: 1.0x (less exaggerated)
-      const depthExaggeration = depth === 0 ? 1.6 : (depth === 1 ? 1.2 : 1.0);
+      // Level 2+: 1.1x (pushed 10% further for better spacing with ring text)
+      const depthExaggeration = depth === 0 ? 1.6 : (depth === 1 ? 1.2 : 1.1);
       const effectiveExaggeration = exaggeration * depthExaggeration;
 
       feature_angles.forEach(featureName => {
