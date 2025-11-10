@@ -157,7 +157,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   const getCurrentNode = () => getManifestNode(viewStack);
 
   // Get children of current node
-  const getChildren = () => {
+  const children = useMemo(() => {
     if (viewStack.length === 0) {
       // Root level: show all genres
       if (!manifest) return [];
@@ -174,18 +174,15 @@ export function GenreConstellationSelect({ onLaunch }) {
       type: 'subgenre',
       data: node.subgenres[k]
     }));
-  };
+  }, [viewStack, manifest]);
 
   // Get seeds for current node
-  const getSeeds = () => {
+  const seeds = useMemo(() => {
     const node = getCurrentNode();
     if (!node) return [];
     if (viewStack.length === 0) return [];
     return node?.seeds || node?._seeds || [];
-  };
-
-  const children = getChildren();
-  const seeds = getSeeds();
+  }, [viewStack, manifest]);
 
   // Compute positions with global normalization (for root level)
   const { positions: rawGlobalPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, null);
