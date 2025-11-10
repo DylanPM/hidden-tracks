@@ -797,6 +797,13 @@ export function GenreConstellationSelect({ onLaunch }) {
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
+            // Check if this feature is hovered (either high or low end)
+            const isFeatureHovered = hoveredAxisLabel && hoveredAxisLabel.startsWith(feature + '-');
+            const isFeatureEnabled = activeFeatures[feature];
+
+            // Three states: not in use (off), in use (on), on hover
+            const floorOpacity = isFeatureHovered ? 0.35 : (isFeatureEnabled ? 0.12 : 0.05);
+
             // High end segment at evenly-spaced position i
             const highStartAngle = i * segmentAngleStep - segmentAngleStep / 2;
             const highEndAngle = i * segmentAngleStep + segmentAngleStep / 2;
@@ -816,8 +823,11 @@ export function GenreConstellationSelect({ onLaunch }) {
                     Z
                   `}
                   fill={featureColor}
-                  opacity={0.08}
-                  style={{ pointerEvents: 'none' }}
+                  opacity={floorOpacity}
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'opacity 0.2s ease-out'
+                  }}
                 />
                 {/* Low end segment */}
                 <path
@@ -828,71 +838,15 @@ export function GenreConstellationSelect({ onLaunch }) {
                     Z
                   `}
                   fill={featureColor}
-                  opacity={0.08}
-                  style={{ pointerEvents: 'none' }}
+                  opacity={floorOpacity}
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'opacity 0.2s ease-out'
+                  }}
                 />
               </g>
             );
           })}
-
-          {/* Hover triangles - light up triangular areas between attributes */}
-          {hoveredAxisLabel && (() => {
-            const parts = hoveredAxisLabel.split('-');
-            const hoveredFeature = parts[0];
-            const hoveredEnd = parts[1];
-
-            const numSegments = displayFeatures.length * 2;
-            const segmentAngleStep = (Math.PI * 2) / numSegments;
-
-            // Find the index of the hovered segment
-            const featureIndex = displayFeatures.indexOf(hoveredFeature);
-            if (featureIndex === -1) return null;
-
-            const segmentIndex = hoveredEnd === 'high' ? featureIndex : featureIndex + displayFeatures.length;
-            const centerAngle = segmentIndex * segmentAngleStep;
-
-            // Create triangles on both sides of the hovered segment
-            const triangles = [];
-            const innerRadius = 245;
-            const outerRadius = 285;
-
-            // Left triangle (between this segment and previous)
-            const prevAngle = centerAngle - segmentAngleStep;
-            const leftTriangle = `
-              M ${CENTER_X} ${CENTER_Y}
-              L ${CENTER_X + Math.cos(prevAngle) * outerRadius} ${CENTER_Y + Math.sin(prevAngle) * outerRadius}
-              L ${CENTER_X + Math.cos(centerAngle) * outerRadius} ${CENTER_Y + Math.sin(centerAngle) * outerRadius}
-              Z
-            `;
-            triangles.push(leftTriangle);
-
-            // Right triangle (between this segment and next)
-            const nextAngle = centerAngle + segmentAngleStep;
-            const rightTriangle = `
-              M ${CENTER_X} ${CENTER_Y}
-              L ${CENTER_X + Math.cos(centerAngle) * outerRadius} ${CENTER_Y + Math.sin(centerAngle) * outerRadius}
-              L ${CENTER_X + Math.cos(nextAngle) * outerRadius} ${CENTER_Y + Math.sin(nextAngle) * outerRadius}
-              Z
-            `;
-            triangles.push(rightTriangle);
-
-            return (
-              <g>
-                {triangles.map((triangle, i) => (
-                  <path
-                    key={`hover-triangle-${i}`}
-                    d={triangle}
-                    fill="#ffffff"
-                    opacity={0.3}
-                    style={{
-                      pointerEvents: 'none',
-                      transition: 'opacity 0.2s ease-out'
-                    }}
-                  />
-                ))}
-              </g>
-            );
-          })()}
 
           {/* Disco floor - connected polygon based on feature weights */}
           {focusedNodeFeatureWeights && (() => {
@@ -1020,9 +974,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                 <path
                   d={segmentPath}
                   fill={featureColor}
-                  fillOpacity={label.enabled ? (isHovered || isOppositeHovered ? 0.6 : 0.4) : 0.2}
+                  fillOpacity={label.enabled ? (isHovered || isOppositeHovered ? 0.6 : 0.4) : 0.15}
                   stroke={featureColor}
                   strokeWidth="2"
+                  strokeOpacity={label.enabled ? 1.0 : 0.3}
                   className="cursor-pointer"
                   style={{ transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)' }}
                   onClick={(e) => {
@@ -1053,6 +1008,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Title text */}
                 <text
                   fill="white"
+                  fillOpacity={label.enabled ? 1.0 : 0.4}
                   fontSize={isHovered ? FONT_STYLES.large.fontSize + 1 : FONT_STYLES.large.fontSize}
                   fontWeight="400"
                   letterSpacing="1px"
