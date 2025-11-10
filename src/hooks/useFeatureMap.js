@@ -85,9 +85,17 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     };
 
     // Project normalized features to 2D
-    const projectTo2D = (features) => {
+    // Depth-based exaggeration: root genres get more extreme positioning
+    const projectTo2D = (features, depth = 0) => {
       let x = 0;
       let y = 0;
+
+      // Apply stronger exaggeration for root-level genres
+      // Root (depth 0): 1.6x to make them more distinct
+      // Level 1: 1.2x (normal)
+      // Level 2+: 1.0x (less exaggerated)
+      const depthExaggeration = depth === 0 ? 1.6 : (depth === 1 ? 1.2 : 1.0);
+      const effectiveExaggeration = exaggeration * depthExaggeration;
 
       feature_angles.forEach(featureName => {
         // Skip if this feature is disabled
@@ -99,7 +107,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
         // Convert to weight: [-1, 1] (bidirectional)
         // percentile 0 → opposite direction (low label), 0.5 → center, 1 → toward axis (high label)
-        const weight = (percentile - 0.5) * 2 * exaggeration;
+        const weight = (percentile - 0.5) * 2 * effectiveExaggeration;
 
         // Add weighted unit vector for this axis
         const angle = featureAngles[featureName];
@@ -119,8 +127,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     const processNode = (node, path = []) => {
       const key = path.join('.');
+      const depth = path.length - 1; // Root genres have depth 0
+
       if (node.features) {
-        rawResult[key] = projectTo2D(node.features);
+        rawResult[key] = projectTo2D(node.features, depth);
       }
 
       if (node.subgenres) {
@@ -189,10 +199,38 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     });
 
     // COLLISION AVOIDANCE: Push overlapping nodes in direction of strongest attribute
-    const MIN_DISTANCE = 40; // Minimum distance between node centers (reduced from 50)
-    const PUSH_STRENGTH = 0.3; // How much to push (0-1) - reduced from 0.9 to prevent spiraling
-    const MAX_ITERATIONS = 3; // Reduced from 5
-    const DAMPING = 0.85; // Reduce push strength each iteration to stabilize
+    // Relationship-aware minimum distances provide better separation for related nodes
+    const MIN_DISTANCE_SIBLING = 50; // Minimum distance between siblings at same level
+    const MIN_DISTANCE_PARENT_CHILD = 55; // Minimum distance between parent and child
+    const MIN_DISTANCE_DEFAULT = 40; // Default for unrelated nodes
+    const PUSH_STRENGTH = 0.4; // Balanced strength to avoid instability
+    const MAX_ITERATIONS = 5; // Enough iterations for convergence without chaos
+    const DAMPING = 0.88; // Progressive damping to stabilize
+
+    // Helper to determine relationship between two nodes
+    const getNodeRelationship = (key1, key2) => {
+      const parts1 = key1.split('.');
+      const parts2 = key2.split('.');
+
+      // Parent-child if one is direct parent of the other
+      if (parts1.length === parts2.length - 1 && key2.startsWith(key1 + '.')) {
+        return 'parent-child';
+      }
+      if (parts2.length === parts1.length - 1 && key1.startsWith(key2 + '.')) {
+        return 'parent-child';
+      }
+
+      // Siblings if they have the same parent (same path except last element)
+      if (parts1.length === parts2.length && parts1.length > 1) {
+        const parent1 = parts1.slice(0, -1).join('.');
+        const parent2 = parts2.slice(0, -1).join('.');
+        if (parent1 === parent2) {
+          return 'sibling';
+        }
+      }
+
+      return 'unrelated';
+    };
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const keys = Object.keys(scaledResult);
@@ -200,14 +238,23 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
       for (let i = 0; i < keys.length; i++) {
         for (let j = i + 1; j < keys.length; j++) {
-          const node1 = scaledResult[keys[i]];
-          const node2 = scaledResult[keys[j]];
+          const key1 = keys[i];
+          const key2 = keys[j];
+          const node1 = scaledResult[key1];
+          const node2 = scaledResult[key2];
 
           const dx = node2.x - node1.x;
           const dy = node2.y - node1.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < MIN_DISTANCE && distance > 0) {
+          // Determine appropriate minimum distance based on relationship
+          const relationship = getNodeRelationship(key1, key2);
+          const minDistance =
+            relationship === 'parent-child' ? MIN_DISTANCE_PARENT_CHILD :
+            relationship === 'sibling' ? MIN_DISTANCE_SIBLING :
+            MIN_DISTANCE_DEFAULT;
+
+          if (distance < minDistance && distance > 0) {
             hadCollision = true;
 
             // Calculate push direction for each node based on strongest attribute
@@ -248,7 +295,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             // Push nodes apart, biased toward their strongest attribute direction
             // Apply damping: pushes get weaker each iteration to prevent spiraling
             const currentStrength = PUSH_STRENGTH * Math.pow(DAMPING, iteration);
-            const overlap = MIN_DISTANCE - distance;
+            const overlap = minDistance - distance;
             const pushDist = overlap * currentStrength / 2;
 
             // If no feature direction, fall back to direct separation

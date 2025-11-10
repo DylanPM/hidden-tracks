@@ -1,7 +1,7 @@
 /**
- * Collision Audit Script
+ * Check Specific Node Pairs
  *
- * Shows how much collision avoidance moves nodes from their ideal positions
+ * Checks distances between the specific pairs the user mentioned are too close
  */
 
 const fs = require('fs');
@@ -9,17 +9,15 @@ const fs = require('fs');
 // Load manifest
 const manifest = JSON.parse(fs.readFileSync('./public/genre_constellation_manifest.json', 'utf8'));
 
-// Configuration (matching useFeatureMap.js)
+// Configuration
 const BASE_EXAGGERATION = 1.2;
-const TARGET_RADIUS = 220; // Updated to match current implementation
+const TARGET_RADIUS = 220;
 
-// Filter out instrumentalness
 const feature_angles = manifest.global.display.feature_angles.filter(f => f !== 'instrumentalness');
 const projection_scale = manifest.global.display.projection_scale;
 const speechiness_contrast_gamma = manifest.global.display.speechiness_contrast_gamma;
 const globalQuantiles = manifest.global.quantiles;
 
-// Calculate angles for each feature
 const numSegments = feature_angles.length * 2;
 const segmentAngleStep = (Math.PI * 2) / numSegments;
 const featureAngles = {};
@@ -27,7 +25,6 @@ feature_angles.forEach((feature, i) => {
   featureAngles[feature] = i * segmentAngleStep;
 });
 
-// Normalize a feature value
 function normalizeFeature(value, featureName, quantiles) {
   if (value == null || isNaN(value)) return 0.5;
   const q = quantiles[featureName];
@@ -39,7 +36,6 @@ function normalizeFeature(value, featureName, quantiles) {
   return 0.9 + 0.1 * Math.min(1, (value - q.p90) / (q.p90 - q.p50));
 }
 
-// Apply contrast curve
 function applyContrastCurve(percentile, featureName) {
   if (featureName === 'speechiness') {
     return Math.pow(percentile, 1 / speechiness_contrast_gamma);
@@ -47,11 +43,9 @@ function applyContrastCurve(percentile, featureName) {
   return percentile;
 }
 
-// Project features to 2D
 function projectTo2D(features, quantiles, depth = 0) {
   let x = 0, y = 0;
 
-  // Apply stronger exaggeration for root-level genres
   const depthExaggeration = depth === 0 ? 1.6 : (depth === 1 ? 1.2 : 1.0);
   const effectiveExaggeration = BASE_EXAGGERATION * depthExaggeration;
 
@@ -72,7 +66,6 @@ function projectTo2D(features, quantiles, depth = 0) {
   };
 }
 
-// Apply log scaling
 function applyLogScale(distance, maxDist) {
   if (maxDist === 0) return 0;
   const normalized = distance / maxDist;
@@ -88,7 +81,7 @@ function processNode(node, path = []) {
   const key = path.join('.');
   if (!key) return;
 
-  const depth = path.length - 1; // Root genres have depth 0
+  const depth = path.length - 1;
 
   if (node.features) {
     const pos = projectTo2D(node.features, globalQuantiles, depth);
@@ -103,7 +96,6 @@ function processNode(node, path = []) {
   }
 }
 
-// Process all genres
 Object.keys(manifest).forEach(genreKey => {
   if (genreKey === 'global' || genreKey === 'build') return;
   processNode(manifest[genreKey], [genreKey]);
@@ -134,16 +126,13 @@ Object.keys(rawPositions).forEach(key => {
   };
 });
 
-console.log(`\n📍 COLLISION AVOIDANCE AUDIT`);
-console.log(`============================\n`);
-
-// Apply collision avoidance (matching useFeatureMap.js)
-const MIN_DISTANCE_SIBLING = 50;
-const MIN_DISTANCE_PARENT_CHILD = 60;
+// Apply collision avoidance
+const MIN_DISTANCE_SIBLING = 60;
+const MIN_DISTANCE_PARENT_CHILD = 65;
 const MIN_DISTANCE_DEFAULT = 40;
-const PUSH_STRENGTH = 0.3;
-const MAX_ITERATIONS = 3;
-const DAMPING = 0.85;
+const PUSH_STRENGTH = 0.6;
+const MAX_ITERATIONS = 10;
+const DAMPING = 0.95;
 
 // Helper to determine relationship between two nodes
 const getNodeRelationship = (key1, key2) => {
@@ -158,7 +147,7 @@ const getNodeRelationship = (key1, key2) => {
     return 'parent-child';
   }
 
-  // Siblings if they have the same parent (same path except last element)
+  // Siblings if they have the same parent
   if (parts1.length === parts2.length && parts1.length > 1) {
     const parent1 = parts1.slice(0, -1).join('.');
     const parent2 = parts2.slice(0, -1).join('.');
@@ -174,8 +163,6 @@ const finalPositions = JSON.parse(JSON.stringify(scaledPositions));
 
 for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
   const keys = Object.keys(finalPositions);
-  let hadCollision = false;
-  let collisionCount = 0;
 
   for (let i = 0; i < keys.length; i++) {
     for (let j = i + 1; j < keys.length; j++) {
@@ -188,7 +175,6 @@ for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const dy = node2.y - node1.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Determine appropriate minimum distance based on relationship
       const relationship = getNodeRelationship(key1, key2);
       const minDistance =
         relationship === 'parent-child' ? MIN_DISTANCE_PARENT_CHILD :
@@ -196,10 +182,6 @@ for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
         MIN_DISTANCE_DEFAULT;
 
       if (distance < minDistance && distance > 0) {
-        hadCollision = true;
-        collisionCount++;
-
-        // Get push direction based on strongest feature
         const getPushDirection = (features) => {
           if (!features) return { x: 0, y: 0 };
 
@@ -246,7 +228,6 @@ for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
         node2.x += push2X;
         node2.y += push2Y;
 
-        // Clamp to boundary
         [node1, node2].forEach(node => {
           const dist = Math.sqrt(node.x * node.x + node.y * node.y);
           if (dist > TARGET_RADIUS) {
@@ -258,56 +239,43 @@ for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       }
     }
   }
-
-  console.log(`Iteration ${iteration + 1}: ${collisionCount} collisions resolved`);
-  if (!hadCollision) break;
 }
 
-// Calculate displacement for each node
-const displacements = Object.keys(scaledPositions).map(key => {
-  const ideal = scaledPositions[key];
-  const actual = finalPositions[key];
+// Check specific pairs
+console.log('\n🔍 CHECKING SPECIFIC NODE PAIRS:');
+console.log('================================\n');
 
-  const idealDist = Math.sqrt(ideal.x * ideal.x + ideal.y * ideal.y);
-  const actualDist = Math.sqrt(actual.x * actual.x + actual.y * actual.y);
-  const displacement = Math.sqrt(
-    Math.pow(actual.x - ideal.x, 2) + Math.pow(actual.y - ideal.y, 2)
-  );
-  const displacementPct = idealDist > 0 ? (displacement / idealDist * 100) : 0;
+const pairs = [
+  ['classical.modern classical', 'classical.romantic'],
+  ['jazz.jazz fusion', 'jazz.bebop'],
+  ['rock.Heavy', 'rock'],
+  ['rock.Modern.indie rock', 'rock.Modern'],
+  ['pop.dance pop', 'pop'],
+  ['country.roots rock', 'country.southern rock'],
+  ['latin.Classic Dance.merengue', 'latin.Classic Dance'],
+  ['electronic.trance', 'electronic.techno'],
+  ['Caribbean & African.afropop', 'Caribbean & African.dancehall'],
+  ['Caribbean & African.afropop', 'Caribbean & African'],
+  ['Caribbean & African.dancehall', 'Caribbean & African'],
+  ['Caribbean & African.amapiano', 'Caribbean & African.dub']
+];
 
-  return {
-    key,
-    ideal: { x: ideal.x, y: ideal.y, dist: idealDist },
-    actual: { x: actual.x, y: actual.y, dist: actualDist },
-    displacement,
-    displacementPct
-  };
+pairs.forEach(([key1, key2]) => {
+  const pos1 = finalPositions[key1];
+  const pos2 = finalPositions[key2];
+
+  if (!pos1 || !pos2) {
+    console.log(`❌ ${key1} <-> ${key2}: ONE OR BOTH NOT FOUND`);
+    return;
+  }
+
+  const dx = pos2.x - pos1.x;
+  const dy = pos2.y - pos1.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const status = distance < 40 ? '🔴 TOO CLOSE' : (distance < 60 ? '🟡 CLOSE' : '🟢 OK');
+
+  console.log(`${status} ${distance.toFixed(1)}px | ${key1.padEnd(45)} <-> ${key2}`);
 });
 
-// Sort by displacement
-displacements.sort((a, b) => b.displacement - a.displacement);
-
-console.log(`\n📊 TOP 20 MOST DISPLACED NODES:`);
-console.log(`   (showing how far collision avoidance pushed them from ideal)\n`);
-
-displacements.slice(0, 20).forEach((node, i) => {
-  const angleChange = Math.atan2(node.actual.y, node.actual.x) - Math.atan2(node.ideal.y, node.ideal.x);
-  const angleDeg = (angleChange * 180 / Math.PI).toFixed(1);
-
-  console.log(`${(i+1).toString().padStart(2)}. ${node.key.padEnd(40)} → moved ${node.displacement.toFixed(1)}px (${node.displacementPct.toFixed(1)}% of ideal dist) | angle shift: ${angleDeg}°`);
-});
-
-console.log(`\n📈 STATISTICS:`);
-console.log(`   Average displacement: ${(displacements.reduce((sum, n) => sum + n.displacement, 0) / displacements.length).toFixed(1)}px`);
-console.log(`   Max displacement: ${displacements[0].displacement.toFixed(1)}px`);
-console.log(`   Nodes with >20px displacement: ${displacements.filter(n => n.displacement > 20).length}`);
-console.log(`   Nodes with >50px displacement: ${displacements.filter(n => n.displacement > 50).length}`);
-
-// Check root-level genres specifically
-console.log(`\n🎯 ROOT LEVEL GENRES (the ones you see first):`);
-const rootGenres = displacements.filter(d => !d.key.includes('.'));
-rootGenres.forEach(node => {
-  console.log(`   ${node.key.padEnd(25)} → ideal: (${node.ideal.x.toFixed(0)}, ${node.ideal.y.toFixed(0)}) | actual: (${node.actual.x.toFixed(0)}, ${node.actual.y.toFixed(0)}) | moved: ${node.displacement.toFixed(1)}px`);
-});
-
-console.log(`\n✅ Audit complete!\n`);
+console.log('\n✅ Check complete!\n');

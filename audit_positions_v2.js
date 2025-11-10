@@ -13,8 +13,8 @@ const fs = require('fs');
 const manifest = JSON.parse(fs.readFileSync('./public/genre_constellation_manifest.json', 'utf8'));
 
 // Configuration (matching useFeatureMap.js)
-const EXAGGERATION = 1.2;
-const TARGET_RADIUS = 190; // From adaptive scaling
+const BASE_EXAGGERATION = 1.2;
+const TARGET_RADIUS = 220; // From adaptive scaling
 
 // Filter out instrumentalness (matching the new implementation)
 const feature_angles = manifest.global.display.feature_angles.filter(f => f !== 'instrumentalness');
@@ -59,15 +59,19 @@ function applyContrastCurve(percentile, featureName) {
 }
 
 // Project features to 2D (before adaptive scaling)
-function projectTo2D(features, quantiles) {
+function projectTo2D(features, quantiles, depth = 0) {
   let x = 0, y = 0;
+
+  // Apply stronger exaggeration for root-level genres
+  const depthExaggeration = depth === 0 ? 1.6 : (depth === 1 ? 1.2 : 1.0);
+  const effectiveExaggeration = BASE_EXAGGERATION * depthExaggeration;
 
   feature_angles.forEach(featureName => {
     const rawValue = features[featureName];
     let percentile = normalizeFeature(rawValue, featureName, quantiles);
     percentile = applyContrastCurve(percentile, featureName);
 
-    const weight = (percentile - 0.5) * 2 * EXAGGERATION;
+    const weight = (percentile - 0.5) * 2 * effectiveExaggeration;
     const angle = featureAngles[featureName];
     x += weight * Math.cos(angle);
     y += weight * Math.sin(angle);
@@ -87,12 +91,15 @@ function processNode(node, path = []) {
   const key = path.join('.');
   if (!key) return; // Skip root
 
+  const depth = path.length - 1; // Root genres have depth 0
+
   if (node.features) {
-    const pos = projectTo2D(node.features, globalQuantiles);
+    const pos = projectTo2D(node.features, globalQuantiles, depth);
     rawPositions[key] = pos;
     nodes.push({
       key,
       path,
+      depth,
       features: node.features,
       rawPos: pos
     });
