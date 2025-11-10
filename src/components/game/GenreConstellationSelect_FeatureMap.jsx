@@ -711,43 +711,6 @@ export function GenreConstellationSelect({ onLaunch }) {
         </div>
       )}
 
-      {/* Feature toggles */}
-      <div className="fixed right-4 top-4 z-20 bg-zinc-900/90 rounded-lg p-3 max-w-xs border border-zinc-700">
-        <div className="text-xs font-bold text-zinc-400 mb-2">FEATURES</div>
-        <div className="space-y-1">
-          {displayFeatures.map(feature => {
-            const config = FEATURE_CONFIG[feature];
-            const enabled = activeFeatures[feature] !== false;
-            if (!config) return null;
-
-            return (
-              <div key={feature} className="flex items-center gap-2 group" title={config.low.info}>
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={() => toggleFeature(feature)}
-                  className="w-3 h-3"
-                />
-                <span className="text-sm cursor-pointer flex-1" onClick={() => toggleFeature(feature)}>
-                  <span className="mr-1">{config.low.emoji}</span>
-                  <span className={enabled ? 'text-white' : 'text-zinc-600'}>{config.low.name}</span>
-                  <span className="mx-1">↔</span>
-                  <span className="mr-1">{config.high.emoji}</span>
-                  <span className={enabled ? 'text-white' : 'text-zinc-600'}>{config.high.name}</span>
-                </span>
-                <button
-                  onClick={() => enableOnly(feature)}
-                  className="text-xs px-1 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 opacity-0 group-hover:opacity-100 transition"
-                  title="Only this one"
-                >
-                  only
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Main canvas */}
       <div className="flex flex-col items-center justify-center min-h-screen">
         <svg
@@ -872,6 +835,65 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
+          {/* Hover triangles - light up triangular areas between attributes */}
+          {hoveredAxisLabel && (() => {
+            const parts = hoveredAxisLabel.split('-');
+            const hoveredFeature = parts[0];
+            const hoveredEnd = parts[1];
+
+            const numSegments = displayFeatures.length * 2;
+            const segmentAngleStep = (Math.PI * 2) / numSegments;
+
+            // Find the index of the hovered segment
+            const featureIndex = displayFeatures.indexOf(hoveredFeature);
+            if (featureIndex === -1) return null;
+
+            const segmentIndex = hoveredEnd === 'high' ? featureIndex : featureIndex + displayFeatures.length;
+            const centerAngle = segmentIndex * segmentAngleStep;
+
+            // Create triangles on both sides of the hovered segment
+            const triangles = [];
+            const innerRadius = 245;
+            const outerRadius = 285;
+
+            // Left triangle (between this segment and previous)
+            const prevAngle = centerAngle - segmentAngleStep;
+            const leftTriangle = `
+              M ${CENTER_X} ${CENTER_Y}
+              L ${CENTER_X + Math.cos(prevAngle) * outerRadius} ${CENTER_Y + Math.sin(prevAngle) * outerRadius}
+              L ${CENTER_X + Math.cos(centerAngle) * outerRadius} ${CENTER_Y + Math.sin(centerAngle) * outerRadius}
+              Z
+            `;
+            triangles.push(leftTriangle);
+
+            // Right triangle (between this segment and next)
+            const nextAngle = centerAngle + segmentAngleStep;
+            const rightTriangle = `
+              M ${CENTER_X} ${CENTER_Y}
+              L ${CENTER_X + Math.cos(centerAngle) * outerRadius} ${CENTER_Y + Math.sin(centerAngle) * outerRadius}
+              L ${CENTER_X + Math.cos(nextAngle) * outerRadius} ${CENTER_Y + Math.sin(nextAngle) * outerRadius}
+              Z
+            `;
+            triangles.push(rightTriangle);
+
+            return (
+              <g>
+                {triangles.map((triangle, i) => (
+                  <path
+                    key={`hover-triangle-${i}`}
+                    d={triangle}
+                    fill="#ffffff"
+                    opacity={0.3}
+                    style={{
+                      pointerEvents: 'none',
+                      transition: 'opacity 0.2s ease-out'
+                    }}
+                  />
+                ))}
+              </g>
+            );
+          })()}
+
           {/* Disco floor - connected polygon based on feature weights */}
           {focusedNodeFeatureWeights && (() => {
             if (displayFeatures.length === 0) return null;
@@ -917,25 +939,8 @@ export function GenreConstellationSelect({ onLaunch }) {
               `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
             ).join(' ') + ' Z';
 
-            // Find dominant feature (highest strength from either high or low)
-            let dominantFeature = displayFeatures[0];
-            let maxStrength = 0;
-            displayFeatures.forEach((feature, i) => {
-              const weight = focusedNodeFeatureWeights[feature];
-              const highStrength = weight;
-              const lowStrength = 1 - weight;
-
-              if (highStrength > maxStrength) {
-                maxStrength = highStrength;
-                dominantFeature = feature;
-              }
-              if (lowStrength > maxStrength) {
-                maxStrength = lowStrength;
-                dominantFeature = feature;
-              }
-            });
-
-            const color = FEATURE_CONFIG[dominantFeature]?.color || '#1DB954';
+            // Use neutral white color for disco floor
+            const color = '#ffffff';
             const avgStrength = points.reduce((sum, p) => sum + p.strength, 0) / points.length;
             const opacity = 0.2 + (avgStrength * 0.3);
 
@@ -1020,7 +1025,16 @@ export function GenreConstellationSelect({ onLaunch }) {
                   strokeWidth="2"
                   className="cursor-pointer"
                   style={{ transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)' }}
-                  onClick={viewStack.length > 0 ? handleBack : undefined}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (viewStack.length === 0) {
+                      // Root view: toggle the feature
+                      toggleFeature(label.feature);
+                    } else {
+                      // Nested view: go back
+                      handleBack();
+                    }
+                  }}
                   onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
                   onMouseLeave={() => setHoveredAxisLabel(null)}
                 />
@@ -1357,23 +1371,6 @@ export function GenreConstellationSelect({ onLaunch }) {
             </text>
           )}
         </svg>
-      </div>
-
-      {/* Debug: Exaggeration slider */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-zinc-800/90 px-4 py-2 rounded-lg z-30">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-400">Spread:</span>
-          <input
-            type="range"
-            min="0.5"
-            max="4.0"
-            step="0.1"
-            value={exaggeration}
-            onChange={(e) => setExaggeration(parseFloat(e.target.value))}
-            className="w-32"
-          />
-          <span className="text-xs text-white font-mono">{exaggeration.toFixed(1)}</span>
-        </div>
       </div>
 
       {/* Animations */}

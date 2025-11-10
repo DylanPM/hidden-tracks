@@ -202,6 +202,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Relationship-aware minimum distances provide better separation for related nodes
     const MIN_DISTANCE_SIBLING = 50; // Minimum distance between siblings at same level
     const MIN_DISTANCE_PARENT_CHILD = 55; // Minimum distance between parent and child
+    const MIN_DISTANCE_ROOT = 75; // Minimum distance between root genres (increased for readability)
     const MIN_DISTANCE_DEFAULT = 40; // Default for unrelated nodes
     const PUSH_STRENGTH = 0.4; // Balanced strength to avoid instability
     const MAX_ITERATIONS = 5; // Enough iterations for convergence without chaos
@@ -249,7 +250,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
           // Determine appropriate minimum distance based on relationship
           const relationship = getNodeRelationship(key1, key2);
-          const minDistance =
+          const isRoot1 = !key1.includes('.');
+          const isRoot2 = !key2.includes('.');
+          const bothRoot = isRoot1 && isRoot2;
+
+          const minDistance = bothRoot ? MIN_DISTANCE_ROOT :
             relationship === 'parent-child' ? MIN_DISTANCE_PARENT_CHILD :
             relationship === 'sibling' ? MIN_DISTANCE_SIBLING :
             MIN_DISTANCE_DEFAULT;
