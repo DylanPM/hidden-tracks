@@ -695,7 +695,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 Explore how algorithmic recommendation systems curate music.
               </p>
               <p className="text-zinc-400 mb-4">
-                Pick a genre, sub-genre, or a song, hit |> Play, then try to guess which songs would be recommended for a playlist.
+                Pick a genre, sub-genre, or a song, hit Play, then try to guess which songs would be recommended for a playlist.
               </p>
               <p className="text-zinc-500 text-xs mb-6">
                 Built with help from Anthropic's Claude.
@@ -1179,21 +1179,16 @@ export function GenreConstellationSelect({ onLaunch }) {
                         </text>
                       </>
                     ) : (
-                      /* Leaf node: show ▶ "Play" */
+                      /* Leaf node: show play triangle icon */
                       <>
-                        <text
-                          textAnchor="middle"
-                          y="-6"
+                        <polygon
+                          points="-6,-8 -6,8 8,0"
                           fill="white"
-                          fontSize="20"
-                          fontWeight="900"
                           style={{
                             pointerEvents: 'none',
                             animation: 'fadeIn 0.2s ease-in'
                           }}
-                        >
-                          ▶
-                        </text>
+                        />
                         <text
                           textAnchor="middle"
                           y="10"
