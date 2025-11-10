@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useFeatureMap } from '../../hooks/useFeatureMap';
 
 // Font standardization system
+// Note: Spotify uses "Spotify Mix" (2024) - a proprietary font combining geometric,
+// grotesque, and humanist characteristics. Best web alternatives: Inter, DM Sans, Work Sans.
+// Currently using Tailwind's font-sans (system-ui stack) which provides good readability.
 const FONT_STYLES = {
   largest: {
     // Ring instruction text (circling "Click anywhere outside...")
