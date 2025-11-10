@@ -15,7 +15,7 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 function slugify(text) {
   return text
     .toLowerCase()
-    .replace(/['']/g, '') // Remove apostrophes
+    .replace(/['']/g, '-') // Replace apostrophes with hyphens (not remove!)
     .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
     .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 }
