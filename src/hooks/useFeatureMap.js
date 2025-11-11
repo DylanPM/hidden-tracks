@@ -374,6 +374,17 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       };
     });
 
+    // DEBUG: Log root genre positions
+    const rootGenres = ['rock', 'electronic', 'hip hop', 'jazz', 'classical', 'pop', 'country', 'r&b'];
+    rootGenres.forEach(genre => {
+      const pos = result[genre];
+      if (pos) {
+        const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y).toFixed(1);
+        const angle = (Math.atan2(pos.y, pos.x) * 180 / Math.PI).toFixed(1);
+        console.log(`🎯 ${genre.padEnd(12)}: (${pos.x.toFixed(1).padStart(6)}, ${pos.y.toFixed(1).padStart(6)}) → ${dist.padStart(5)}px at ${angle.padStart(6)}°`);
+      }
+    });
+
     return result;
   }, [manifest, exaggeration, activeFeatures, siblingFeatures]);
 
