@@ -563,9 +563,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return baseAngle;
     };
 
-    // DEBUG: Track ambient collisions (run once)
+    // DEBUG: Track ambient collisions (first iteration only)
     let ambientCollisions = [];
-    let ambientDebugDone = false;
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const keys = Object.keys(scaledResult);
@@ -604,17 +603,15 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           if (distance < minDistance && distance > 0) {
             hadCollision = true;
 
-            // DEBUG: Track collisions involving ambient (only siblings, only once)
-            if (!ambientDebugDone && (key1 === 'electronic.ambient' || key2 === 'electronic.ambient')) {
+            // DEBUG: Track ALL collisions involving ambient (run once on first iteration)
+            if (iteration === 0 && (key1 === 'electronic.ambient' || key2 === 'electronic.ambient')) {
               const otherKey = key1 === 'electronic.ambient' ? key2 : key1;
-              // Only track sibling collisions (other electronic subgenres)
-              if (relationship === 'sibling' && otherKey.startsWith('electronic.')) {
-                ambientCollisions.push({
-                  other: otherKey,
-                  distance: distance.toFixed(1),
-                  minDistance: minDistance
-                });
-              }
+              ambientCollisions.push({
+                other: otherKey,
+                distance: distance.toFixed(1),
+                minDistance: minDistance,
+                relationship: relationship
+              });
             }
 
             // Push nodes apart using radial separation with exclusion zone avoidance
@@ -667,12 +664,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     }
 
     // DEBUG: Log ambient collisions once
-    if (!ambientDebugDone && ambientCollisions.length > 0) {
-      console.log(`\n⚠️ AMBIENT COLLISIONS (electronic siblings only):`);
+    if (ambientCollisions.length > 0) {
+      console.log(`\n⚠️ AMBIENT COLLISIONS (first iteration):`);
       ambientCollisions.forEach(collision => {
-        console.log(`  vs ${collision.other}: ${collision.distance}px (min: ${collision.minDistance}px)`);
+        console.log(`  vs ${collision.other} (${collision.relationship}): ${collision.distance}px (min: ${collision.minDistance}px)`);
       });
-      ambientDebugDone = true;
     }
 
     // Final clamping pass to ensure ALL nodes stay within boundary
