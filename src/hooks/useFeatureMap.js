@@ -342,25 +342,26 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         // SPECIAL CASE: Song of the Day at center (0, 0) to evoke mystery
         if (node.isSongOfTheDay || genreKey === 'song of the day') {
           rawResult[key] = { x: 0, y: 0 };
-          return;
         }
-
         // HARD-CODED POSITIONING: Root-level parent genres use optimal semantic placement
-        const isRootGenre = depth === 0;
-        if (isRootGenre && hardCodedAssignments[genreKey]) {
-          rawResult[key] = getHardCodedPosition(hardCodedAssignments[genreKey]);
-          return;
+        else {
+          const isRootGenre = depth === 0;
+          if (isRootGenre && hardCodedAssignments[genreKey]) {
+            rawResult[key] = getHardCodedPosition(hardCodedAssignments[genreKey]);
+          }
+          // DYNAMIC POSITIONING: Subgenres and tracks use feature-based calculation
+          // For root-level parent genres not in hard-coded map, use averaged features
+          else {
+            const features = (isRootGenre && averagedParentFeatures[genreKey])
+              ? averagedParentFeatures[genreKey]
+              : node.features;
+
+            rawResult[key] = projectTo2D(features, depth);
+          }
         }
-
-        // DYNAMIC POSITIONING: Subgenres and tracks use feature-based calculation
-        // For root-level parent genres not in hard-coded map, use averaged features
-        const features = (isRootGenre && averagedParentFeatures[genreKey])
-          ? averagedParentFeatures[genreKey]
-          : node.features;
-
-        rawResult[key] = projectTo2D(features, depth);
       }
 
+      // ALWAYS process subgenres regardless of how parent was positioned
       if (node.subgenres) {
         Object.keys(node.subgenres).forEach(subkey => {
           processNode(node.subgenres[subkey], [...path, subkey]);
