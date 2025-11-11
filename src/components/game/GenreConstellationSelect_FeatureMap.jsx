@@ -264,76 +264,10 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Use global positions for root, local for nested levels
   const positions = viewStack.length === 0 ? globalPositions : localPositions;
 
-  // Calculate Song of the Day position (using same logic as useFeatureMap)
+  // Song of the Day always at center (0, 0) to evoke mystery
   const songOfTheDayPosition = useMemo(() => {
-    if (!manifest?.global) return { x: 0, y: 0 };
-
-    const { feature_angles: rawFeatureAngles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
-    const { quantiles: globalQuantiles } = manifest.global;
-    const feature_angles = rawFeatureAngles.filter(f => f !== 'instrumentalness');
-
-    // Create angle mapping
-    const featureAngles = {};
-    feature_angles.forEach((f, i) => {
-      featureAngles[f] = (i * 2 * Math.PI) / feature_angles.length;
-    });
-
-    // Normalize each feature
-    const normalizeFeature = (value, featureName) => {
-      const q = globalQuantiles[featureName];
-      if (!q) return 0.5;
-
-      if (value <= q.p10) return 0.1 * (value / q.p10);
-      if (value <= q.p50) return 0.1 + 0.4 * ((value - q.p10) / (q.p50 - q.p10));
-      if (value <= q.p90) return 0.5 + 0.4 * ((value - q.p50) / (q.p90 - q.p50));
-      return 0.9 + 0.1 * ((value - q.p90) / (1 - q.p90 + 0.001));
-    };
-
-    // Apply contrast curve for speechiness
-    const applyContrastCurve = (percentile, featureName) => {
-      if (featureName === 'speechiness' && speechiness_contrast_gamma) {
-        return Math.pow(percentile, speechiness_contrast_gamma);
-      }
-      return percentile;
-    };
-
-    // Calculate position
-    let x = 0;
-    let y = 0;
-
-    const depthExaggeration = 1.6; // Root level exaggeration
-    const effectiveExaggeration = exaggeration * depthExaggeration;
-
-    feature_angles.forEach(featureName => {
-      if (activeFeatures[featureName] === false) return;
-
-      const rawValue = SONG_OF_THE_DAY.features[featureName];
-      let percentile = normalizeFeature(rawValue, featureName);
-      percentile = applyContrastCurve(percentile, featureName);
-
-      const weight = (percentile - 0.5) * 2;
-      const angle = featureAngles[featureName];
-
-      x += weight * Math.cos(angle);
-      y += weight * Math.sin(angle);
-    });
-
-    x *= effectiveExaggeration * projection_scale;
-    y *= effectiveExaggeration * projection_scale;
-
-    // Clamp to boundary
-    const AXIS_RADIUS = 250;
-    const MAX_DISTANCE = AXIS_RADIUS - 60;
-    const distance = Math.sqrt(x * x + y * y);
-
-    if (distance > MAX_DISTANCE) {
-      const scale = MAX_DISTANCE / distance;
-      x *= scale;
-      y *= scale;
-    }
-
-    return { x, y };
-  }, [manifest, exaggeration, activeFeatures]);
+    return { x: 0, y: 0 };
+  }, []);
 
   // Description text
   const currentGenre = viewStack.length > 0 ? viewStack[viewStack.length - 1] : null;
@@ -1030,10 +964,10 @@ export function GenreConstellationSelect({ onLaunch }) {
                 // Clear existing timeout
                 if (backHintTimeout) clearTimeout(backHintTimeout);
 
-                // Show hint after mouse stops for 2.5 seconds
+                // Show hint after mouse stops for 5 seconds
                 const timeout = setTimeout(() => {
                   setShowBackHint(true);
-                }, 2500);
+                }, 5000);
                 setBackHintTimeout(timeout);
               }}
               onMouseLeave={() => {
@@ -1482,7 +1416,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
-              <text fontSize={FONT_STYLES.large.fontSize} fill={hoveredItem?.isSongOfTheDay || selectedNode?.isSongOfTheDay ? "#FFD700" : "#b7f7cf"} fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
+              <text fontSize={FONT_STYLES.large.fontSize} fill={hoveredItem?.isSongOfTheDay || selectedNode?.isSongOfTheDay ? "#FFFFFF" : "#b7f7cf"} fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem
                     ? (hoveredItem.isSongOfTheDay

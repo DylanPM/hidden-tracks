@@ -61,36 +61,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       ? computeLocalQuantiles(rootGenreFeatures)
       : globalQuantiles;
 
-    // DEBUG: Log quantile comparison for one feature
-    console.log('\n📊 QUANTILE COMPARISON (acousticness):');
-    console.log(`  Global: p10=${globalQuantiles.acousticness?.p10?.toFixed(3)}, p50=${globalQuantiles.acousticness?.p50?.toFixed(3)}, p90=${globalQuantiles.acousticness?.p90?.toFixed(3)}`);
-    console.log(`  Root:   p10=${rootQuantiles.acousticness?.p10?.toFixed(3)}, p50=${rootQuantiles.acousticness?.p50?.toFixed(3)}, p90=${rootQuantiles.acousticness?.p90?.toFixed(3)}`);
-
-    // DEBUG: Log initial feature-based positions for country and jazz
-    console.log('\n🎯 INITIAL POSITIONS (before collision avoidance):');
-
-    // Log feature values for country and jazz
-    ['country', 'jazz'].forEach(genreKey => {
-      if (manifest[genreKey]?.features) {
-        const features = manifest[genreKey].features;
-        console.log(`\n  ${genreKey} features (raw → percentile):`);
-        feature_angles.forEach(feat => {
-          if (features[feat] != null) {
-            const raw = features[feat];
-            const q = globalQuantiles[feat];
-            let percentile = 0.5;
-            if (q) {
-              if (raw <= q.p10) percentile = 0.1 * (raw / q.p10);
-              else if (raw <= q.p50) percentile = 0.1 + 0.4 * ((raw - q.p10) / (q.p50 - q.p10));
-              else if (raw <= q.p90) percentile = 0.5 + 0.4 * ((raw - q.p50) / (q.p90 - q.p50));
-              else percentile = 0.9 + 0.1 * Math.min(1, (raw - q.p90) / (q.p90 - q.p50));
-            }
-            console.log(`    ${feat}: ${raw.toFixed(3)} → ${percentile.toFixed(3)}`);
-          }
-        });
-      }
-    });
-
     // Use global quantiles everywhere for semantic consistency
     // This ensures positions match the disco floor and semantic meaning is preserved at all levels
     // (Previously used local quantiles for subgenres, which caused position/disco-floor mismatch)
@@ -134,26 +104,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     const averagedParentFeatures = calculateAveragedParentFeatures();
 
-    // DEBUG: Log comparison of original vs averaged features
-    ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(genreKey => {
-      const key = genreKey.replace(' ', '-');
-      if (averagedParentFeatures[genreKey] && manifest[genreKey]?.features) {
-        console.log(`\n🎵 ${genreKey.toUpperCase()} FEATURE COMPARISON:`);
-        console.log('  Original (seed tracks):');
-        feature_angles.forEach(feat => {
-          if (manifest[genreKey].features[feat] != null) {
-            console.log(`    ${feat}: ${manifest[genreKey].features[feat].toFixed(3)}`);
-          }
-        });
-        console.log('  Averaged (across all subgenres):');
-        feature_angles.forEach(feat => {
-          if (averagedParentFeatures[genreKey][feat] != null) {
-            console.log(`    ${feat}: ${averagedParentFeatures[genreKey][feat].toFixed(3)}`);
-          }
-        });
-      }
-    });
-
     // ============================================================================
     // POSITIONING ANGLES: One axis per feature, evenly distributed around circle
     // ============================================================================
@@ -173,14 +123,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       acc[feature] = i * featureAngleStep; // Distribute features evenly around full circle
       return acc;
     }, {});
-
-    // DEBUG: Log feature axis angles
-    console.log('\n🧭 FEATURE AXIS ANGLES:');
-    feature_angles.forEach((feature, i) => {
-      const angle = featureAngles[feature];
-      const degrees = (angle * 180 / Math.PI).toFixed(1);
-      console.log(`  ${i}: ${feature} → ${degrees}°`);
-    });
 
     // Normalize a feature value to 0-1 using percentile approximation
     const normalizeFeature = (value, featureName) => {
