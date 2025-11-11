@@ -284,7 +284,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       if (node.features) {
         // SPECIAL CASE: Song of the Day at center (0, 0) to evoke mystery
         if (node.isSongOfTheDay || genreKey === 'song of the day') {
-          console.log('🎵 Song of the Day detected:', key, 'isSongOfTheDay:', node.isSongOfTheDay);
+          // console.log('🎵 Song of the Day detected:', key, 'isSongOfTheDay:', node.isSongOfTheDay);
           rawResult[key] = { x: 0, y: 0 };
           hardCodedKeys.add(key); // Mark as hard-coded to skip scaling
         }
@@ -373,9 +373,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         features: null // Will store features for collision resolution
       };
 
-      // DEBUG: Log positions for key genres after initial projection
-      if (['country', 'jazz', 'electronic', 'hip hop', 'rock'].includes(key)) {
-        console.log(`  ${key}: (${(x * scale).toFixed(1)}, ${(y * scale).toFixed(1)})`);
+      // DEBUG: Ambient positioning
+      if (key === 'electronic.ambient') {
+        const angle = Math.atan2(y * scale, x * scale) * 180 / Math.PI;
+        const normalizedAngle = (angle + 360) % 360;
+        console.log(`\n🔍 AMBIENT DEBUG:`);
+        console.log(`  Raw position: (${rawResult[key].x.toFixed(3)}, ${rawResult[key].y.toFixed(3)})`);
+        console.log(`  After adaptive scale (${adaptiveScale.toFixed(3)}): (${x.toFixed(3)}, ${y.toFixed(3)})`);
+        console.log(`  After radial spread: (${(x * scale).toFixed(3)}, ${(y * scale).toFixed(3)})`);
+        console.log(`  Final angle: ${normalizedAngle.toFixed(1)}°`);
+        console.log(`  Expected: ~107.6° (near acousticness at 102.9°)`);
       }
     });
 
