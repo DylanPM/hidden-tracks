@@ -96,6 +96,61 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // (Previously used local quantiles for subgenres, which caused position/disco-floor mismatch)
     const quantiles = globalQuantiles;
 
+    // Calculate averaged features for parent genres based on their subgenres
+    // This gives a more representative picture of the parent genre as a whole
+    const calculateAveragedParentFeatures = () => {
+      const averaged = {};
+
+      Object.keys(manifest).forEach(genreKey => {
+        if (genreKey === 'global' || genreKey === 'build') return;
+
+        const genre = manifest[genreKey];
+        if (!genre.subgenres) return;
+
+        // Collect all subgenre features
+        const subgenreFeatures = Object.keys(genre.subgenres)
+          .map(subKey => genre.subgenres[subKey].features)
+          .filter(f => f != null);
+
+        if (subgenreFeatures.length === 0) return;
+
+        // Average each feature across all subgenres
+        const avgFeatures = {};
+        feature_angles.forEach(feat => {
+          const values = subgenreFeatures
+            .map(f => f[feat])
+            .filter(v => v != null && !isNaN(v));
+
+          if (values.length > 0) {
+            avgFeatures[feat] = values.reduce((sum, v) => sum + v, 0) / values.length;
+          }
+        });
+
+        averaged[genreKey] = avgFeatures;
+      });
+
+      return averaged;
+    };
+
+    const averagedParentFeatures = calculateAveragedParentFeatures();
+
+    // DEBUG: Log comparison of original vs averaged features for country
+    if (averagedParentFeatures.country) {
+      console.log('\n🎵 COUNTRY GENRE FEATURE COMPARISON:');
+      console.log('  Original (modern country radio):');
+      feature_angles.forEach(feat => {
+        if (manifest.country?.features?.[feat] != null) {
+          console.log(`    ${feat}: ${manifest.country.features[feat].toFixed(3)}`);
+        }
+      });
+      console.log('  Averaged (across all subgenres):');
+      feature_angles.forEach(feat => {
+        if (averagedParentFeatures.country[feat] != null) {
+          console.log(`    ${feat}: ${averagedParentFeatures.country[feat].toFixed(3)}`);
+        }
+      });
+    }
+
     // ============================================================================
     // POSITIONING ANGLES: One axis per feature, evenly distributed around circle
     // ============================================================================
@@ -234,7 +289,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const depth = path.length - 1; // Root genres have depth 0
 
       if (node.features) {
-        rawResult[key] = projectTo2D(node.features, depth);
+        // For root-level parent genres, use averaged features if available
+        const isRootGenre = depth === 0;
+        const genreKey = path[0];
+        const features = (isRootGenre && averagedParentFeatures[genreKey])
+          ? averagedParentFeatures[genreKey]
+          : node.features;
+
+        rawResult[key] = projectTo2D(features, depth);
       }
 
       if (node.subgenres) {
@@ -304,7 +366,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         else if (node.subgenres?.[part]) node = node.subgenres[part];
       }
       if (node?.features) {
-        scaledResult[key].features = node.features;
+        // For root-level parent genres, use averaged features if available
+        const isRootGenre = pathParts.length === 1;
+        const genreKey = pathParts[0];
+        const features = (isRootGenre && averagedParentFeatures[genreKey])
+          ? averagedParentFeatures[genreKey]
+          : node.features;
+
+        scaledResult[key].features = features;
       }
     });
 
@@ -453,7 +522,45 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     return result;
   }, [manifest, exaggeration, activeFeatures, siblingFeatures]);
 
-  return { positions };
+  // Also return averaged parent features for UI components to use
+  const averagedFeatures = useMemo(() => {
+    if (!manifest?.global) return {};
+
+    const averaged = {};
+    const feature_angles = manifest.global.display.feature_angles.filter(f => f !== 'instrumentalness');
+
+    Object.keys(manifest).forEach(genreKey => {
+      if (genreKey === 'global' || genreKey === 'build') return;
+
+      const genre = manifest[genreKey];
+      if (!genre.subgenres) return;
+
+      // Collect all subgenre features
+      const subgenreFeatures = Object.keys(genre.subgenres)
+        .map(subKey => genre.subgenres[subKey].features)
+        .filter(f => f != null);
+
+      if (subgenreFeatures.length === 0) return;
+
+      // Average each feature across all subgenres
+      const avgFeatures = {};
+      feature_angles.forEach(feat => {
+        const values = subgenreFeatures
+          .map(f => f[feat])
+          .filter(v => v != null && !isNaN(v));
+
+        if (values.length > 0) {
+          avgFeatures[feat] = values.reduce((sum, v) => sum + v, 0) / values.length;
+        }
+      });
+
+      averaged[genreKey] = avgFeatures;
+    });
+
+    return averaged;
+  }, [manifest]);
+
+  return { positions, averagedParentFeatures: averagedFeatures };
 }
 
 /**

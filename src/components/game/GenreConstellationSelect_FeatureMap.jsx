@@ -207,7 +207,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   }, [viewStack, manifest]);
 
   // Compute positions with global normalization (for root level)
-  const { positions: rawGlobalPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, null);
+  const { positions: rawGlobalPositions, averagedParentFeatures } = useFeatureMap(manifest, exaggeration, activeFeatures, null);
 
   // Compute positions with local normalization (for nested levels)
   // Use current level's children for actual positions
@@ -615,13 +615,18 @@ export function GenreConstellationSelect({ onLaunch }) {
           const hasSeeds = (childData?.seeds || childData?._seeds)?.length > 0;
           const hasSubgenres = hasSubgenresData || hasSeeds;
 
+          // Use averaged features for root-level parent genres
+          const effectiveData = averagedParentFeatures[child.key]
+            ? { ...childData, features: averagedParentFeatures[child.key] }
+            : childData;
+
           items.push({
             key: child.key,
             label: child.key,
             x: pos.x,
             y: pos.y,
             type: child.type,
-            data: childData, // Include data for feature-aware collision
+            data: effectiveData, // Include data (with averaged features) for feature-aware collision
             hasSubgenres,
             hasSeeds,
             onClick: () => {
@@ -861,7 +866,14 @@ export function GenreConstellationSelect({ onLaunch }) {
       : [...viewStack, focusedNode.key];
 
     const node = getManifestNode(pathArray);
-    const nodeFeatures = node?.features;
+
+    // For root-level parent genres at depth 0, use averaged features
+    const isRootGenre = viewStack.length === 0 && !focusedNode.track && !focusedNode.isSongOfTheDay;
+    const genreKey = focusedNode.key;
+    const nodeFeatures = (isRootGenre && averagedParentFeatures[genreKey])
+      ? averagedParentFeatures[genreKey]
+      : node?.features;
+
     if (!nodeFeatures) return null;
 
     const { quantiles } = manifest.global;
@@ -892,7 +904,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     });
 
     return weights;
-  }, [hoveredItem, selectedNode, manifest, viewStack, displayFeatures]);
+  }, [hoveredItem, selectedNode, manifest, viewStack, displayFeatures, averagedParentFeatures]);
 
   // Toggle feature
   const toggleFeature = (feature) => {
