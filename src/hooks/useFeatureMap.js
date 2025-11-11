@@ -66,6 +66,31 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     console.log(`  Global: p10=${globalQuantiles.acousticness?.p10?.toFixed(3)}, p50=${globalQuantiles.acousticness?.p50?.toFixed(3)}, p90=${globalQuantiles.acousticness?.p90?.toFixed(3)}`);
     console.log(`  Root:   p10=${rootQuantiles.acousticness?.p10?.toFixed(3)}, p50=${rootQuantiles.acousticness?.p50?.toFixed(3)}, p90=${rootQuantiles.acousticness?.p90?.toFixed(3)}`);
 
+    // DEBUG: Log initial feature-based positions for country and jazz
+    console.log('\n🎯 INITIAL POSITIONS (before collision avoidance):');
+
+    // Log feature values for country and jazz
+    ['country', 'jazz'].forEach(genreKey => {
+      if (manifest[genreKey]?.features) {
+        const features = manifest[genreKey].features;
+        console.log(`\n  ${genreKey} features (raw → percentile):`);
+        feature_angles.forEach(feat => {
+          if (features[feat] != null) {
+            const raw = features[feat];
+            const q = quantiles[feat];
+            let percentile = 0.5;
+            if (q) {
+              if (raw <= q.p10) percentile = 0.1 * (raw / q.p10);
+              else if (raw <= q.p50) percentile = 0.1 + 0.4 * ((raw - q.p10) / (q.p50 - q.p10));
+              else if (raw <= q.p90) percentile = 0.5 + 0.4 * ((raw - q.p50) / (q.p90 - q.p50));
+              else percentile = 0.9 + 0.1 * Math.min(1, (raw - q.p90) / (q.p90 - q.p50));
+            }
+            console.log(`    ${feat}: ${raw.toFixed(3)} → ${percentile.toFixed(3)}`);
+          }
+        });
+      }
+    });
+
     // Use global quantiles everywhere for semantic consistency
     // This ensures positions match the disco floor and semantic meaning is preserved at all levels
     // (Previously used local quantiles for subgenres, which caused position/disco-floor mismatch)
@@ -263,6 +288,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         y: y * scale,
         features: null // Will store features for collision resolution
       };
+
+      // DEBUG: Log positions for country and jazz after initial projection
+      if (key === 'country' || key === 'jazz') {
+        console.log(`  ${key}: (${(x * scale).toFixed(1)}, ${(y * scale).toFixed(1)})`);
+      }
     });
 
     // Store features for collision resolution
@@ -384,6 +414,30 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         const scale = TARGET_RADIUS / dist;
         node.x *= scale;
         node.y *= scale;
+      }
+    });
+
+    // DEBUG: Log final positions for country and jazz after collision avoidance
+    console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
+    ['country', 'jazz'].forEach(key => {
+      if (scaledResult[key]) {
+        const pos = scaledResult[key];
+        const angle = Math.atan2(pos.y, pos.x);
+
+        // Find nearest feature axis
+        let nearestFeature = null;
+        let minDiff = Infinity;
+        feature_angles.forEach((feature, i) => {
+          const featureAngle = featureAngles[feature];
+          let diff = Math.abs(angle - featureAngle);
+          if (diff > Math.PI) diff = Math.PI * 2 - diff;
+          if (diff < minDiff) {
+            minDiff = diff;
+            nearestFeature = feature;
+          }
+        });
+
+        console.log(`  ${key}: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) → nearest axis: ${nearestFeature}`);
       }
     });
 

@@ -446,12 +446,60 @@ export function GenreConstellationSelect({ onLaunch }) {
   const CENTER_X = VIEWPORT_WIDTH / 2;
   const CENTER_Y = VIEWPORT_HEIGHT / 2;
 
-  // Helper: Resolve collisions between nodes
+  // Helper: Resolve collisions between nodes with feature-aware push direction
   const resolveCollisions = (items) => {
     const nodeRadius = 27; // Max radius for collision detection
     const overlapThreshold = 0.2; // 20% overlap triggers push (more sensitive)
     const pushStrength = 2.0; // Stronger push (increased from 1.5)
     const maxIterations = 6; // More iterations (doubled from 3)
+
+    // Helper: Find which feature axis a given angle points toward
+    const findNearestFeatureAxis = (angle) => {
+      if (!manifest?.global?.display?.feature_angles) return null;
+
+      const featureAngles = displayFeatures;
+      const numFeatures = featureAngles.length;
+
+      // Normalize angle to [0, 2π)
+      let normalizedAngle = angle % (Math.PI * 2);
+      if (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
+
+      let nearestFeature = null;
+      let minDiff = Infinity;
+
+      featureAngles.forEach((feature, i) => {
+        const featureAngle = (i * Math.PI * 2) / numFeatures;
+
+        // Calculate angular difference (accounting for wrap-around)
+        let diff = Math.abs(normalizedAngle - featureAngle);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+        if (diff < minDiff) {
+          minDiff = diff;
+          nearestFeature = feature;
+        }
+      });
+
+      return nearestFeature;
+    };
+
+    // Helper: Get feature percentile for a node
+    const getFeaturePercentile = (item, featureName) => {
+      if (!manifest?.global?.quantiles) return 0.5;
+      if (!item.data?.features) return 0.5;
+
+      const value = item.data.features[featureName];
+      if (value == null || isNaN(value)) return 0.5;
+
+      const q = manifest.global.quantiles[featureName];
+      if (!q) return 0.5;
+
+      // Approximate percentile using quantiles (same logic as useFeatureMap)
+      if (value <= q.p10) return 0.1 * (value / q.p10);
+      if (value <= q.p50) return 0.1 + 0.4 * ((value - q.p10) / (q.p50 - q.p10));
+      if (value <= q.p90) return 0.5 + 0.4 * ((value - q.p50) / (q.p90 - q.p50));
+      return 0.9 + 0.1 * ((value - q.p90) / (1 - q.p90 + 0.001));
+    };
 
     // FIRST PASS: Enforce parent exclusion zone (run BEFORE any other collision detection)
     // Parent is always at (0, 0) when nested, so push all children away from origin
@@ -482,7 +530,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       });
     }
 
-    // SECOND PASS: Regular node-to-node collision avoidance
+    // SECOND PASS: Regular node-to-node collision avoidance with feature-aware push
     for (let iteration = 0; iteration < maxIterations; iteration++) {
       let hadCollision = false;
 
@@ -503,14 +551,41 @@ export function GenreConstellationSelect({ onLaunch }) {
             if (overlap > overlapThreshold) {
               hadCollision = true;
 
-              // Push apart along the line connecting them
-              const angle = Math.atan2(dy, dx);
+              // Calculate initial radial push direction
+              let pushAngle = Math.atan2(dy, dx);
+
+              // FEATURE-AWARE PUSH: Check if pushing toward a weakness
+              // For each node, see if the push direction points toward an axis where it's weak
+              const adjustPushForNode = (node, angle) => {
+                const nearestAxis = findNearestFeatureAxis(angle);
+                if (!nearestAxis) return angle;
+
+                const percentile = getFeaturePercentile(node, nearestAxis);
+
+                // If pushing toward a weakness (low percentile on the axis we're pointing to)
+                // or pushing away from a strength (high percentile means we're pushing opposite)
+                // In both cases, percentile far from 0.5 means semantically problematic
+                if (Math.abs(percentile - 0.5) > 0.2) {
+                  // Try rotating 90° to find a more neutral direction
+                  return angle + Math.PI / 2;
+                }
+
+                return angle;
+              };
+
+              // Adjust push angle for both nodes
+              // Item2 is being pushed away from item1, so use pushAngle as-is
+              const adjustedPushAngle2 = adjustPushForNode(item2, pushAngle);
+              // Item1 is being pushed opposite direction
+              const adjustedPushAngle1 = adjustPushForNode(item1, pushAngle + Math.PI);
+
+              // Use adjusted angles for pushing
               const pushDistance = (minDistance - distance) * pushStrength / 2;
 
-              item1.x -= Math.cos(angle) * pushDistance;
-              item1.y -= Math.sin(angle) * pushDistance;
-              item2.x += Math.cos(angle) * pushDistance;
-              item2.y += Math.sin(angle) * pushDistance;
+              item1.x -= Math.cos(adjustedPushAngle1) * pushDistance;
+              item1.y -= Math.sin(adjustedPushAngle1) * pushDistance;
+              item2.x += Math.cos(adjustedPushAngle2) * pushDistance;
+              item2.y += Math.sin(adjustedPushAngle2) * pushDistance;
             }
           }
         }
@@ -546,6 +621,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             x: pos.x,
             y: pos.y,
             type: child.type,
+            data: childData, // Include data for feature-aware collision
             hasSubgenres,
             hasSeeds,
             onClick: () => {
@@ -567,6 +643,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           x: songOfTheDayPosition.x,
           y: songOfTheDayPosition.y,
           type: 'songOfTheDay',
+          data: { features: SONG_OF_THE_DAY.features }, // Include features for collision
           hasSubgenres: false,
           hasSeeds: true,
           isSongOfTheDay: true,
@@ -588,6 +665,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           x: 0, // Center parent at origin (UX choice, not attribute-based)
           y: 0,
           type: 'parent',
+          data: parentData, // Include data for feature-aware collision
           isParent: true,
           hasSubgenres: false,
           hasSeeds: parentHasSeeds,
@@ -624,6 +702,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             x: childPos.x, // Use local position directly (already normalized to siblings)
             y: childPos.y,
             type: child.type,
+            data: childData, // Include data for feature-aware collision
             hasSubgenres,
             hasSeeds,
             onClick: () => {
@@ -652,6 +731,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         x: 0, // Center at origin
         y: 0,
         type: 'parent',
+        data: parentData, // Include data for feature-aware collision
         isParent: true,
         hasSubgenres: false,
         hasSeeds: parentHasSeeds,
@@ -680,6 +760,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           x,
           y,
           type: 'track',
+          data: { features: track.features }, // Include features for collision
           track: track,
           hasSubgenres: false,
           hasSeeds: false,
