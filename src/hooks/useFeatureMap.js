@@ -238,24 +238,25 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Calculate adaptive scale factor
     const adaptiveScale = maxRadius > 0 ? TARGET_RADIUS / maxRadius : 1;
 
-    // Apply log scaling to spread outer nodes more (0.5 closer to 1 than to 0)
+    // Apply power curve scaling to spread outer nodes more (use more of the ring)
     // This uncrowds nodes by giving more space to nodes further from center
-    const applyLogScale = (distance, maxDist) => {
+    // Using x^0.7 power curve: pushes 0.5 → 0.66 (vs old log which did 0.5 → 0.58)
+    const applyRadialSpread = (distance, maxDist) => {
       if (maxDist === 0) return 0;
       const normalized = distance / maxDist; // 0 to 1
-      // Apply logarithmic transform: log2(1 + x) makes 0.5 → ~0.58
-      const logged = Math.log2(1 + normalized) / Math.log2(2); // 0 to 1, curved
-      return logged * maxDist;
+      // Apply power curve: x^0.7 spreads outer nodes more aggressively
+      const spread = Math.pow(normalized, 0.7);
+      return spread * maxDist;
     };
 
-    // First pass: apply adaptive scaling with log transform
+    // First pass: apply adaptive scaling with radial spread
     const scaledResult = {};
     Object.keys(rawResult).forEach(key => {
       const x = rawResult[key].x * adaptiveScale;
       const y = rawResult[key].y * adaptiveScale;
       const distance = Math.sqrt(x * x + y * y);
-      const logDistance = applyLogScale(distance, TARGET_RADIUS);
-      const scale = distance > 0 ? logDistance / distance : 1;
+      const spreadDistance = applyRadialSpread(distance, TARGET_RADIUS);
+      const scale = distance > 0 ? spreadDistance / distance : 1;
 
       scaledResult[key] = {
         x: x * scale,
@@ -279,10 +280,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // COLLISION AVOIDANCE: Push overlapping nodes using radial separation
     // Relationship-aware minimum distances provide better separation for related nodes
-    const MIN_DISTANCE_SIBLING = 70; // Minimum distance between siblings at same level (increased from 50)
-    const MIN_DISTANCE_PARENT_CHILD = 100; // Minimum distance between parent and child (increased from 75)
-    const MIN_DISTANCE_ROOT = 130; // Minimum distance between root genres (increased for better spread)
-    const MIN_DISTANCE_DEFAULT = 50; // Default for unrelated nodes (increased from 40)
+    const MIN_DISTANCE_SIBLING = 85; // Increased 15px from 70
+    const MIN_DISTANCE_PARENT_CHILD = 115; // Increased 15px from 100
+    const MIN_DISTANCE_ROOT = 145; // Increased 15px from 130
+    const MIN_DISTANCE_DEFAULT = 65; // Increased 15px from 50
     const PUSH_STRENGTH = 0.5; // Slightly stronger push for better separation
     const MAX_ITERATIONS = 8; // More iterations to allow full separation
     const DAMPING = 0.85; // Slightly faster damping with more iterations
