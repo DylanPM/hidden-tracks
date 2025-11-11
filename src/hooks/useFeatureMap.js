@@ -203,10 +203,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const activeCount = feature_angles.filter(f => activeFeatures[f] !== false).length;
 
       // Apply stronger exaggeration for root-level genres
-      // Root (depth 0): 1.6x to make them more distinct
+      // Root (depth 0): 1.2x (reduced from 1.6x since we now use averaged features)
       // Level 1: 1.2x (normal)
       // Level 2+: 1.1x (pushed 10% further for better spacing with ring text)
-      const depthExaggeration = depth === 0 ? 1.6 : (depth === 1 ? 1.2 : 1.1);
+      const depthExaggeration = depth === 0 ? 1.2 : (depth === 1 ? 1.2 : 1.1);
 
       // Feature-count exaggeration: boost spread when fewer features active
       // 1 feature: 2.5x, 2 features: 1.8x, 3+: 1.0x
