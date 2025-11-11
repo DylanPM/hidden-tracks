@@ -214,10 +214,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const activeCount = feature_angles.filter(f => activeFeatures[f] !== false).length;
 
       // Apply stronger exaggeration for root-level genres
-      // Root (depth 0): 1.4x (using original features which have stronger differentiation)
+      // Root (depth 0): 1.2x (using averaged features with exclusion zones)
       // Level 1: 1.2x (normal)
       // Level 2+: 1.1x (pushed 10% further for better spacing with ring text)
-      const depthExaggeration = depth === 0 ? 1.4 : (depth === 1 ? 1.2 : 1.1);
+      const depthExaggeration = depth === 0 ? 1.2 : (depth === 1 ? 1.2 : 1.1);
 
       // Feature-count exaggeration: boost spread when fewer features active
       // 1 feature: 2.5x, 2 features: 1.8x, 3+: 1.0x
@@ -300,14 +300,13 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const depth = path.length - 1; // Root genres have depth 0
 
       if (node.features) {
-        // TEMPORARILY DISABLED: Averaged features reduce natural separation and cause more collisions
-        // Use original features instead for better semantic positioning
+        // For root-level parent genres, use averaged features (more accurate representation)
+        // Combined with exclusion zones, this provides accurate positioning
         const isRootGenre = depth === 0;
         const genreKey = path[0];
-        const features = node.features; // Always use original features
-        // const features = (isRootGenre && averagedParentFeatures[genreKey])
-        //   ? averagedParentFeatures[genreKey]
-        //   : node.features;
+        const features = (isRootGenre && averagedParentFeatures[genreKey])
+          ? averagedParentFeatures[genreKey]
+          : node.features;
 
         rawResult[key] = projectTo2D(features, depth);
       }
@@ -379,15 +378,69 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         else if (node.subgenres?.[part]) node = node.subgenres[part];
       }
       if (node?.features) {
-        // TEMPORARILY DISABLED: Use original features for collision resolution too
+        // For root-level parent genres, use averaged features for collision resolution
         const isRootGenre = pathParts.length === 1;
         const genreKey = pathParts[0];
-        const features = node.features; // Always use original features
-        // const features = (isRootGenre && averagedParentFeatures[genreKey])
-        //   ? averagedParentFeatures[genreKey]
-        //   : node.features;
+        const features = (isRootGenre && averagedParentFeatures[genreKey])
+          ? averagedParentFeatures[genreKey]
+          : node.features;
 
         scaledResult[key].features = features;
+      }
+    });
+
+    // Calculate exclusion zones for each genre based on their weakest features
+    // Exclusion zones prevent collision avoidance from pushing genres toward axes where they're weak
+    const calculateExclusionZones = () => {
+      const zones = {};
+
+      Object.keys(scaledResult).forEach(key => {
+        const nodeFeatures = scaledResult[key].features;
+        if (!nodeFeatures) return;
+
+        const exclusionFeatures = [];
+
+        // Find features where this genre ranks low (percentile < 0.3)
+        feature_angles.forEach(feat => {
+          const value = nodeFeatures[feat];
+          if (value == null || isNaN(value)) return;
+
+          const percentile = normalizeFeature(value, feat);
+
+          // If low percentile (weak feature), mark for exclusion
+          if (percentile < 0.3) {
+            exclusionFeatures.push({
+              feature: feat,
+              angle: featureAngles[feat],
+              percentile
+            });
+          }
+        });
+
+        // Create exclusion zones (±45° around each weak feature axis)
+        zones[key] = exclusionFeatures.map(f => ({
+          feature: f.feature,
+          centerAngle: f.angle,
+          minAngle: (f.angle - Math.PI / 4 + Math.PI * 2) % (Math.PI * 2),
+          maxAngle: (f.angle + Math.PI / 4) % (Math.PI * 2),
+          percentile: f.percentile
+        }));
+      });
+
+      return zones;
+    };
+
+    const exclusionZones = calculateExclusionZones();
+
+    // DEBUG: Log exclusion zones for key genres
+    console.log('\n🚫 EXCLUSION ZONES (weak features to avoid):');
+    ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
+      if (exclusionZones[key] && exclusionZones[key].length > 0) {
+        console.log(`  ${key}:`);
+        exclusionZones[key].forEach(zone => {
+          const degrees = (zone.centerAngle * 180 / Math.PI).toFixed(1);
+          console.log(`    ${zone.feature} @ ${degrees}° (±45°) - percentile: ${zone.percentile.toFixed(3)}`);
+        });
       }
     });
 
@@ -426,6 +479,45 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return 'unrelated';
     };
 
+    // Helper to check if an angle intersects any exclusion zone
+    const isInExclusionZone = (nodeKey, angle) => {
+      const zones = exclusionZones[nodeKey];
+      if (!zones || zones.length === 0) return false;
+
+      // Normalize angle to [0, 2π)
+      let normAngle = angle % (Math.PI * 2);
+      if (normAngle < 0) normAngle += Math.PI * 2;
+
+      return zones.some(zone => {
+        // Handle wrap-around for zones crossing 0°
+        if (zone.minAngle > zone.maxAngle) {
+          return normAngle >= zone.minAngle || normAngle <= zone.maxAngle;
+        }
+        return normAngle >= zone.minAngle && normAngle <= zone.maxAngle;
+      });
+    };
+
+    // Helper to find best push angle that avoids exclusion zones
+    const findSafePushAngle = (nodeKey, baseAngle) => {
+      // Try angles: base, base+90°, base-90°, base+45°, base-45°
+      const candidateAngles = [
+        baseAngle,
+        baseAngle + Math.PI / 2,
+        baseAngle - Math.PI / 2,
+        baseAngle + Math.PI / 4,
+        baseAngle - Math.PI / 4
+      ];
+
+      for (const angle of candidateAngles) {
+        if (!isInExclusionZone(nodeKey, angle)) {
+          return angle;
+        }
+      }
+
+      // If all angles blocked, use base angle as last resort
+      return baseAngle;
+    };
+
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const keys = Object.keys(scaledResult);
       let hadCollision = false;
@@ -455,18 +547,25 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           if (distance < minDistance && distance > 0) {
             hadCollision = true;
 
-            // Push nodes apart using radial separation
+            // Push nodes apart using radial separation with exclusion zone avoidance
             // Apply damping: pushes get weaker each iteration to prevent spiraling
             const currentStrength = PUSH_STRENGTH * Math.pow(DAMPING, iteration);
             const overlap = minDistance - distance;
             const pushDist = overlap * currentStrength / 2;
 
-            // Use radial separation for ALL nodes - push directly away from each other
-            // This prevents clustering from attribute-based pushing
-            const push1X = -(dx / distance) * pushDist;
-            const push1Y = -(dy / distance) * pushDist;
-            const push2X = (dx / distance) * pushDist;
-            const push2Y = (dy / distance) * pushDist;
+            // Calculate base push direction (radial separation)
+            const basePushAngle1 = Math.atan2(-dy, -dx); // Push node1 away from node2
+            const basePushAngle2 = Math.atan2(dy, dx);   // Push node2 away from node1
+
+            // Find safe angles that avoid exclusion zones
+            const safePushAngle1 = findSafePushAngle(key1, basePushAngle1);
+            const safePushAngle2 = findSafePushAngle(key2, basePushAngle2);
+
+            // Apply pushes using safe angles
+            const push1X = Math.cos(safePushAngle1) * pushDist;
+            const push1Y = Math.sin(safePushAngle1) * pushDist;
+            const push2X = Math.cos(safePushAngle2) * pushDist;
+            const push2Y = Math.sin(safePushAngle2) * pushDist;
 
             node1.x += push1X;
             node1.y += push1Y;
