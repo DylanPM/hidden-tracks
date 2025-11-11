@@ -292,18 +292,68 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       };
     };
 
+    // HARD-CODED OPTIMAL REGION ASSIGNMENTS
+    // Root-level parent genres positioned by semantic fit to feature axes
+    // Format: { genreKey: { region: 'feature-direction', position: 'single'|'outer'|'inner' } }
+    const hardCodedAssignments = {
+      'pop': { region: 'popularity-high', position: 'single' },
+      'country': { region: 'energy-low', position: 'single' },
+      'Caribbean & African': { region: 'danceability-high', position: 'single' },
+      'classical': { region: 'acousticness-high', position: 'outer' },
+      'jazz': { region: 'acousticness-high', position: 'inner' },
+      'hip hop': { region: 'speechiness-high', position: 'single' },
+      'electronic': { region: 'energy-high', position: 'single' },
+      'rock': { region: 'danceability-low', position: 'single' },
+      'latin': { region: 'valence-high', position: 'outer' },
+      'r&b / soul / funk': { region: 'valence-high', position: 'inner' }
+    };
+
+    // Calculate position from region assignment
+    const getHardCodedPosition = (assignment) => {
+      const [feature, direction] = assignment.region.split('-');
+      const baseAngle = featureAngles[feature];
+      const angle = direction === 'high' ? baseAngle : (baseAngle + Math.PI) % (Math.PI * 2);
+
+      // Radius based on position type
+      let radius;
+      if (assignment.position === 'outer') {
+        radius = 195; // Standard outer radius
+      } else if (assignment.position === 'inner') {
+        radius = 140; // Inner radius for paired genres
+      } else {
+        radius = 195; // Single position uses standard radius
+      }
+
+      return {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius
+      };
+    };
+
     // Compute positions for all genres and subgenres
     const rawResult = {};
 
     const processNode = (node, path = []) => {
       const key = path.join('.');
       const depth = path.length - 1; // Root genres have depth 0
+      const genreKey = path[0];
 
       if (node.features) {
-        // For root-level parent genres, use averaged features (more accurate representation)
-        // Combined with exclusion zones, this provides accurate positioning
+        // SPECIAL CASE: Song of the Day at center (0, 0) to evoke mystery
+        if (node.isSongOfTheDay || genreKey === 'song of the day') {
+          rawResult[key] = { x: 0, y: 0 };
+          return;
+        }
+
+        // HARD-CODED POSITIONING: Root-level parent genres use optimal semantic placement
         const isRootGenre = depth === 0;
-        const genreKey = path[0];
+        if (isRootGenre && hardCodedAssignments[genreKey]) {
+          rawResult[key] = getHardCodedPosition(hardCodedAssignments[genreKey]);
+          return;
+        }
+
+        // DYNAMIC POSITIONING: Subgenres and tracks use feature-based calculation
+        // For root-level parent genres not in hard-coded map, use averaged features
         const features = (isRootGenre && averagedParentFeatures[genreKey])
           ? averagedParentFeatures[genreKey]
           : node.features;
@@ -567,6 +617,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           const isRoot2 = !key2.includes('.');
           const bothRoot = isRoot1 && isRoot2;
 
+          // SKIP collision avoidance for hard-coded root-level parent genres
+          // They are optimally placed and should not be moved by collision detection
+          const isHardCoded1 = isRoot1 && hardCodedAssignments[key1];
+          const isHardCoded2 = isRoot2 && hardCodedAssignments[key2];
+          if (isHardCoded1 && isHardCoded2) {
+            continue; // Both hard-coded, skip collision resolution
+          }
+
           const minDistance = bothRoot ? MIN_DISTANCE_ROOT :
             relationship === 'parent-child' ? MIN_DISTANCE_PARENT_CHILD :
             relationship === 'sibling' ? MIN_DISTANCE_SIBLING :
@@ -595,10 +653,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             const push2X = Math.cos(safePushAngle2) * pushDist;
             const push2Y = Math.sin(safePushAngle2) * pushDist;
 
-            node1.x += push1X;
-            node1.y += push1Y;
-            node2.x += push2X;
-            node2.y += push2Y;
+            // Only push non-hard-coded nodes
+            // If one is hard-coded, push the other away with double strength
+            if (!isHardCoded1) {
+              const multiplier = isHardCoded2 ? 2 : 1; // Double push if colliding with hard-coded
+              node1.x += push1X * multiplier;
+              node1.y += push1Y * multiplier;
+            }
+            if (!isHardCoded2) {
+              const multiplier = isHardCoded1 ? 2 : 1; // Double push if colliding with hard-coded
+              node2.x += push2X * multiplier;
+              node2.y += push2Y * multiplier;
+            }
 
             // Clamp to boundary
             [node1, node2].forEach(node => {
