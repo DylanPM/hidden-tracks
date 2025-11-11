@@ -54,11 +54,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : globalQuantiles;
 
     // Compute angle for each feature to match ring segments
-    // Each feature has high and low ends, so total segments = feature_angles.length * 2
-    const numSegments = feature_angles.length * 2;
-    const segmentAngleStep = (Math.PI * 2) / numSegments;
+    // Each feature has high and low ends, so space features evenly around the circle
+    const numFeatures = feature_angles.length;
+    const featureAngleStep = (Math.PI * 2) / numFeatures;
     const featureAngles = feature_angles.reduce((acc, feature, i) => {
-      acc[feature] = i * segmentAngleStep; // Evenly space features around the circle
+      acc[feature] = i * featureAngleStep; // Distribute features evenly around full circle
       return acc;
     }, {});
 
@@ -305,17 +305,22 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             const push1Dir = getPushDirection(node1.features);
             const push2Dir = getPushDirection(node2.features);
 
+            // Check if push directions have meaningful magnitude
+            const push1Magnitude = Math.sqrt(push1Dir.x * push1Dir.x + push1Dir.y * push1Dir.y);
+            const push2Magnitude = Math.sqrt(push2Dir.x * push2Dir.x + push2Dir.y * push2Dir.y);
+
             // Push nodes apart, biased toward their strongest attribute direction
             // Apply damping: pushes get weaker each iteration to prevent spiraling
             const currentStrength = PUSH_STRENGTH * Math.pow(DAMPING, iteration);
             const overlap = minDistance - distance;
             const pushDist = overlap * currentStrength / 2;
 
-            // If no feature direction, fall back to direct separation
-            const push1X = push1Dir.x !== 0 ? push1Dir.x * pushDist : -(dx / distance) * pushDist;
-            const push1Y = push1Dir.y !== 0 ? push1Dir.y * pushDist : -(dy / distance) * pushDist;
-            const push2X = push2Dir.x !== 0 ? push2Dir.x * pushDist : (dx / distance) * pushDist;
-            const push2Y = push2Dir.y !== 0 ? push2Dir.y * pushDist : (dy / distance) * pushDist;
+            // Use attribute direction if strong enough, otherwise use radial separation
+            // Threshold of 0.1 to avoid using weak/noisy directions
+            const push1X = push1Magnitude > 0.1 ? push1Dir.x * pushDist : -(dx / distance) * pushDist;
+            const push1Y = push1Magnitude > 0.1 ? push1Dir.y * pushDist : -(dy / distance) * pushDist;
+            const push2X = push2Magnitude > 0.1 ? push2Dir.x * pushDist : (dx / distance) * pushDist;
+            const push2Y = push2Magnitude > 0.1 ? push2Dir.y * pushDist : (dy / distance) * pushDist;
 
             node1.x += push1X;
             node1.y += push1Y;
@@ -337,6 +342,17 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
       if (!hadCollision) break;
     }
+
+    // Final clamping pass to ensure ALL nodes stay within boundary
+    Object.keys(scaledResult).forEach(key => {
+      const node = scaledResult[key];
+      const dist = Math.sqrt(node.x * node.x + node.y * node.y);
+      if (dist > TARGET_RADIUS) {
+        const scale = TARGET_RADIUS / dist;
+        node.x *= scale;
+        node.y *= scale;
+      }
+    });
 
     // Final result without features metadata
     const result = {};
@@ -394,11 +410,11 @@ export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2
     quantiles = localQ;
   }
 
-  // Each feature has high and low ends, so total segments = feature_angles.length * 2
-  const numSegments = feature_angles.length * 2;
-  const segmentAngleStep = (Math.PI * 2) / numSegments;
+  // Each feature has high and low ends, so space features evenly around the circle
+  const numFeatures = feature_angles.length;
+  const featureAngleStep = (Math.PI * 2) / numFeatures;
   const featureAngles = feature_angles.reduce((acc, feature, i) => {
-    acc[feature] = i * segmentAngleStep; // Evenly space features around the circle
+    acc[feature] = i * featureAngleStep; // Distribute features evenly around full circle
     return acc;
   }, {});
 

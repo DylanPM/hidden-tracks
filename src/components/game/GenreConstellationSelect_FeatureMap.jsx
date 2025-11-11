@@ -1224,7 +1224,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               key={`orbit-${hoveredItem?.key || selectedNode?.key || 'default'}`}
               style={{
                 transformOrigin: `${CENTER_X + (hoveredItem?.x || selectedNodePos.x)}px ${CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}px`,
-                animation: `orbit 11000ms linear infinite`,
+                animation: `orbit 10000ms linear infinite`, // Increased speed by 10% (was 11000ms)
                 pointerEvents: 'none'
               }}
             >
@@ -1260,7 +1260,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 18000ms linear infinite`,
+                  animation: `orbit 21200ms linear infinite`, // Decreased speed by 15% (was 18000ms)
                   pointerEvents: 'none'
                 }}
               >
@@ -1295,7 +1295,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 18000ms linear infinite`,
+                  animation: `orbit 21200ms linear infinite`, // Decreased speed by 15% (was 18000ms)
                   pointerEvents: 'none'
                 }}
               >
