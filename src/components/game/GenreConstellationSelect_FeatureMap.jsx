@@ -1113,8 +1113,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             // (See "ANGLE CALCULATION SYSTEM" comment above for details)
             const numFeatures = displayFeatures.length;
             const featureAngleStep = (Math.PI * 2) / numFeatures;
-            // Capped at 240 to stay just under the 245px ring boundary
-            const maxRadius = 240;
+            // Match hard-coded positions: 185px (outer radius for parent genres)
+            const maxRadius = 185;
             const minRadius = 50;
 
             // Create points at evenly-spaced angles (one for each feature's high and low)
@@ -1334,21 +1334,21 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Focus ring (always on hover) */}
                 {isHovered && (
                   <>
-                    {/* Fill circle - gold for song of the day, green for others */}
+                    {/* Fill circle - white for song of the day, green for others */}
                     <circle
                       r={focusRingRadius}
-                      fill={item.isSongOfTheDay ? "#FFD700" : "#1DB954"}
+                      fill={item.isSongOfTheDay ? "#FFFFFF" : "#1DB954"}
                       opacity="0.15"
                       style={{
                         pointerEvents: 'none',
                         transition: 'opacity 0.2s ease-in'
                       }}
                     />
-                    {/* Stroke ring - gold for song of the day, green for others */}
+                    {/* Stroke ring - white for song of the day, green for others */}
                     <circle
                       r={focusRingRadius}
                       fill="none"
-                      stroke={item.isSongOfTheDay ? "#FFD700" : "#1DB954"}
+                      stroke={item.isSongOfTheDay ? "#FFFFFF" : "#1DB954"}
                       strokeWidth="2"
                       opacity="0.6"
                       style={{
@@ -1362,9 +1362,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Main node circle */}
                 <circle
                   r={nodeRadius}
-                  fill={isSelected ? (item.isSongOfTheDay ? '#FFD700' : '#1DB954') : isHovered ? '#27272a' : '#18181b'}
+                  fill={isSelected ? (item.isSongOfTheDay ? '#FFFFFF' : '#1DB954') : isHovered ? '#27272a' : '#18181b'}
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  stroke={item.isSongOfTheDay ? '#FFD700' : (isSelected ? '#1DB954' : item.isSelected ? '#eab308' : isHovered ? '#1DB954' : '#1DB954')}
+                  stroke={item.isSongOfTheDay ? '#FFFFFF' : (isSelected ? '#1DB954' : item.isSelected ? '#eab308' : isHovered ? '#1DB954' : '#1DB954')}
                   strokeWidth={isSelected ? '4' : item.isSelected ? '4' : isHovered ? '3' : '2'}
                   strokeOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   style={{

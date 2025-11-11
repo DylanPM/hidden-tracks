@@ -317,11 +317,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       // Radius based on position type
       let radius;
       if (assignment.position === 'outer') {
-        radius = 195; // Standard outer radius
+        radius = 185; // Outer radius (5% inward from original 195)
       } else if (assignment.position === 'inner') {
-        radius = 140; // Inner radius for paired genres
+        radius = 100; // Inner radius (closer to center for better visual separation)
       } else {
-        radius = 195; // Single position uses standard radius
+        radius = 185; // Single position uses outer radius
       }
 
       return {
@@ -342,6 +342,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       if (node.features) {
         // SPECIAL CASE: Song of the Day at center (0, 0) to evoke mystery
         if (node.isSongOfTheDay || genreKey === 'song of the day') {
+          console.log('🎵 Song of the Day detected:', key, 'isSongOfTheDay:', node.isSongOfTheDay);
           rawResult[key] = { x: 0, y: 0 };
           hardCodedKeys.add(key); // Mark as hard-coded to skip scaling
         }
@@ -395,12 +396,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // Apply power curve scaling to spread outer nodes more (use more of the ring)
     // This uncrowds nodes by giving more space to nodes further from center
-    // Using x^0.5 power curve: more aggressive spread to push nodes toward outer edge
+    // Using x^0.6 power curve (REVERTED from x^0.5 - subgenres were working fine before)
     const applyRadialSpread = (distance, maxDist) => {
       if (maxDist === 0) return 0;
       const normalized = distance / maxDist; // 0 to 1
-      // Apply power curve: x^0.5 (square root) spreads nodes more aggressively
-      const spread = Math.pow(normalized, 0.5);
+      // Apply power curve: x^0.6 pushes nodes outward moderately
+      const spread = Math.pow(normalized, 0.6);
       return spread * maxDist;
     };
 
