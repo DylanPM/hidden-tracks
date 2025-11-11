@@ -134,22 +134,25 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     const averagedParentFeatures = calculateAveragedParentFeatures();
 
-    // DEBUG: Log comparison of original vs averaged features for country
-    if (averagedParentFeatures.country) {
-      console.log('\n🎵 COUNTRY GENRE FEATURE COMPARISON:');
-      console.log('  Original (modern country radio):');
-      feature_angles.forEach(feat => {
-        if (manifest.country?.features?.[feat] != null) {
-          console.log(`    ${feat}: ${manifest.country.features[feat].toFixed(3)}`);
-        }
-      });
-      console.log('  Averaged (across all subgenres):');
-      feature_angles.forEach(feat => {
-        if (averagedParentFeatures.country[feat] != null) {
-          console.log(`    ${feat}: ${averagedParentFeatures.country[feat].toFixed(3)}`);
-        }
-      });
-    }
+    // DEBUG: Log comparison of original vs averaged features
+    ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(genreKey => {
+      const key = genreKey.replace(' ', '-');
+      if (averagedParentFeatures[genreKey] && manifest[genreKey]?.features) {
+        console.log(`\n🎵 ${genreKey.toUpperCase()} FEATURE COMPARISON:`);
+        console.log('  Original (seed tracks):');
+        feature_angles.forEach(feat => {
+          if (manifest[genreKey].features[feat] != null) {
+            console.log(`    ${feat}: ${manifest[genreKey].features[feat].toFixed(3)}`);
+          }
+        });
+        console.log('  Averaged (across all subgenres):');
+        feature_angles.forEach(feat => {
+          if (averagedParentFeatures[genreKey][feat] != null) {
+            console.log(`    ${feat}: ${averagedParentFeatures[genreKey][feat].toFixed(3)}`);
+          }
+        });
+      }
+    });
 
     // ============================================================================
     // POSITIONING ANGLES: One axis per feature, evenly distributed around circle
@@ -170,6 +173,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       acc[feature] = i * featureAngleStep; // Distribute features evenly around full circle
       return acc;
     }, {});
+
+    // DEBUG: Log feature axis angles
+    console.log('\n🧭 FEATURE AXIS ANGLES:');
+    feature_angles.forEach((feature, i) => {
+      const angle = featureAngles[feature];
+      const degrees = (angle * 180 / Math.PI).toFixed(1);
+      console.log(`  ${i}: ${feature} → ${degrees}°`);
+    });
 
     // Normalize a feature value to 0-1 using percentile approximation
     const normalizeFeature = (value, featureName) => {
@@ -351,8 +362,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         features: null // Will store features for collision resolution
       };
 
-      // DEBUG: Log positions for country and jazz after initial projection
-      if (key === 'country' || key === 'jazz') {
+      // DEBUG: Log positions for key genres after initial projection
+      if (['country', 'jazz', 'electronic', 'hip hop', 'rock'].includes(key)) {
         console.log(`  ${key}: (${(x * scale).toFixed(1)}, ${(y * scale).toFixed(1)})`);
       }
     });
@@ -486,12 +497,13 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       }
     });
 
-    // DEBUG: Log final positions for country and jazz after collision avoidance
+    // DEBUG: Log final positions after collision avoidance
     console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
-    ['country', 'jazz'].forEach(key => {
+    ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
       if (scaledResult[key]) {
         const pos = scaledResult[key];
         const angle = Math.atan2(pos.y, pos.x);
+        const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
 
         // Find nearest feature axis
         let nearestFeature = null;
@@ -506,7 +518,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           }
         });
 
-        console.log(`  ${key}: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) → nearest axis: ${nearestFeature}`);
+        // Also show the node's actual feature value for that axis
+        const nodeFeatures = scaledResult[key].features;
+        const featureValue = nodeFeatures?.[nearestFeature];
+        const featureValueStr = featureValue != null ? featureValue.toFixed(3) : 'N/A';
+
+        console.log(`  ${key}: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) at ${angleDegrees.toFixed(0)}° → nearest axis: ${nearestFeature} (value: ${featureValueStr})`);
       }
     });
 
