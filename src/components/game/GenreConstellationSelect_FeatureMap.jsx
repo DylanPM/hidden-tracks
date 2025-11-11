@@ -35,8 +35,8 @@ const FONT_STYLES = {
 // Human-friendly feature labels (bidirectional) with Spotify-inspired colors
 const FEATURE_CONFIG = {
   danceability: {
-    low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing', info: 'How suitable for dancing. Chill tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
-    high: { emoji: '💃', name: 'Danceable', desc: 'Made for dancing', info: 'How suitable for dancing. Chill tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
+    low: { emoji: '🧘', name: 'Laid-back', desc: 'Relaxed, not for dancing', info: 'How suitable for dancing. Laid-back tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
+    high: { emoji: '💃', name: 'Danceable', desc: 'Made for dancing', info: 'How suitable for dancing. Laid-back tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
     color: '#9333EA' // Vivid purple (nightlife/movement)
   },
   energy: {

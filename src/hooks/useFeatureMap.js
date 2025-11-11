@@ -400,15 +400,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
         const exclusionFeatures = [];
 
-        // Find features where this genre ranks low (percentile < 0.3)
+        // Find features where this genre ranks VERY low (percentile < 0.15)
+        // Only exclude 1-2 of the absolutely lowest ranking attributes
         feature_angles.forEach(feat => {
           const value = nodeFeatures[feat];
           if (value == null || isNaN(value)) return;
 
           const percentile = normalizeFeature(value, feat);
 
-          // If low percentile (weak feature), mark for exclusion
-          if (percentile < 0.3) {
+          // If very low percentile (extremely weak feature), mark for exclusion
+          if (percentile < 0.15) {
             exclusionFeatures.push({
               feature: feat,
               angle: featureAngles[feat],
@@ -417,12 +418,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           }
         });
 
-        // Create exclusion zones (±45° around each weak feature axis)
-        zones[key] = exclusionFeatures.map(f => ({
+        // Sort by percentile and keep only the 2 weakest features
+        exclusionFeatures.sort((a, b) => a.percentile - b.percentile);
+        const weakestFeatures = exclusionFeatures.slice(0, 2);
+
+        // Create narrower exclusion zones (±30° around each weak feature axis)
+        zones[key] = weakestFeatures.map(f => ({
           feature: f.feature,
           centerAngle: f.angle,
-          minAngle: (f.angle - Math.PI / 4 + Math.PI * 2) % (Math.PI * 2),
-          maxAngle: (f.angle + Math.PI / 4) % (Math.PI * 2),
+          minAngle: (f.angle - Math.PI / 6 + Math.PI * 2) % (Math.PI * 2), // ±30°
+          maxAngle: (f.angle + Math.PI / 6) % (Math.PI * 2),
           percentile: f.percentile
         }));
       });
@@ -433,14 +438,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const exclusionZones = calculateExclusionZones();
 
     // DEBUG: Log exclusion zones for key genres
-    console.log('\n🚫 EXCLUSION ZONES (weak features to avoid):');
+    console.log('\n🚫 EXCLUSION ZONES (top 2 weakest features to avoid):');
     ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
       if (exclusionZones[key] && exclusionZones[key].length > 0) {
         console.log(`  ${key}:`);
         exclusionZones[key].forEach(zone => {
           const degrees = (zone.centerAngle * 180 / Math.PI).toFixed(1);
-          console.log(`    ${zone.feature} @ ${degrees}° (±45°) - percentile: ${zone.percentile.toFixed(3)}`);
+          console.log(`    ${zone.feature} @ ${degrees}° (±30°) - percentile: ${zone.percentile.toFixed(3)}`);
         });
+      } else {
+        console.log(`  ${key}: No weak features (all > 15th percentile)`);
       }
     });
 
@@ -514,7 +521,31 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         }
       }
 
-      // If all angles blocked, use base angle as last resort
+      // If all candidates are in exclusion zones, find angle toward STRONGEST feature
+      // This is semantically better than pushing into a weak area
+      const nodeFeatures = scaledResult[nodeKey]?.features;
+      if (nodeFeatures) {
+        let strongestFeature = null;
+        let maxPercentile = -1;
+
+        feature_angles.forEach(feat => {
+          const value = nodeFeatures[feat];
+          if (value == null || isNaN(value)) return;
+
+          const percentile = normalizeFeature(value, feat);
+          if (percentile > maxPercentile) {
+            maxPercentile = percentile;
+            strongestFeature = feat;
+          }
+        });
+
+        if (strongestFeature) {
+          // Push toward the strongest feature axis
+          return featureAngles[strongestFeature];
+        }
+      }
+
+      // Final fallback: use base angle
       return baseAngle;
     };
 
