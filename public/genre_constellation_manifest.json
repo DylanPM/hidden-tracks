@@ -5092,10 +5092,10 @@
     },
     "display": {
       "feature_angles": [
-        "popularity",
         "danceability",
-        "acousticness",
         "speechiness",
+        "acousticness",
+        "popularity",
         "energy",
         "valence",
         "tempo_norm",
