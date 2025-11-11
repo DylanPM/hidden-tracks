@@ -116,6 +116,44 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
       const effectiveExaggeration = exaggeration * depthExaggeration * featureCountExaggeration;
 
+      // UNIQUE ATTRIBUTE BOOSTING: For root genres, boost their most distinctive attribute
+      // to push similar genres in different directions
+      let uniquenessBoosts = {};
+      if (depth === 0) {
+        // Find this genre's most extreme (distinctive) attributes
+        feature_angles.forEach(featureName => {
+          if (activeFeatures[featureName] === false) return;
+          const rawValue = features[featureName];
+          let percentile = normalizeFeature(rawValue, featureName);
+          percentile = applyContrastCurve(percentile, featureName);
+
+          // Extremeness = distance from 0.5 (neutral)
+          const extremeness = Math.abs(percentile - 0.5);
+          uniquenessBoosts[featureName] = extremeness;
+        });
+
+        // Find the most extreme attribute
+        let maxExtremeness = 0;
+        let mostDistinctiveFeature = null;
+        Object.keys(uniquenessBoosts).forEach(feat => {
+          if (uniquenessBoosts[feat] > maxExtremeness) {
+            maxExtremeness = uniquenessBoosts[feat];
+            mostDistinctiveFeature = feat;
+          }
+        });
+
+        // Boost the most distinctive attribute by 1.8x to push genres apart
+        if (mostDistinctiveFeature) {
+          uniquenessBoosts[mostDistinctiveFeature] = 1.8;
+        }
+        // Reset others to 1.0
+        Object.keys(uniquenessBoosts).forEach(feat => {
+          if (feat !== mostDistinctiveFeature) {
+            uniquenessBoosts[feat] = 1.0;
+          }
+        });
+      }
+
       feature_angles.forEach(featureName => {
         // Skip if this feature is disabled
         if (activeFeatures[featureName] === false) return;
@@ -126,7 +164,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
         // Convert to weight: [-1, 1] (bidirectional)
         // percentile 0 → opposite direction (low label), 0.5 → center, 1 → toward axis (high label)
-        const weight = (percentile - 0.5) * 2 * effectiveExaggeration;
+        let weight = (percentile - 0.5) * 2 * effectiveExaggeration;
+
+        // Apply uniqueness boost for root genres
+        if (depth === 0 && uniquenessBoosts[featureName]) {
+          weight *= uniquenessBoosts[featureName];
+        }
 
         // Add weighted unit vector for this axis
         const angle = featureAngles[featureName];
