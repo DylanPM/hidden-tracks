@@ -278,7 +278,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // COLLISION AVOIDANCE: Push overlapping nodes using radial separation
     // Relationship-aware minimum distances provide better separation for related nodes
     const MIN_DISTANCE_SIBLING = 70; // Minimum distance between siblings at same level (increased from 50)
-    const MIN_DISTANCE_PARENT_CHILD = 75; // Minimum distance between parent and child (increased from 55)
+    const MIN_DISTANCE_PARENT_CHILD = 100; // Minimum distance between parent and child (increased from 75)
     const MIN_DISTANCE_ROOT = 130; // Minimum distance between root genres (increased for better spread)
     const MIN_DISTANCE_DEFAULT = 50; // Default for unrelated nodes (increased from 40)
     const PUSH_STRENGTH = 0.5; // Slightly stronger push for better separation
