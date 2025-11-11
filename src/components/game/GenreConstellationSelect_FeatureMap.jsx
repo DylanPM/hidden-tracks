@@ -71,6 +71,25 @@ const FEATURE_CONFIG = {
   }
 };
 
+// Song of the Day - "Love Again" by Dua Lipa
+const SONG_OF_THE_DAY = {
+  id: '1imMjt1YGNebtrtTAprKV7',
+  name: 'Love Again',
+  artist: 'Dua Lipa',
+  filename: 'dua-lipa_love-again.json',
+  features: {
+    danceability: 0.659,
+    energy: 0.667,
+    valence: 0.468,
+    acousticness: 0.00173,
+    instrumentalness: 0.0000285,
+    speechiness: 0.0339,
+    tempo: 115.982,
+    tempo_norm: 0.38, // Normalized tempo (115.982 BPM is moderate)
+    popularity: 68
+  }
+};
+
 /**
  * GenreConstellationSelect - Feature Map Version
  *
@@ -244,6 +263,77 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   // Use global positions for root, local for nested levels
   const positions = viewStack.length === 0 ? globalPositions : localPositions;
+
+  // Calculate Song of the Day position (using same logic as useFeatureMap)
+  const songOfTheDayPosition = useMemo(() => {
+    if (!manifest?.global) return { x: 0, y: 0 };
+
+    const { feature_angles: rawFeatureAngles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
+    const { quantiles: globalQuantiles } = manifest.global;
+    const feature_angles = rawFeatureAngles.filter(f => f !== 'instrumentalness');
+
+    // Create angle mapping
+    const featureAngles = {};
+    feature_angles.forEach((f, i) => {
+      featureAngles[f] = (i * 2 * Math.PI) / feature_angles.length;
+    });
+
+    // Normalize each feature
+    const normalizeFeature = (value, featureName) => {
+      const q = globalQuantiles[featureName];
+      if (!q) return 0.5;
+
+      if (value <= q.p10) return 0.1 * (value / q.p10);
+      if (value <= q.p50) return 0.1 + 0.4 * ((value - q.p10) / (q.p50 - q.p10));
+      if (value <= q.p90) return 0.5 + 0.4 * ((value - q.p50) / (q.p90 - q.p50));
+      return 0.9 + 0.1 * ((value - q.p90) / (1 - q.p90 + 0.001));
+    };
+
+    // Apply contrast curve for speechiness
+    const applyContrastCurve = (percentile, featureName) => {
+      if (featureName === 'speechiness' && speechiness_contrast_gamma) {
+        return Math.pow(percentile, speechiness_contrast_gamma);
+      }
+      return percentile;
+    };
+
+    // Calculate position
+    let x = 0;
+    let y = 0;
+
+    const depthExaggeration = 1.6; // Root level exaggeration
+    const effectiveExaggeration = exaggeration * depthExaggeration;
+
+    feature_angles.forEach(featureName => {
+      if (activeFeatures[featureName] === false) return;
+
+      const rawValue = SONG_OF_THE_DAY.features[featureName];
+      let percentile = normalizeFeature(rawValue, featureName);
+      percentile = applyContrastCurve(percentile, featureName);
+
+      const weight = (percentile - 0.5) * 2;
+      const angle = featureAngles[featureName];
+
+      x += weight * Math.cos(angle);
+      y += weight * Math.sin(angle);
+    });
+
+    x *= effectiveExaggeration * projection_scale;
+    y *= effectiveExaggeration * projection_scale;
+
+    // Clamp to boundary
+    const AXIS_RADIUS = 250;
+    const MAX_DISTANCE = AXIS_RADIUS - 60;
+    const distance = Math.sqrt(x * x + y * y);
+
+    if (distance > MAX_DISTANCE) {
+      const scale = MAX_DISTANCE / distance;
+      x *= scale;
+      y *= scale;
+    }
+
+    return { x, y };
+  }, [manifest, exaggeration, activeFeatures]);
 
   // Description text
   const currentGenre = viewStack.length > 0 ? viewStack[viewStack.length - 1] : null;
@@ -438,6 +528,22 @@ export function GenreConstellationSelect({ onLaunch }) {
               }
             }
           });
+        });
+
+        // Add Song of the Day node at root level
+        items.push({
+          key: 'song-of-the-day',
+          label: 'song of the day',
+          x: songOfTheDayPosition.x,
+          y: songOfTheDayPosition.y,
+          type: 'songOfTheDay',
+          hasSubgenres: false,
+          hasSeeds: true,
+          isSongOfTheDay: true,
+          onClick: () => {
+            // Launch the song of the day
+            onLaunch([SONG_OF_THE_DAY], difficulty);
+          }
         });
       } else {
         // NESTED LEVEL: Center parent and show children at local attribute positions
@@ -1104,21 +1210,21 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Focus ring (always on hover) */}
                 {isHovered && (
                   <>
-                    {/* Green fill circle */}
+                    {/* Fill circle - gold for song of the day, green for others */}
                     <circle
                       r={focusRingRadius}
-                      fill="#1DB954"
+                      fill={item.isSongOfTheDay ? "#FFD700" : "#1DB954"}
                       opacity="0.15"
                       style={{
                         pointerEvents: 'none',
                         transition: 'opacity 0.2s ease-in'
                       }}
                     />
-                    {/* Green stroke ring */}
+                    {/* Stroke ring - gold for song of the day, green for others */}
                     <circle
                       r={focusRingRadius}
                       fill="none"
-                      stroke="#1DB954"
+                      stroke={item.isSongOfTheDay ? "#FFD700" : "#1DB954"}
                       strokeWidth="2"
                       opacity="0.6"
                       style={{
@@ -1132,9 +1238,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Main node circle */}
                 <circle
                   r={nodeRadius}
-                  fill={isSelected ? '#1DB954' : isHovered ? '#27272a' : '#18181b'}
+                  fill={isSelected ? (item.isSongOfTheDay ? '#FFD700' : '#1DB954') : isHovered ? '#27272a' : '#18181b'}
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  stroke={isSelected ? '#1DB954' : item.isSelected ? '#eab308' : isHovered ? '#1DB954' : '#1DB954'}
+                  stroke={item.isSongOfTheDay ? '#FFD700' : (isSelected ? '#1DB954' : item.isSelected ? '#eab308' : isHovered ? '#1DB954' : '#1DB954')}
                   strokeWidth={isSelected ? '4' : item.isSelected ? '4' : isHovered ? '3' : '2'}
                   strokeOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   style={{
@@ -1252,15 +1358,19 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
-              <text fontSize={FONT_STYLES.large.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
+              <text fontSize={FONT_STYLES.large.fontSize} fill={hoveredItem?.isSongOfTheDay || selectedNode?.isSongOfTheDay ? "#FFD700" : "#b7f7cf"} fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem
-                    ? (hoveredItem.type === 'track' && hoveredItem.track
-                        ? `${hoveredItem.track.artist} - ${hoveredItem.track.name}`
-                        : getGenreDescription(hoveredItem.label))
-                    : (selectedNode?.type === 'track' && selectedNode.track
-                        ? `${selectedNode.track.artist} - ${selectedNode.track.name}`
-                        : genreDescription)
+                    ? (hoveredItem.isSongOfTheDay
+                        ? "test your knowledge with the song of the day!"
+                        : hoveredItem.type === 'track' && hoveredItem.track
+                          ? `${hoveredItem.track.artist} - ${hoveredItem.track.name}`
+                          : getGenreDescription(hoveredItem.label))
+                    : (selectedNode?.isSongOfTheDay
+                        ? "test your knowledge with the song of the day!"
+                        : selectedNode?.type === 'track' && selectedNode.track
+                          ? `${selectedNode.track.artist} - ${selectedNode.track.name}`
+                          : genreDescription)
                   }
                 </textPath>
               </text>
