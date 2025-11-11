@@ -796,8 +796,9 @@ export function GenreConstellationSelect({ onLaunch }) {
 
           {/* Subtle background floor coloring - segments based on feature count */}
           {displayFeatures.map((feature, i) => {
-            const numSegments = displayFeatures.length * 2;
-            const segmentAngleStep = (Math.PI * 2) / numSegments;
+            // Match positioning angles: one angle per feature spanning full circle
+            const numFeatures = displayFeatures.length;
+            const featureAngleStep = (Math.PI * 2) / numFeatures;
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
@@ -808,13 +809,15 @@ export function GenreConstellationSelect({ onLaunch }) {
             // Three states: not in use (off), in use (on), on hover
             const floorOpacity = isFeatureHovered ? 0.35 : (isFeatureEnabled ? 0.12 : 0.05);
 
-            // High end segment at evenly-spaced position i
-            const highStartAngle = i * segmentAngleStep - segmentAngleStep / 2;
-            const highEndAngle = i * segmentAngleStep + segmentAngleStep / 2;
+            // High end segment centered at feature angle
+            const highAngle = i * featureAngleStep;
+            const highStartAngle = highAngle - featureAngleStep / 2;
+            const highEndAngle = highAngle + featureAngleStep / 2;
 
-            // Low end segment 180° opposite (half the segments away)
-            const lowStartAngle = (i + displayFeatures.length) * segmentAngleStep - segmentAngleStep / 2;
-            const lowEndAngle = (i + displayFeatures.length) * segmentAngleStep + segmentAngleStep / 2;
+            // Low end segment 180° opposite
+            const lowAngle = highAngle + Math.PI;
+            const lowStartAngle = lowAngle - featureAngleStep / 2;
+            const lowEndAngle = lowAngle + featureAngleStep / 2;
 
             return (
               <g key={`floor-bg-${feature}`}>
@@ -872,20 +875,18 @@ export function GenreConstellationSelect({ onLaunch }) {
               const highAngle = i * featureAngleStep;
               const highRadius = minRadius + (weight * (maxRadius - minRadius));
               points.push({
+                angle: highAngle,
                 x: CENTER_X + Math.cos(highAngle) * highRadius,
                 y: CENTER_Y + Math.sin(highAngle) * highRadius,
                 weight,
                 strength: weight
               });
-            });
-
-            displayFeatures.forEach((feature, i) => {
-              const weight = focusedNodeFeatureWeights[feature];
 
               // Low end point 180° opposite
-              const lowAngle = i * featureAngleStep + Math.PI;
+              const lowAngle = highAngle + Math.PI;
               const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
               points.push({
+                angle: lowAngle,
                 x: CENTER_X + Math.cos(lowAngle) * lowRadius,
                 y: CENTER_Y + Math.sin(lowAngle) * lowRadius,
                 weight: 1 - weight,
@@ -893,7 +894,10 @@ export function GenreConstellationSelect({ onLaunch }) {
               });
             });
 
-            // Create path connecting all points in order
+            // Sort points by angle to connect them in circular order (prevents crossing lines)
+            points.sort((a, b) => a.angle - b.angle);
+
+            // Create path connecting all points in circular order
             const pathData = points.map((p, i) =>
               `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
             ).join(' ') + ' Z';
