@@ -77,7 +77,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         feature_angles.forEach(feat => {
           if (features[feat] != null) {
             const raw = features[feat];
-            const q = quantiles[feat];
+            const q = globalQuantiles[feat];
             let percentile = 0.5;
             if (q) {
               if (raw <= q.p10) percentile = 0.1 * (raw / q.p10);
