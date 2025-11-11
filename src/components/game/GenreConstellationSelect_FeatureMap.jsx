@@ -566,8 +566,9 @@ export function GenreConstellationSelect({ onLaunch }) {
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
-    const numSegments = displayFeatures.length * 2; // Each feature has high and low ends
-    const segmentAngleStep = (Math.PI * 2) / numSegments;
+    // Match the positioning angle distribution: one angle per feature spanning full circle
+    const numFeatures = displayFeatures.length;
+    const featureAngleStep = (Math.PI * 2) / numFeatures; // Full circle divided by feature count
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
@@ -578,8 +579,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       if (!config) return;
 
-      // High end at evenly-spaced positions around the circle
-      const highAngle = i * segmentAngleStep;
+      // High end at angle that matches positioning calculation
+      const highAngle = i * featureAngleStep;
       labels.push({
         feature,
         end: 'high',
@@ -593,8 +594,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         enabled
       });
 
-      // Low end 180° opposite (half the total segments away)
-      const lowAngle = (i + displayFeatures.length) * segmentAngleStep;
+      // Low end 180° opposite
+      const lowAngle = highAngle + Math.PI;
       labels.push({
         feature,
         end: 'low',
@@ -855,8 +856,9 @@ export function GenreConstellationSelect({ onLaunch }) {
           {focusedNodeFeatureWeights && (() => {
             if (displayFeatures.length === 0) return null;
 
-            const numSegments = displayFeatures.length * 2;
-            const segmentAngleStep = (Math.PI * 2) / numSegments;
+            // Match positioning angles: one angle per feature spanning full circle
+            const numFeatures = displayFeatures.length;
+            const featureAngleStep = (Math.PI * 2) / numFeatures;
             const maxRadius = 250;
             const minRadius = 50;
 
@@ -866,8 +868,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             displayFeatures.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
-              // High end point at evenly-spaced position i
-              const highAngle = i * segmentAngleStep;
+              // High end point matches positioning angle
+              const highAngle = i * featureAngleStep;
               const highRadius = minRadius + (weight * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(highAngle) * highRadius,
@@ -880,8 +882,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             displayFeatures.forEach((feature, i) => {
               const weight = focusedNodeFeatureWeights[feature];
 
-              // Low end point 180° opposite (half the segments away)
-              const lowAngle = (i + displayFeatures.length) * segmentAngleStep;
+              // Low end point 180° opposite
+              const lowAngle = i * featureAngleStep + Math.PI;
               const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
               points.push({
                 x: CENTER_X + Math.cos(lowAngle) * lowRadius,
@@ -985,13 +987,8 @@ export function GenreConstellationSelect({ onLaunch }) {
                   style={{ transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)' }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (viewStack.length === 0) {
-                      // Root view: toggle the feature
-                      toggleFeature(label.feature);
-                    } else {
-                      // Nested view: go back
-                      handleBack();
-                    }
+                    // Always toggle feature when clicking ring segments (don't trigger back)
+                    toggleFeature(label.feature);
                   }}
                   onMouseEnter={() => setHoveredAxisLabel(`${label.feature}-${label.end}`)}
                   onMouseLeave={() => setHoveredAxisLabel(null)}
@@ -1260,7 +1257,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 21200ms linear infinite`, // Decreased speed by 15% (was 18000ms)
+                  animation: `orbit 24380ms linear infinite`, // Decreased by another 15% (21200ms * 1.15)
                   pointerEvents: 'none'
                 }}
               >
@@ -1295,7 +1292,7 @@ export function GenreConstellationSelect({ onLaunch }) {
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 21200ms linear infinite`, // Decreased speed by 15% (was 18000ms)
+                  animation: `orbit 24380ms linear infinite`, // Decreased by another 15% (21200ms * 1.15)
                   pointerEvents: 'none'
                 }}
               >
