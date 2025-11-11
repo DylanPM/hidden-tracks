@@ -5092,13 +5092,13 @@
     },
     "display": {
       "feature_angles": [
+        "popularity",
         "danceability",
-        "energy",
-        "speechiness",
         "acousticness",
+        "speechiness",
+        "energy",
         "valence",
         "tempo_norm",
-        "popularity",
         "instrumentalness"
       ],
       "projection_scale": 180,
