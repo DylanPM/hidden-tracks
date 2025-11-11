@@ -37,37 +37,37 @@ const FEATURE_CONFIG = {
   danceability: {
     low: { emoji: '🧘', name: 'Chill', desc: 'Relaxed, not for dancing', info: 'How suitable for dancing. Chill tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
     high: { emoji: '💃', name: 'Danceable', desc: 'Made for dancing', info: 'How suitable for dancing. Chill tracks feel contemplative; danceable tracks have strong beat and rhythm.' },
-    color: '#8B5CF6' // Muted purple
+    color: '#9333EA' // Vivid purple (nightlife/movement)
   },
   energy: {
     low: { emoji: '😌', name: 'Calm', desc: 'Mellow and peaceful', info: 'Perceptual intensity from 0-1. Calm is gentle; energetic is fast, loud, and noisy.' },
     high: { emoji: '⚡', name: 'Energetic', desc: 'Intense and active', info: 'Perceptual intensity from 0-1. Calm is gentle; energetic is fast, loud, and noisy.' },
-    color: '#EF4444' // Vibrant red
+    color: '#DC2626' // Strong red (intense/hot)
   },
   speechiness: {
     low: { emoji: '🎵', name: 'Wordless', desc: 'Instrumental melodies', info: 'Presence of spoken words. Wordless is pure music; wordy contains talk shows, podcasts, or rap.' },
     high: { emoji: '🗣️', name: 'Wordy', desc: 'Lots of talking/rapping', info: 'Presence of spoken words. Wordless is pure music; wordy contains talk shows, podcasts, or rap.' },
-    color: '#F59E0B' // Amber
+    color: '#EAB308' // Bright yellow (voice/words)
   },
   acousticness: {
     low: { emoji: '🎹', name: 'Electric', desc: 'Synths and machines', info: 'Confidence that track uses acoustic instruments. Electric is electronic/synthesized; acoustic is unplugged.' },
     high: { emoji: '🎸', name: 'Acoustic', desc: 'Live instruments', info: 'Confidence that track uses acoustic instruments. Electric is electronic/synthesized; acoustic is unplugged.' },
-    color: '#EC4899' // Pink
+    color: '#16A34A' // Vibrant green (natural/organic)
   },
   valence: {
     low: { emoji: '😢', name: 'Sad', desc: 'Melancholic feeling', info: 'Musical positiveness. Sad tracks sound negative (angry, depressed); happy tracks sound positive (cheerful, euphoric).' },
     high: { emoji: '😊', name: 'Happy', desc: 'Upbeat and cheerful', info: 'Musical positiveness. Sad tracks sound negative (angry, depressed); happy tracks sound positive (cheerful, euphoric).' },
-    color: '#FB923C' // Orange
+    color: '#2563EB' // Bright blue (emotion/mood)
   },
   tempo_norm: {
     low: { emoji: '🐌', name: 'Slow', desc: 'Slower tempo', info: 'Overall tempo in BPM. Slow is laid-back and relaxed; fast is driving and urgent.' },
     high: { emoji: '🥁', name: 'Fast', desc: 'Quick tempo', info: 'Overall tempo in BPM. Slow is laid-back and relaxed; fast is driving and urgent.' },
-    color: '#06B6D4' // Cyan
+    color: '#0EA5E9' // Sky blue (speed/motion)
   },
   popularity: {
     low: { emoji: '💎', name: 'Niche', desc: 'Underground and rare', info: 'Based on play count and recency. Niche is underground; popular is mainstream hits.' },
     high: { emoji: '🔥', name: 'Popular', desc: 'Mainstream hits', info: 'Based on play count and recency. Niche is underground; popular is mainstream hits.' },
-    color: '#FBBF24' // Yellow
+    color: '#EC4899' // Hot pink (mainstream/trending)
   }
 };
 
