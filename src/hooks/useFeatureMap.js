@@ -437,10 +437,37 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return 'unrelated';
     };
 
+    // Helper to check if two nodes would ever be visible together
+    const areVisibleTogether = (key1, key2) => {
+      const parts1 = key1.split('.');
+      const parts2 = key2.split('.');
+
+      // Both root level - always visible together
+      if (parts1.length === 1 && parts2.length === 1) return true;
+
+      // Same depth and same parent (siblings) - visible together
+      if (parts1.length === parts2.length && parts1.length > 1) {
+        const parent1 = parts1.slice(0, -1).join('.');
+        const parent2 = parts2.slice(0, -1).join('.');
+        if (parent1 === parent2) return true;
+      }
+
+      // Parent-child visible together when drilling into parent
+      if (parts1.length === parts2.length - 1 && key2.startsWith(key1 + '.')) return true;
+      if (parts2.length === parts1.length - 1 && key1.startsWith(key2 + '.')) return true;
+
+      // Different branches - never visible together
+      return false;
+    };
+
     for (let i = 0; i < keys.length; i++) {
       for (let j = i + 1; j < keys.length; j++) {
         const key1 = keys[i];
         const key2 = keys[j];
+
+        // Skip if they're never visible together
+        if (!areVisibleTogether(key1, key2)) continue;
+
         const node1 = scaledResult[key1];
         const node2 = scaledResult[key2];
 
@@ -479,9 +506,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     if (overlaps.length === 0) {
       console.log('✅ No overlaps detected! All nodes properly separated.');
     } else {
-      console.log(`⚠️  Found ${overlaps.length} overlapping pairs:`);
+      console.log(`⚠️  Found ${overlaps.length} overlapping pairs (only showing nodes visible together):`);
       console.log('');
-      overlaps.slice(0, 15).forEach((o, i) => {
+      overlaps.slice(0, 20).forEach((o, i) => {
         console.log(`${i + 1}. "${o.key1}" ↔ "${o.key2}"`);
         console.log(`   Distance: ${o.distance}px (needs ${o.minRequired}px) - ${o.overlap}px too close`);
         console.log(`   Relationship: ${o.relationship}`);
@@ -489,8 +516,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         console.log('');
       });
 
-      if (overlaps.length > 15) {
-        console.log(`... and ${overlaps.length - 15} more overlaps`);
+      if (overlaps.length > 20) {
+        console.log(`... and ${overlaps.length - 20} more overlaps`);
       }
     }
     console.log('============================================\n');
