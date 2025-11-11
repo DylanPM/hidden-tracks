@@ -275,12 +275,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       }
     });
 
-    // COLLISION AVOIDANCE: Push overlapping nodes in direction of strongest attribute
+    // COLLISION AVOIDANCE: Push overlapping nodes using radial separation
     // Relationship-aware minimum distances provide better separation for related nodes
-    const MIN_DISTANCE_SIBLING = 50; // Minimum distance between siblings at same level
-    const MIN_DISTANCE_PARENT_CHILD = 55; // Minimum distance between parent and child
+    const MIN_DISTANCE_SIBLING = 70; // Minimum distance between siblings at same level (increased from 50)
+    const MIN_DISTANCE_PARENT_CHILD = 75; // Minimum distance between parent and child (increased from 55)
     const MIN_DISTANCE_ROOT = 130; // Minimum distance between root genres (increased for better spread)
-    const MIN_DISTANCE_DEFAULT = 40; // Default for unrelated nodes
+    const MIN_DISTANCE_DEFAULT = 50; // Default for unrelated nodes (increased from 40)
     const PUSH_STRENGTH = 0.5; // Slightly stronger push for better separation
     const MAX_ITERATIONS = 8; // More iterations to allow full separation
     const DAMPING = 0.85; // Slightly faster damping with more iterations
@@ -339,67 +339,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           if (distance < minDistance && distance > 0) {
             hadCollision = true;
 
-            // Calculate push direction for each node based on strongest attribute
-            const getPushDirection = (features) => {
-              if (!features) return { x: 0, y: 0 };
-
-              let strongestFeature = null;
-              let strongestWeight = 0;
-
-              feature_angles.forEach(featureName => {
-                const value = features[featureName];
-                if (value == null) return;
-
-                // Normalize to see which feature is most extreme
-                const weight = Math.abs(value - 0.5);
-                if (weight > strongestWeight) {
-                  strongestWeight = weight;
-                  strongestFeature = featureName;
-                }
-              });
-
-              if (!strongestFeature) return { x: 0, y: 0 };
-
-              // Get direction of strongest feature
-              const angle = featureAngles[strongestFeature];
-              const isHigh = features[strongestFeature] > 0.5;
-              const direction = isHigh ? 1 : -1;
-
-              return {
-                x: Math.cos(angle) * direction,
-                y: Math.sin(angle) * direction
-              };
-            };
-
-            const push1Dir = getPushDirection(node1.features);
-            const push2Dir = getPushDirection(node2.features);
-
-            // Check if push directions have meaningful magnitude
-            const push1Magnitude = Math.sqrt(push1Dir.x * push1Dir.x + push1Dir.y * push1Dir.y);
-            const push2Magnitude = Math.sqrt(push2Dir.x * push2Dir.x + push2Dir.y * push2Dir.y);
-
-            // Push nodes apart, biased toward their strongest attribute direction
+            // Push nodes apart using radial separation
             // Apply damping: pushes get weaker each iteration to prevent spiraling
             const currentStrength = PUSH_STRENGTH * Math.pow(DAMPING, iteration);
             const overlap = minDistance - distance;
             const pushDist = overlap * currentStrength / 2;
 
-            // For root genres, ALWAYS use radial separation to maximize spread
-            // For other nodes, use attribute direction if strong enough
-            let push1X, push1Y, push2X, push2Y;
-            if (bothRoot) {
-              // Radial separation for root genres - push directly away from each other
-              push1X = -(dx / distance) * pushDist;
-              push1Y = -(dy / distance) * pushDist;
-              push2X = (dx / distance) * pushDist;
-              push2Y = (dy / distance) * pushDist;
-            } else {
-              // Attribute-based for non-root nodes (threshold 0.1 to avoid weak directions)
-              push1X = push1Magnitude > 0.1 ? push1Dir.x * pushDist : -(dx / distance) * pushDist;
-              push1Y = push1Magnitude > 0.1 ? push1Dir.y * pushDist : -(dy / distance) * pushDist;
-              push2X = push2Magnitude > 0.1 ? push2Dir.x * pushDist : (dx / distance) * pushDist;
-              push2Y = push2Magnitude > 0.1 ? push2Dir.y * pushDist : (dy / distance) * pushDist;
-            }
+            // Use radial separation for ALL nodes - push directly away from each other
+            // This prevents clustering from attribute-based pushing
+            const push1X = -(dx / distance) * pushDist;
+            const push1Y = -(dy / distance) * pushDist;
+            const push2X = (dx / distance) * pushDist;
+            const push2Y = (dy / distance) * pushDist;
 
             node1.x += push1X;
             node1.y += push1Y;
