@@ -155,10 +155,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         });
       }
 
-      // First pass: calculate all weights
-      const weights = {};
-      let maxAbsWeight = 0;
-
+      // Calculate weights - normalize each to unit direction for equal influence
       feature_angles.forEach(featureName => {
         if (activeFeatures[featureName] === false) return;
 
@@ -166,29 +163,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
 
-        let weight = (percentile - 0.5) * 2 * effectiveExaggeration;
+        // Simple weight: positive = toward axis, negative = away from axis
+        // Keep it simple - just use the deviation from neutral (0.5)
+        const weight = (percentile - 0.5) * 2; // Range: -1 to +1
 
-        if (depth === 0 && uniquenessBoosts[featureName]) {
-          weight *= uniquenessBoosts[featureName];
-        }
-
-        weights[featureName] = weight;
-        maxAbsWeight = Math.max(maxAbsWeight, Math.abs(weight));
-      });
-
-      // Cap max weight at 1.0 to prevent single attribute domination
-      const MAX_WEIGHT = 1.0;
-      const scale = maxAbsWeight > MAX_WEIGHT ? MAX_WEIGHT / maxAbsWeight : 1.0;
-
-      // Second pass: apply capped weights
-      feature_angles.forEach(featureName => {
-        if (activeFeatures[featureName] === false) return;
-
-        const weight = weights[featureName] * scale;
         const angle = featureAngles[featureName];
         x += weight * Math.cos(angle);
         y += weight * Math.sin(angle);
       });
+
+      // Apply exaggeration AFTER summing to preserve balance
+      x *= effectiveExaggeration;
+      y *= effectiveExaggeration;
 
       // Scale to screen coordinates
       return {
