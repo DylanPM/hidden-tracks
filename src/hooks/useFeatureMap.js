@@ -66,8 +66,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     console.log(`  Global: p10=${globalQuantiles.acousticness?.p10?.toFixed(3)}, p50=${globalQuantiles.acousticness?.p50?.toFixed(3)}, p90=${globalQuantiles.acousticness?.p90?.toFixed(3)}`);
     console.log(`  Root:   p10=${rootQuantiles.acousticness?.p10?.toFixed(3)}, p50=${rootQuantiles.acousticness?.p50?.toFixed(3)}, p90=${rootQuantiles.acousticness?.p90?.toFixed(3)}`);
 
-    // Use local quantiles if siblings provided, root quantiles by default, otherwise global
-    const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : rootQuantiles;
+    // Use global quantiles everywhere for semantic consistency
+    // This ensures positions match the disco floor and semantic meaning is preserved at all levels
+    // (Previously used local quantiles for subgenres, which caused position/disco-floor mismatch)
+    const quantiles = globalQuantiles;
 
     // ============================================================================
     // POSITIONING ANGLES: One axis per feature, evenly distributed around circle
