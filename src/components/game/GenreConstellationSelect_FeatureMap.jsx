@@ -615,10 +615,11 @@ export function GenreConstellationSelect({ onLaunch }) {
           const hasSeeds = (childData?.seeds || childData?._seeds)?.length > 0;
           const hasSubgenres = hasSubgenresData || hasSeeds;
 
-          // Use averaged features for root-level parent genres
-          const effectiveData = averagedParentFeatures[child.key]
-            ? { ...childData, features: averagedParentFeatures[child.key] }
-            : childData;
+          // TEMPORARILY DISABLED: Use original features instead of averaged
+          // const effectiveData = averagedParentFeatures[child.key]
+          //   ? { ...childData, features: averagedParentFeatures[child.key] }
+          //   : childData;
+          const effectiveData = childData; // Always use original features
 
           items.push({
             key: child.key,
@@ -626,7 +627,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             x: pos.x,
             y: pos.y,
             type: child.type,
-            data: effectiveData, // Include data (with averaged features) for feature-aware collision
+            data: effectiveData, // Include data for feature-aware collision
             hasSubgenres,
             hasSeeds,
             onClick: () => {
@@ -867,12 +868,13 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     const node = getManifestNode(pathArray);
 
-    // For root-level parent genres at depth 0, use averaged features
-    const isRootGenre = viewStack.length === 0 && !focusedNode.track && !focusedNode.isSongOfTheDay;
-    const genreKey = focusedNode.key;
-    const nodeFeatures = (isRootGenre && averagedParentFeatures[genreKey])
-      ? averagedParentFeatures[genreKey]
-      : node?.features;
+    // TEMPORARILY DISABLED: Use original features for disco floor too
+    // const isRootGenre = viewStack.length === 0 && !focusedNode.track && !focusedNode.isSongOfTheDay;
+    // const genreKey = focusedNode.key;
+    // const nodeFeatures = (isRootGenre && averagedParentFeatures[genreKey])
+    //   ? averagedParentFeatures[genreKey]
+    //   : node?.features;
+    const nodeFeatures = node?.features; // Always use original features
 
     if (!nodeFeatures) return null;
 
@@ -904,7 +906,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     });
 
     return weights;
-  }, [hoveredItem, selectedNode, manifest, viewStack, displayFeatures, averagedParentFeatures]);
+  }, [hoveredItem, selectedNode, manifest, viewStack, displayFeatures]);
 
   // Toggle feature
   const toggleFeature = (feature) => {
