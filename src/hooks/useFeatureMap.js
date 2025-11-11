@@ -193,6 +193,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const depth = path.length - 1; // Root genres have depth 0
 
       if (node.features) {
+        // DEBUG: Log calculation for rock
+        if (key === 'rock') {
+          console.log(`\n🔍 ROCK CALCULATION DEBUG:`);
+          feature_angles.forEach(featureName => {
+            const raw = node.features[featureName];
+            const pct = normalizeFeature(raw, featureName);
+            const weight = (pct - 0.5) * 2 * 1.6; // depth exaggeration for root
+            const angle = featureAngles[featureName];
+            const angleDeg = (angle * 180 / Math.PI).toFixed(0);
+            console.log(`  ${featureName.padEnd(15)}: raw=${raw?.toFixed(2)} → pct=${pct.toFixed(2)} → weight=${weight.toFixed(2)} at ${angleDeg}°`);
+          });
+        }
         rawResult[key] = projectTo2D(node.features, depth);
       }
 
