@@ -398,29 +398,26 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         const nodeFeatures = scaledResult[key].features;
         if (!nodeFeatures) return;
 
-        const exclusionFeatures = [];
+        const featurePercentiles = [];
 
-        // Find features where this genre ranks VERY low (percentile < 0.15)
-        // Only exclude 1-2 of the absolutely lowest ranking attributes
+        // Calculate percentile for ALL features
         feature_angles.forEach(feat => {
           const value = nodeFeatures[feat];
           if (value == null || isNaN(value)) return;
 
           const percentile = normalizeFeature(value, feat);
 
-          // If very low percentile (extremely weak feature), mark for exclusion
-          if (percentile < 0.15) {
-            exclusionFeatures.push({
-              feature: feat,
-              angle: featureAngles[feat],
-              percentile
-            });
-          }
+          featurePercentiles.push({
+            feature: feat,
+            angle: featureAngles[feat],
+            percentile
+          });
         });
 
-        // Sort by percentile and keep only the 2 weakest features
-        exclusionFeatures.sort((a, b) => a.percentile - b.percentile);
-        const weakestFeatures = exclusionFeatures.slice(0, 2);
+        // Sort by percentile (weakest first) and keep the 2 weakest
+        // ALWAYS create exclusion zones for the 2 weakest features, regardless of absolute percentile
+        featurePercentiles.sort((a, b) => a.percentile - b.percentile);
+        const weakestFeatures = featurePercentiles.slice(0, 2);
 
         // Create narrower exclusion zones (±30° around each weak feature axis)
         zones[key] = weakestFeatures.map(f => ({
