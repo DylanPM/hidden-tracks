@@ -50,8 +50,19 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return localQ;
     };
 
-    // Use local quantiles if siblings provided, otherwise global
-    const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : globalQuantiles;
+    // Compute local quantiles for root genres to spread them better
+    // Root genres should be normalized relative to EACH OTHER, not the global dataset
+    const rootGenreKeys = Object.keys(manifest).filter(k => k !== 'global' && k !== 'build');
+    const rootGenreFeatures = rootGenreKeys
+      .map(key => manifest[key]?.features)
+      .filter(f => f != null);
+
+    const rootQuantiles = rootGenreFeatures.length > 0
+      ? computeLocalQuantiles(rootGenreFeatures)
+      : globalQuantiles;
+
+    // Use local quantiles if siblings provided, root quantiles by default, otherwise global
+    const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : rootQuantiles;
 
     // ============================================================================
     // POSITIONING ANGLES: One axis per feature, evenly distributed around circle
@@ -191,18 +202,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const depth = path.length - 1; // Root genres have depth 0
 
       if (node.features) {
-        // DEBUG: Log calculation for rock
-        if (key === 'rock') {
-          console.log(`\n🔍 ROCK CALCULATION DEBUG:`);
-          feature_angles.forEach(featureName => {
-            const raw = node.features[featureName];
-            const pct = normalizeFeature(raw, featureName);
-            const weight = (pct - 0.5) * 2 * 1.6; // depth exaggeration for root
-            const angle = featureAngles[featureName];
-            const angleDeg = (angle * 180 / Math.PI).toFixed(0);
-            console.log(`  ${featureName.padEnd(15)}: raw=${raw?.toFixed(2)} → pct=${pct.toFixed(2)} → weight=${weight.toFixed(2)} at ${angleDeg}°`);
-          });
-        }
         rawResult[key] = projectTo2D(node.features, depth);
       }
 
@@ -426,17 +425,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         x: scaledResult[key].x,
         y: scaledResult[key].y
       };
-    });
-
-    // DEBUG: Log root genre positions
-    const rootGenres = ['rock', 'electronic', 'hip hop', 'jazz', 'classical', 'pop', 'country', 'r&b'];
-    rootGenres.forEach(genre => {
-      const pos = result[genre];
-      if (pos) {
-        const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y).toFixed(1);
-        const angle = (Math.atan2(pos.y, pos.x) * 180 / Math.PI).toFixed(1);
-        console.log(`🎯 ${genre.padEnd(12)}: (${pos.x.toFixed(1).padStart(6)}, ${pos.y.toFixed(1).padStart(6)}) → ${dist.padStart(5)}px at ${angle.padStart(6)}°`);
-      }
     });
 
     return result;
