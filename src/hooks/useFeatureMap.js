@@ -303,7 +303,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               : node.features;
 
             // DEBUG: Log rock subgenres to check features
-            const rockSubgenres = ['rock.punk', 'rock.metal', 'rock.hard rock'];
+            const rockSubgenres = ['rock.Heavy.punk', 'rock.Heavy.metal', 'rock.Heavy.hard rock'];
             if (rockSubgenres.includes(key)) {
               console.log(`\n🎸 ROCK SUBGENRE DEBUG: ${key}`);
               console.log(`  Depth: ${depth}`);
@@ -403,7 +403,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       };
 
       // DEBUG: Rock subgenre positioning (after scaling)
-      const rockSubgenres = ['rock.punk', 'rock.metal', 'rock.hard rock'];
+      const rockSubgenres = ['rock.Heavy.punk', 'rock.Heavy.metal', 'rock.Heavy.hard rock'];
       if (rockSubgenres.includes(key)) {
         const angle = Math.atan2(y * scale, x * scale) * 180 / Math.PI;
         const normalizedAngle = (angle + 360) % 360;
