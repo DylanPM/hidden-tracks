@@ -118,8 +118,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
       // UNIQUE ATTRIBUTE BOOSTING: For root genres, boost their most distinctive attribute
       // to push similar genres in different directions
+      // TEMPORARILY DISABLED - was causing clustering
       let uniquenessBoosts = {};
-      if (depth === 0) {
+      if (false && depth === 0) {
         // Find this genre's most extreme (distinctive) attributes
         feature_angles.forEach(featureName => {
           if (activeFeatures[featureName] === false) return;
