@@ -419,12 +419,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         featurePercentiles.sort((a, b) => a.percentile - b.percentile);
         const weakestFeatures = featurePercentiles.slice(0, 2);
 
-        // Create narrower exclusion zones (±30° around each weak feature axis)
+        // Create wider exclusion zones (±45° around each weak feature axis)
         zones[key] = weakestFeatures.map(f => ({
           feature: f.feature,
           centerAngle: f.angle,
-          minAngle: (f.angle - Math.PI / 6 + Math.PI * 2) % (Math.PI * 2), // ±30°
-          maxAngle: (f.angle + Math.PI / 6) % (Math.PI * 2),
+          minAngle: (f.angle - Math.PI / 4 + Math.PI * 2) % (Math.PI * 2), // ±45°
+          maxAngle: (f.angle + Math.PI / 4) % (Math.PI * 2),
           percentile: f.percentile
         }));
       });
@@ -441,7 +441,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         console.log(`  ${key}:`);
         exclusionZones[key].forEach(zone => {
           const degrees = (zone.centerAngle * 180 / Math.PI).toFixed(1);
-          console.log(`    ${zone.feature} @ ${degrees}° (±30°) - percentile: ${zone.percentile.toFixed(3)}`);
+          console.log(`    ${zone.feature} @ ${degrees}° (±45°) - percentile: ${zone.percentile.toFixed(3)}`);
         });
       } else {
         console.log(`  ${key}: No weak features (all > 15th percentile)`);
@@ -454,9 +454,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const MIN_DISTANCE_PARENT_CHILD = 125; // Increased another 10px from 115
     const MIN_DISTANCE_ROOT = 155; // Increased another 10px from 145
     const MIN_DISTANCE_DEFAULT = 75; // Increased another 10px from 65
-    const PUSH_STRENGTH = 0.6; // Stronger push from 0.5
-    const MAX_ITERATIONS = 10; // More iterations from 8
-    const DAMPING = 0.88; // Slower damping for more aggressive separation
+    const PUSH_STRENGTH = 0.35; // Gentler push to preserve semantic positioning
+    const MAX_ITERATIONS = 6; // Fewer iterations to reduce cumulative drift
+    const DAMPING = 0.85; // Faster damping to limit total movement
 
     // Helper to determine relationship between two nodes
     const getNodeRelationship = (key1, key2) => {
