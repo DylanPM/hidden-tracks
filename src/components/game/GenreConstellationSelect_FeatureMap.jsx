@@ -449,9 +449,9 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Helper: Resolve collisions between nodes
   const resolveCollisions = (items) => {
     const nodeRadius = 27; // Max radius for collision detection
-    const overlapThreshold = 0.3; // 30% overlap triggers push
-    const pushStrength = 1.5; // How much to push apart
-    const maxIterations = 3;
+    const overlapThreshold = 0.2; // 20% overlap triggers push (more sensitive)
+    const pushStrength = 2.0; // Stronger push (increased from 1.5)
+    const maxIterations = 6; // More iterations (doubled from 3)
 
     for (let iteration = 0; iteration < maxIterations; iteration++) {
       let hadCollision = false;
