@@ -240,12 +240,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // Apply power curve scaling to spread outer nodes more (use more of the ring)
     // This uncrowds nodes by giving more space to nodes further from center
-    // Using x^0.7 power curve: pushes 0.5 → 0.66 (vs old log which did 0.5 → 0.58)
+    // Using x^0.6 power curve: pushes 0.5 → 0.73 (more aggressive than x^0.7 which did 0.5 → 0.66)
     const applyRadialSpread = (distance, maxDist) => {
       if (maxDist === 0) return 0;
       const normalized = distance / maxDist; // 0 to 1
-      // Apply power curve: x^0.7 spreads outer nodes more aggressively
-      const spread = Math.pow(normalized, 0.7);
+      // Apply power curve: x^0.6 spreads outer nodes more aggressively
+      const spread = Math.pow(normalized, 0.6);
       return spread * maxDist;
     };
 
@@ -280,13 +280,13 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // COLLISION AVOIDANCE: Push overlapping nodes using radial separation
     // Relationship-aware minimum distances provide better separation for related nodes
-    const MIN_DISTANCE_SIBLING = 85; // Increased 15px from 70
-    const MIN_DISTANCE_PARENT_CHILD = 115; // Increased 15px from 100
-    const MIN_DISTANCE_ROOT = 145; // Increased 15px from 130
-    const MIN_DISTANCE_DEFAULT = 65; // Increased 15px from 50
-    const PUSH_STRENGTH = 0.5; // Slightly stronger push for better separation
-    const MAX_ITERATIONS = 8; // More iterations to allow full separation
-    const DAMPING = 0.85; // Slightly faster damping with more iterations
+    const MIN_DISTANCE_SIBLING = 95; // Increased another 10px from 85
+    const MIN_DISTANCE_PARENT_CHILD = 125; // Increased another 10px from 115
+    const MIN_DISTANCE_ROOT = 155; // Increased another 10px from 145
+    const MIN_DISTANCE_DEFAULT = 75; // Increased another 10px from 65
+    const PUSH_STRENGTH = 0.6; // Stronger push from 0.5
+    const MAX_ITERATIONS = 10; // More iterations from 8
+    const DAMPING = 0.88; // Slower damping for more aggressive separation
 
     // Helper to determine relationship between two nodes
     const getNodeRelationship = (key1, key2) => {
