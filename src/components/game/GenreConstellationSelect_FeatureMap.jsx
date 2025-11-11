@@ -796,9 +796,9 @@ export function GenreConstellationSelect({ onLaunch }) {
 
           {/* Subtle background floor coloring - segments based on feature count */}
           {displayFeatures.map((feature, i) => {
-            // Match positioning angles: one angle per feature spanning full circle
-            const numFeatures = displayFeatures.length;
-            const featureAngleStep = (Math.PI * 2) / numFeatures;
+            // Match ring rectangle sizing: 14 segments total (7 features × 2 ends)
+            const numSegments = displayFeatures.length * 2;
+            const segmentAngleStep = (Math.PI * 2) / numSegments;
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
             const radius = 250;
 
@@ -809,15 +809,15 @@ export function GenreConstellationSelect({ onLaunch }) {
             // Three states: not in use (off), in use (on), on hover
             const floorOpacity = isFeatureHovered ? 0.35 : (isFeatureEnabled ? 0.12 : 0.05);
 
-            // High end segment centered at feature angle
-            const highAngle = i * featureAngleStep;
-            const highStartAngle = highAngle - featureAngleStep / 2;
-            const highEndAngle = highAngle + featureAngleStep / 2;
+            // High end segment: use positioning angle but narrow segment width
+            const highAngle = i * (Math.PI * 2) / displayFeatures.length; // Positioning angle
+            const highStartAngle = highAngle - segmentAngleStep / 2;
+            const highEndAngle = highAngle + segmentAngleStep / 2;
 
-            // Low end segment 180° opposite
+            // Low end segment: 180° opposite with same narrow width
             const lowAngle = highAngle + Math.PI;
-            const lowStartAngle = lowAngle - featureAngleStep / 2;
-            const lowEndAngle = lowAngle + featureAngleStep / 2;
+            const lowStartAngle = lowAngle - segmentAngleStep / 2;
+            const lowEndAngle = lowAngle + segmentAngleStep / 2;
 
             return (
               <g key={`floor-bg-${feature}`}>
