@@ -595,6 +595,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             continue; // Both hard-coded, skip collision resolution
           }
 
+          // SKIP collision avoidance for subgenres from different parents
+          // They are never visible at the same time, so they shouldn't interact
+          // Only allow collisions between: siblings, parent-child, or root parents
+          const bothSubgenres = !isRoot1 && !isRoot2;
+          if (bothSubgenres && relationship === 'unrelated') {
+            continue; // Different parent genres, never visible together
+          }
+
           const minDistance = bothRoot ? MIN_DISTANCE_ROOT :
             relationship === 'parent-child' ? MIN_DISTANCE_PARENT_CHILD :
             relationship === 'sibling' ? MIN_DISTANCE_SIBLING :
