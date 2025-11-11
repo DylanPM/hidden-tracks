@@ -221,11 +221,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Relationship-aware minimum distances provide better separation for related nodes
     const MIN_DISTANCE_SIBLING = 50; // Minimum distance between siblings at same level
     const MIN_DISTANCE_PARENT_CHILD = 55; // Minimum distance between parent and child
-    const MIN_DISTANCE_ROOT = 90; // Minimum distance between root genres (increased to prevent overlap)
+    const MIN_DISTANCE_ROOT = 130; // Minimum distance between root genres (increased for better spread)
     const MIN_DISTANCE_DEFAULT = 40; // Default for unrelated nodes
-    const PUSH_STRENGTH = 0.4; // Balanced strength to avoid instability
-    const MAX_ITERATIONS = 5; // Enough iterations for convergence without chaos
-    const DAMPING = 0.88; // Progressive damping to stabilize
+    const PUSH_STRENGTH = 0.5; // Slightly stronger push for better separation
+    const MAX_ITERATIONS = 8; // More iterations to allow full separation
+    const DAMPING = 0.85; // Slightly faster damping with more iterations
 
     // Helper to determine relationship between two nodes
     const getNodeRelationship = (key1, key2) => {
