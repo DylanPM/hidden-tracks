@@ -451,19 +451,19 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     const exclusionZones = calculateExclusionZones();
 
-    // DEBUG: Log exclusion zones for key genres
-    console.log('\n🚫 EXCLUSION ZONES (top 2 weakest features to avoid):');
-    ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
-      if (exclusionZones[key] && exclusionZones[key].length > 0) {
-        console.log(`  ${key}:`);
-        exclusionZones[key].forEach(zone => {
-          const degrees = (zone.centerAngle * 180 / Math.PI).toFixed(1);
-          console.log(`    ${zone.feature} @ ${degrees}° (±45°) - percentile: ${zone.percentile.toFixed(3)}`);
-        });
-      } else {
-        console.log(`  ${key}: No weak features (all > 15th percentile)`);
-      }
-    });
+    // DEBUG: Log exclusion zones for key genres (COMMENTED OUT - too verbose)
+    // console.log('\n🚫 EXCLUSION ZONES (top 2 weakest features to avoid):');
+    // ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
+    //   if (exclusionZones[key] && exclusionZones[key].length > 0) {
+    //     console.log(`  ${key}:`);
+    //     exclusionZones[key].forEach(zone => {
+    //       const degrees = (zone.centerAngle * 180 / Math.PI).toFixed(1);
+    //       console.log(`    ${zone.feature} @ ${degrees}° (±45°) - percentile: ${zone.percentile.toFixed(3)}`);
+    //     });
+    //   } else {
+    //     console.log(`  ${key}: No weak features (all > 15th percentile)`);
+    //   }
+    // });
 
     // COLLISION AVOIDANCE: Push overlapping nodes using radial separation
     // Relationship-aware minimum distances provide better separation for related nodes
@@ -563,6 +563,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return baseAngle;
     };
 
+    // DEBUG: Track ambient collisions (run once)
+    let ambientCollisions = [];
+    let ambientDebugDone = false;
+
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const keys = Object.keys(scaledResult);
       let hadCollision = false;
@@ -600,14 +604,17 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           if (distance < minDistance && distance > 0) {
             hadCollision = true;
 
-            // DEBUG: Track collisions involving ambient
-            if (key1 === 'electronic.ambient' || key2 === 'electronic.ambient') {
-              const ambientKey = key1 === 'electronic.ambient' ? key1 : key2;
+            // DEBUG: Track collisions involving ambient (only siblings, only once)
+            if (!ambientDebugDone && (key1 === 'electronic.ambient' || key2 === 'electronic.ambient')) {
               const otherKey = key1 === 'electronic.ambient' ? key2 : key1;
-              console.log(`\n⚠️ COLLISION: ambient vs ${otherKey}`);
-              console.log(`  Distance: ${distance.toFixed(1)}px (min: ${minDistance}px)`);
-              console.log(`  Relationship: ${relationship}`);
-              console.log(`  Iteration: ${iteration}`);
+              // Only track sibling collisions (other electronic subgenres)
+              if (relationship === 'sibling' && otherKey.startsWith('electronic.')) {
+                ambientCollisions.push({
+                  other: otherKey,
+                  distance: distance.toFixed(1),
+                  minDistance: minDistance
+                });
+              }
             }
 
             // Push nodes apart using radial separation with exclusion zone avoidance
@@ -659,6 +666,15 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       if (!hadCollision) break;
     }
 
+    // DEBUG: Log ambient collisions once
+    if (!ambientDebugDone && ambientCollisions.length > 0) {
+      console.log(`\n⚠️ AMBIENT COLLISIONS (electronic siblings only):`);
+      ambientCollisions.forEach(collision => {
+        console.log(`  vs ${collision.other}: ${collision.distance}px (min: ${collision.minDistance}px)`);
+      });
+      ambientDebugDone = true;
+    }
+
     // Final clamping pass to ensure ALL nodes stay within boundary
     Object.keys(scaledResult).forEach(key => {
       const node = scaledResult[key];
@@ -681,35 +697,35 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       console.log(`  Change from initial: ${normalizedAngle.toFixed(1)}° vs 115.7° = ${(normalizedAngle - 115.7).toFixed(1)}° shift`);
     }
 
-    // DEBUG: Log final positions after collision avoidance
-    console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
-    ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
-      if (scaledResult[key]) {
-        const pos = scaledResult[key];
-        const angle = Math.atan2(pos.y, pos.x);
-        const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
-
-        // Find nearest feature axis
-        let nearestFeature = null;
-        let minDiff = Infinity;
-        feature_angles.forEach((feature, i) => {
-          const featureAngle = featureAngles[feature];
-          let diff = Math.abs(angle - featureAngle);
-          if (diff > Math.PI) diff = Math.PI * 2 - diff;
-          if (diff < minDiff) {
-            minDiff = diff;
-            nearestFeature = feature;
-          }
-        });
-
-        // Also show the node's actual feature value for that axis
-        const nodeFeatures = scaledResult[key].features;
-        const featureValue = nodeFeatures?.[nearestFeature];
-        const featureValueStr = featureValue != null ? featureValue.toFixed(3) : 'N/A';
-
-        console.log(`  ${key}: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) at ${angleDegrees.toFixed(0)}° → nearest axis: ${nearestFeature} (value: ${featureValueStr})`);
-      }
-    });
+    // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
+    // console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
+    // ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
+    //   if (scaledResult[key]) {
+    //     const pos = scaledResult[key];
+    //     const angle = Math.atan2(pos.y, pos.x);
+    //     const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
+    //
+    //     // Find nearest feature axis
+    //     let nearestFeature = null;
+    //     let minDiff = Infinity;
+    //     feature_angles.forEach((feature, i) => {
+    //       const featureAngle = featureAngles[feature];
+    //       let diff = Math.abs(angle - featureAngle);
+    //       if (diff > Math.PI) diff = Math.PI * 2 - diff;
+    //       if (diff < minDiff) {
+    //         minDiff = diff;
+    //         nearestFeature = feature;
+    //       }
+    //     });
+    //
+    //     // Also show the node's actual feature value for that axis
+    //     const nodeFeatures = scaledResult[key].features;
+    //     const featureValue = nodeFeatures?.[nearestFeature];
+    //     const featureValueStr = featureValue != null ? featureValue.toFixed(3) : 'N/A';
+    //
+    //     console.log(`  ${key}: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) at ${angleDegrees.toFixed(0)}° → nearest axis: ${nearestFeature} (value: ${featureValueStr})`);
+    //   }
+    // });
 
     // Final result without features metadata
     const result = {};
