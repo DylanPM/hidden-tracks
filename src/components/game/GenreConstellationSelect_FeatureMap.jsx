@@ -1113,8 +1113,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             // (See "ANGLE CALCULATION SYSTEM" comment above for details)
             const numFeatures = displayFeatures.length;
             const featureAngleStep = (Math.PI * 2) / numFeatures;
-            // Match TARGET_RADIUS from useFeatureMap.js where nodes are clamped
-            const maxRadius = 195;
+            // Capped at 240 to stay just under the 245px ring boundary
+            const maxRadius = 240;
             const minRadius = 50;
 
             // Create points at evenly-spaced angles (one for each feature's high and low)
