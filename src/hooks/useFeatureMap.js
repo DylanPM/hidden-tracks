@@ -155,24 +155,36 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         });
       }
 
+      // First pass: calculate all weights
+      const weights = {};
+      let maxAbsWeight = 0;
+
       feature_angles.forEach(featureName => {
-        // Skip if this feature is disabled
         if (activeFeatures[featureName] === false) return;
 
         const rawValue = features[featureName];
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
 
-        // Convert to weight: [-1, 1] (bidirectional)
-        // percentile 0 → opposite direction (low label), 0.5 → center, 1 → toward axis (high label)
         let weight = (percentile - 0.5) * 2 * effectiveExaggeration;
 
-        // Apply uniqueness boost for root genres
         if (depth === 0 && uniquenessBoosts[featureName]) {
           weight *= uniquenessBoosts[featureName];
         }
 
-        // Add weighted unit vector for this axis
+        weights[featureName] = weight;
+        maxAbsWeight = Math.max(maxAbsWeight, Math.abs(weight));
+      });
+
+      // Cap max weight at 1.0 to prevent single attribute domination
+      const MAX_WEIGHT = 1.0;
+      const scale = maxAbsWeight > MAX_WEIGHT ? MAX_WEIGHT / maxAbsWeight : 1.0;
+
+      // Second pass: apply capped weights
+      feature_angles.forEach(featureName => {
+        if (activeFeatures[featureName] === false) return;
+
+        const weight = weights[featureName] * scale;
         const angle = featureAngles[featureName];
         x += weight * Math.cos(angle);
         y += weight * Math.sin(angle);
