@@ -332,6 +332,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // Compute positions for all genres and subgenres
     const rawResult = {};
+    const hardCodedKeys = new Set(); // Track which nodes have hard-coded positions
 
     const processNode = (node, path = []) => {
       const key = path.join('.');
@@ -342,12 +343,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         // SPECIAL CASE: Song of the Day at center (0, 0) to evoke mystery
         if (node.isSongOfTheDay || genreKey === 'song of the day') {
           rawResult[key] = { x: 0, y: 0 };
+          hardCodedKeys.add(key); // Mark as hard-coded to skip scaling
         }
         // HARD-CODED POSITIONING: Root-level parent genres use optimal semantic placement
         else {
           const isRootGenre = depth === 0;
           if (isRootGenre && hardCodedAssignments[genreKey]) {
             rawResult[key] = getHardCodedPosition(hardCodedAssignments[genreKey]);
+            hardCodedKeys.add(key); // Mark as hard-coded to skip scaling
           }
           // DYNAMIC POSITIONING: Subgenres and tracks use feature-based calculation
           // For root-level parent genres not in hard-coded map, use averaged features
@@ -378,9 +381,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // ADAPTIVE SCALING with log transform and collision avoidance
     const TARGET_RADIUS = 195; // Reduced from 220 to add padding (ring is at 245px, inner at 245)
 
-    // Find maximum distance from center
+    // Find maximum distance from center (excluding hard-coded positions)
     let maxRadius = 0;
-    Object.values(rawResult).forEach(pos => {
+    Object.keys(rawResult).forEach(key => {
+      if (hardCodedKeys.has(key)) return; // Skip hard-coded positions
+      const pos = rawResult[key];
       const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
       if (distance > maxRadius) maxRadius = distance;
     });
@@ -390,18 +395,29 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // Apply power curve scaling to spread outer nodes more (use more of the ring)
     // This uncrowds nodes by giving more space to nodes further from center
-    // Using x^0.6 power curve: pushes 0.5 → 0.73 (more aggressive than x^0.7 which did 0.5 → 0.66)
+    // Using x^0.5 power curve: more aggressive spread to push nodes toward outer edge
     const applyRadialSpread = (distance, maxDist) => {
       if (maxDist === 0) return 0;
       const normalized = distance / maxDist; // 0 to 1
-      // Apply power curve: x^0.6 spreads outer nodes more aggressively
-      const spread = Math.pow(normalized, 0.6);
+      // Apply power curve: x^0.5 (square root) spreads nodes more aggressively
+      const spread = Math.pow(normalized, 0.5);
       return spread * maxDist;
     };
 
     // First pass: apply adaptive scaling with radial spread
     const scaledResult = {};
     Object.keys(rawResult).forEach(key => {
+      // HARD-CODED POSITIONS: Apply directly without scaling
+      if (hardCodedKeys.has(key)) {
+        scaledResult[key] = {
+          x: rawResult[key].x,
+          y: rawResult[key].y,
+          features: null
+        };
+        return;
+      }
+
+      // DYNAMIC POSITIONS: Apply adaptive scaling and radial spread
       const x = rawResult[key].x * adaptiveScale;
       const y = rawResult[key].y * adaptiveScale;
       const distance = Math.sqrt(x * x + y * y);
