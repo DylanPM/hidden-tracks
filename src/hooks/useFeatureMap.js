@@ -382,10 +382,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // ADAPTIVE SCALING with log transform and collision avoidance
     const TARGET_RADIUS = 195; // Reduced from 220 to add padding (ring is at 245px, inner at 245)
 
-    // Find maximum distance from center (excluding hard-coded positions)
+    // Find maximum distance from center (INCLUDE hard-coded positions to keep scale factor consistent)
+    // We include them in calculation but won't scale them later
     let maxRadius = 0;
     Object.keys(rawResult).forEach(key => {
-      if (hardCodedKeys.has(key)) return; // Skip hard-coded positions
       const pos = rawResult[key];
       const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
       if (distance > maxRadius) maxRadius = distance;

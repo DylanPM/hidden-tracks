@@ -1113,8 +1113,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             // (See "ANGLE CALCULATION SYSTEM" comment above for details)
             const numFeatures = displayFeatures.length;
             const featureAngleStep = (Math.PI * 2) / numFeatures;
-            // Match hard-coded positions: 185px (outer radius for parent genres)
-            const maxRadius = 185;
+            // Larger radius for parent-level disco floor visibility (210px)
+            const maxRadius = 210;
             const minRadius = 50;
 
             // Create points at evenly-spaced angles (one for each feature's high and low)
