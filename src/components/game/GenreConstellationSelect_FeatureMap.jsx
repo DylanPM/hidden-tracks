@@ -904,13 +904,13 @@ export function GenreConstellationSelect({ onLaunch }) {
                 strength: weight
               });
 
-              // Low end point 180° opposite
-              const lowAngle = highAngle + Math.PI;
+              // Low end point 180° opposite (normalize to [0, 2π) range)
+              const lowAngle = (highAngle + Math.PI) % (Math.PI * 2);
               const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
               points.push({
                 angle: lowAngle,
-                x: CENTER_X + Math.cos(lowAngle) * lowRadius,
-                y: CENTER_Y + Math.sin(lowAngle) * lowRadius,
+                x: CENTER_X + Math.cos(highAngle + Math.PI) * lowRadius, // Use unnormalized for trig
+                y: CENTER_Y + Math.sin(highAngle + Math.PI) * lowRadius,
                 weight: 1 - weight,
                 strength: 1 - weight
               });
