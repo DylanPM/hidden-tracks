@@ -664,6 +664,63 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   const items = renderItems();
 
+  // DEBUG: Show final rendered positions after both collision passes
+  React.useEffect(() => {
+    if (!items || items.length === 0) return;
+
+    console.log('\n🎨 FINAL RENDERED POSITIONS (after component collision resolution):');
+    console.log('============================================');
+
+    const overlaps = [];
+
+    // Check all pairs for overlaps
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const item1 = items[i];
+        const item2 = items[j];
+
+        const dx = item2.x - item1.x;
+        const dy = item2.y - item1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Determine minimum distance needed
+        const nodeRadius = 27;
+        const minVisualDistance = nodeRadius * 2 + 20; // 74px (2 radii + 20px gap)
+
+        if (distance < minVisualDistance) {
+          overlaps.push({
+            item1: item1.label || item1.key,
+            item2: item2.label || item2.key,
+            distance: distance.toFixed(1),
+            overlap: (minVisualDistance - distance).toFixed(1),
+            pos1: { x: item1.x.toFixed(1), y: item1.y.toFixed(1) },
+            pos2: { x: item2.x.toFixed(1), y: item2.y.toFixed(1) }
+          });
+        }
+      }
+    }
+
+    overlaps.sort((a, b) => parseFloat(b.overlap) - parseFloat(a.overlap));
+
+    if (overlaps.length === 0) {
+      console.log('✅ No visual overlaps! All nodes have proper spacing.');
+    } else {
+      console.log(`⚠️  Found ${overlaps.length} visually overlapping pairs:`);
+      console.log('');
+      overlaps.slice(0, 20).forEach((o, i) => {
+        console.log(`${i + 1}. "${o.item1}" ↔ "${o.item2}"`);
+        console.log(`   Distance: ${o.distance}px (needs ~74px) - ${o.overlap}px too close`);
+        console.log(`   Positions: (${o.pos1.x}, ${o.pos1.y}) ↔ (${o.pos2.x}, ${o.pos2.y})`);
+        console.log('');
+      });
+
+      if (overlaps.length > 20) {
+        console.log(`... and ${overlaps.length - 20} more overlaps`);
+      }
+    }
+    console.log('============================================\n');
+  }, [items, viewStack]);
+
   // Get selected node position for connection lines and LAUNCH overlay
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
