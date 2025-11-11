@@ -600,6 +600,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           if (distance < minDistance && distance > 0) {
             hadCollision = true;
 
+            // DEBUG: Track collisions involving ambient
+            if (key1 === 'electronic.ambient' || key2 === 'electronic.ambient') {
+              const ambientKey = key1 === 'electronic.ambient' ? key1 : key2;
+              const otherKey = key1 === 'electronic.ambient' ? key2 : key1;
+              console.log(`\n⚠️ COLLISION: ambient vs ${otherKey}`);
+              console.log(`  Distance: ${distance.toFixed(1)}px (min: ${minDistance}px)`);
+              console.log(`  Relationship: ${relationship}`);
+              console.log(`  Iteration: ${iteration}`);
+            }
+
             // Push nodes apart using radial separation with exclusion zone avoidance
             // Apply damping: pushes get weaker each iteration to prevent spiraling
             const currentStrength = PUSH_STRENGTH * Math.pow(DAMPING, iteration);
