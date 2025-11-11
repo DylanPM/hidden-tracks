@@ -162,13 +162,15 @@ export function GuessPhase({
             {/* Seed Track */}
             {seed && (
               <div className="bg-zinc-900 rounded-lg p-3 border-2 border-green-500 relative">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="absolute -top-8 right-0 px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded border border-zinc-600 hover:border-zinc-500 transition-all cursor-pointer z-10"
-                >
-                  return to map to pick a different seed
-                </button>
-                <h2 className="text-green-400 font-bold mb-2 text-sm">Seed Track</h2>
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-green-400 font-bold text-sm">Seed Track</h2>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded border border-zinc-600 hover:border-zinc-500 transition-all cursor-pointer"
+                  >
+                    ← return to map
+                  </button>
+                </div>
                 <div className="relative">
                   <iframe
                     src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
