@@ -302,6 +302,20 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               ? averagedParentFeatures[genreKey]
               : node.features;
 
+            // DEBUG: Log first track found to check if it's using correct features
+            if (depth >= 2 && !window.__firstTrackLogged) {
+              window.__firstTrackLogged = true;
+              window.__firstTrackKey = key;
+              console.log(`\n🎵 TRACK DEBUG: ${key}`);
+              console.log(`  Depth: ${depth} (root=0, subgenre=1, track=2+)`);
+              console.log(`  isRootGenre: ${isRootGenre}`);
+              console.log(`  Using features:`, features);
+              console.log(`  Has own features:`, !!node.features);
+              if (features) {
+                console.log(`  Features: energy=${features.energy?.toFixed(3)}, valence=${features.valence?.toFixed(3)}, danceability=${features.danceability?.toFixed(3)}`);
+              }
+            }
+
             rawResult[key] = projectTo2D(features, depth);
           }
         }
@@ -383,6 +397,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         console.log(`  After radial spread: (${(x * scale).toFixed(3)}, ${(y * scale).toFixed(3)})`);
         console.log(`  Final angle: ${normalizedAngle.toFixed(1)}°`);
         console.log(`  Expected: ~107.6° (near acousticness at 102.9°)`);
+      }
+
+      // DEBUG: Store initial scaled position for first track (before collision avoidance)
+      if (key === window.__firstTrackKey && !window.__firstTrackInitialPos) {
+        window.__firstTrackInitialPos = { x: x * scale, y: y * scale };
       }
     });
 
@@ -699,6 +718,25 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       console.log(`  Final position: (${pos.x.toFixed(3)}, ${pos.y.toFixed(3)})`);
       console.log(`  Final angle: ${normalizedAngle.toFixed(1)}°`);
       console.log(`  Change from initial: ${normalizedAngle.toFixed(1)}° vs 115.7° = ${(normalizedAngle - 115.7).toFixed(1)}° shift`);
+    }
+
+    // DEBUG: Check if first track moved due to collision avoidance
+    if (window.__firstTrackKey && scaledResult[window.__firstTrackKey]) {
+      const finalPos = scaledResult[window.__firstTrackKey];
+      const initialPos = window.__firstTrackInitialPos;
+      if (initialPos) {
+        const moved = Math.sqrt(
+          Math.pow(finalPos.x - initialPos.x, 2) +
+          Math.pow(finalPos.y - initialPos.y, 2)
+        );
+        if (moved > 1) {
+          console.log(`\n🎵 TRACK MOVED BY COLLISION:`);
+          console.log(`  Track: ${window.__firstTrackKey}`);
+          console.log(`  Moved ${moved.toFixed(1)}px from semantic position`);
+          console.log(`  Initial: (${initialPos.x.toFixed(1)}, ${initialPos.y.toFixed(1)})`);
+          console.log(`  Final: (${finalPos.x.toFixed(1)}, ${finalPos.y.toFixed(1)})`);
+        }
+      }
     }
 
     // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
