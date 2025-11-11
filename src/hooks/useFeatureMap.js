@@ -384,12 +384,22 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             const overlap = minDistance - distance;
             const pushDist = overlap * currentStrength / 2;
 
-            // Use attribute direction if strong enough, otherwise use radial separation
-            // Threshold of 0.1 to avoid using weak/noisy directions
-            const push1X = push1Magnitude > 0.1 ? push1Dir.x * pushDist : -(dx / distance) * pushDist;
-            const push1Y = push1Magnitude > 0.1 ? push1Dir.y * pushDist : -(dy / distance) * pushDist;
-            const push2X = push2Magnitude > 0.1 ? push2Dir.x * pushDist : (dx / distance) * pushDist;
-            const push2Y = push2Magnitude > 0.1 ? push2Dir.y * pushDist : (dy / distance) * pushDist;
+            // For root genres, ALWAYS use radial separation to maximize spread
+            // For other nodes, use attribute direction if strong enough
+            let push1X, push1Y, push2X, push2Y;
+            if (bothRoot) {
+              // Radial separation for root genres - push directly away from each other
+              push1X = -(dx / distance) * pushDist;
+              push1Y = -(dy / distance) * pushDist;
+              push2X = (dx / distance) * pushDist;
+              push2Y = (dy / distance) * pushDist;
+            } else {
+              // Attribute-based for non-root nodes (threshold 0.1 to avoid weak directions)
+              push1X = push1Magnitude > 0.1 ? push1Dir.x * pushDist : -(dx / distance) * pushDist;
+              push1Y = push1Magnitude > 0.1 ? push1Dir.y * pushDist : -(dy / distance) * pushDist;
+              push2X = push2Magnitude > 0.1 ? push2Dir.x * pushDist : (dx / distance) * pushDist;
+              push2Y = push2Magnitude > 0.1 ? push2Dir.y * pushDist : (dy / distance) * pushDist;
+            }
 
             node1.x += push1X;
             node1.y += push1Y;
