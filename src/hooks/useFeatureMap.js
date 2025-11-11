@@ -53,8 +53,19 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Use local quantiles if siblings provided, otherwise global
     const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : globalQuantiles;
 
-    // Compute angle for each feature to match ring segments
-    // Each feature has high and low ends, so space features evenly around the circle
+    // ============================================================================
+    // POSITIONING ANGLES: One axis per feature, evenly distributed around circle
+    // ============================================================================
+    // This determines where nodes are positioned based on their feature values.
+    // Each feature gets ONE axis (e.g., Energy at 51°):
+    //   - High values positioned TOWARD the axis (51°)
+    //   - Low values positioned AWAY from axis (231° = opposite direction)
+    //
+    // IMPORTANT: The display component uses TWO different angle systems:
+    //   1. This POSITIONING system (numFeatures axes) - for node positions
+    //   2. RING SEGMENT system (numFeatures * 2 segments) - for rectangle widths
+    // See GenreConstellationSelect_FeatureMap.jsx "ANGLE CALCULATION SYSTEM" for details
+    // ============================================================================
     const numFeatures = feature_angles.length;
     const featureAngleStep = (Math.PI * 2) / numFeatures;
     const featureAngles = feature_angles.reduce((acc, feature, i) => {
@@ -410,7 +421,8 @@ export function computeTrackPosition(trackFeatures, manifest, exaggeration = 1.2
     quantiles = localQ;
   }
 
-  // Each feature has high and low ends, so space features evenly around the circle
+  // POSITIONING ANGLES: Must match main useFeatureMap calculation above
+  // (See main function comment for full details on angle system)
   const numFeatures = feature_angles.length;
   const featureAngleStep = (Math.PI * 2) / numFeatures;
   const featureAngles = feature_angles.reduce((acc, feature, i) => {

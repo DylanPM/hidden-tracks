@@ -562,13 +562,33 @@ export function GenreConstellationSelect({ onLaunch }) {
   const selectedNode = items.find(item => item.key === selectedNodeKey);
   const selectedNodePos = selectedNode ? { x: selectedNode.x, y: selectedNode.y } : { x: 0, y: 0 };
 
+  // ============================================================================
+  // ANGLE CALCULATION SYSTEM - IMPORTANT FOR FUTURE ATTRIBUTE CHANGES
+  // ============================================================================
+  // Two different angle systems are used throughout this component:
+  //
+  // 1. POSITIONING ANGLES (7 axes, ~51.4° apart)
+  //    - Used for: node positioning, axis labels, disco floor shape
+  //    - Calculation: i * (2π / numFeatures) where numFeatures = displayFeatures.length
+  //    - Each feature gets ONE axis pointing in a direction (0°, 51°, 103°, etc.)
+  //    - Example: "Energy" axis points at 51°, high energy = towards 51°, low = towards 231°
+  //
+  // 2. RING SEGMENT ANGLES (14 segments, ~25.7° apart)
+  //    - Used for: ring rectangles, floor triangle WIDTH
+  //    - Calculation: i * (2π / numSegments) where numSegments = displayFeatures.length * 2
+  //    - Each feature gets TWO segments (high + low), half as wide as positioning angles
+  //    - Example: "Energy High" rectangle centered at 51° but only ~25.7° wide
+  //
+  // If you add/remove attributes, both systems will auto-adjust based on displayFeatures.length
+  // ============================================================================
+
   // Axis configuration (bidirectional labels) - segments based on feature count
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
-    // Match the positioning angle distribution: one angle per feature spanning full circle
+    // POSITIONING ANGLES: One angle per feature spanning full circle
     const numFeatures = displayFeatures.length;
-    const featureAngleStep = (Math.PI * 2) / numFeatures; // Full circle divided by feature count
+    const featureAngleStep = (Math.PI * 2) / numFeatures;
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
@@ -796,7 +816,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
           {/* Subtle background floor coloring - segments based on feature count */}
           {displayFeatures.map((feature, i) => {
-            // Match ring rectangle sizing: 14 segments total (7 features × 2 ends)
+            // HYBRID: Use POSITIONING ANGLES for center, RING SEGMENT width for triangles
+            // (See "ANGLE CALCULATION SYSTEM" comment above for details)
             const numSegments = displayFeatures.length * 2;
             const segmentAngleStep = (Math.PI * 2) / numSegments;
             const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
@@ -859,7 +880,8 @@ export function GenreConstellationSelect({ onLaunch }) {
           {focusedNodeFeatureWeights && (() => {
             if (displayFeatures.length === 0) return null;
 
-            // Match positioning angles: one angle per feature spanning full circle
+            // POSITIONING ANGLES: Used for disco floor shape to match node positioning
+            // (See "ANGLE CALCULATION SYSTEM" comment above for details)
             const numFeatures = displayFeatures.length;
             const featureAngleStep = (Math.PI * 2) / numFeatures;
             const maxRadius = 250;
@@ -940,7 +962,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             const outerRadius = (isHovered || isOppositeHovered) ? 315 : 285;
             const innerRadius = 245;
 
-            // Calculate arc angles for this segment
+            // RING SEGMENT ANGLES: Calculate rectangle width (narrower than positioning axes)
+            // (See "ANGLE CALCULATION SYSTEM" comment above for details)
             const numSegments = displayFeatures.length * 2;
             const angleStep = (Math.PI * 2) / numSegments;
             const startAngle = label.angle - angleStep / 2;
