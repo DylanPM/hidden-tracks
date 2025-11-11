@@ -61,6 +61,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       ? computeLocalQuantiles(rootGenreFeatures)
       : globalQuantiles;
 
+    // DEBUG: Log quantile comparison for one feature
+    console.log('\n📊 QUANTILE COMPARISON (acousticness):');
+    console.log(`  Global: p10=${globalQuantiles.acousticness?.p10?.toFixed(3)}, p50=${globalQuantiles.acousticness?.p50?.toFixed(3)}, p90=${globalQuantiles.acousticness?.p90?.toFixed(3)}`);
+    console.log(`  Root:   p10=${rootQuantiles.acousticness?.p10?.toFixed(3)}, p50=${rootQuantiles.acousticness?.p50?.toFixed(3)}, p90=${rootQuantiles.acousticness?.p90?.toFixed(3)}`);
+
     // Use local quantiles if siblings provided, root quantiles by default, otherwise global
     const quantiles = siblingFeatures ? computeLocalQuantiles(siblingFeatures) : rootQuantiles;
 
@@ -425,6 +430,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         x: scaledResult[key].x,
         y: scaledResult[key].y
       };
+    });
+
+    // DEBUG: Log root genre positions
+    console.log('\n🎯 ROOT GENRE POSITIONS (after local normalization):');
+    const rootGenres = ['rock', 'electronic', 'hip hop', 'jazz', 'classical', 'pop', 'country'];
+    rootGenres.forEach(genre => {
+      const pos = result[genre];
+      if (pos) {
+        const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y).toFixed(1);
+        const angle = (Math.atan2(pos.y, pos.x) * 180 / Math.PI).toFixed(1);
+        console.log(`  ${genre.padEnd(12)}: (${pos.x.toFixed(1).padStart(6)}, ${pos.y.toFixed(1).padStart(6)}) → ${dist.padStart(5)}px at ${angle.padStart(6)}°`);
+      }
     });
 
     return result;
