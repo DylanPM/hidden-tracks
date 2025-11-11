@@ -302,6 +302,21 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               ? averagedParentFeatures[genreKey]
               : node.features;
 
+            // DEBUG: Log rock subgenres to check features
+            const rockSubgenres = ['rock.punk', 'rock.metal', 'rock.hard rock'];
+            if (rockSubgenres.includes(key)) {
+              console.log(`\n🎸 ROCK SUBGENRE DEBUG: ${key}`);
+              console.log(`  Depth: ${depth}`);
+              console.log(`  isRootGenre: ${isRootGenre}`);
+              console.log(`  Has own features:`, !!node.features);
+              console.log(`  Using features:`, features);
+              if (features) {
+                console.log(`  energy: ${features.energy?.toFixed(3)} (should be HIGH for rock)`);
+                console.log(`  valence: ${features.valence?.toFixed(3)}`);
+                console.log(`  danceability: ${features.danceability?.toFixed(3)}`);
+              }
+            }
+
             // DEBUG: Log first track found to check if it's using correct features
             if (depth >= 2 && !window.__firstTrackLogged) {
               window.__firstTrackLogged = true;
@@ -386,6 +401,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         y: y * scale,
         features: null // Will store features for collision resolution
       };
+
+      // DEBUG: Rock subgenre positioning (after scaling)
+      const rockSubgenres = ['rock.punk', 'rock.metal', 'rock.hard rock'];
+      if (rockSubgenres.includes(key)) {
+        const angle = Math.atan2(y * scale, x * scale) * 180 / Math.PI;
+        const normalizedAngle = (angle + 360) % 360;
+        console.log(`\n🎸 ${key.toUpperCase()} SCALED POSITION:`);
+        console.log(`  Raw position: (${rawResult[key].x.toFixed(3)}, ${rawResult[key].y.toFixed(3)})`);
+        console.log(`  After scaling: (${(x * scale).toFixed(3)}, ${(y * scale).toFixed(3)})`);
+        console.log(`  Angle: ${normalizedAngle.toFixed(1)}°`);
+        console.log(`  Expected: near energy-high (205.7°) for rock music`);
+      }
 
       // DEBUG: Ambient positioning
       if (key === 'electronic.ambient') {
