@@ -660,6 +660,17 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       }
     });
 
+    // DEBUG: Check ambient position AFTER collision avoidance
+    if (scaledResult['electronic.ambient']) {
+      const pos = scaledResult['electronic.ambient'];
+      const angle = Math.atan2(pos.y, pos.x) * 180 / Math.PI;
+      const normalizedAngle = (angle + 360) % 360;
+      console.log(`\n🎯 AMBIENT AFTER COLLISION AVOIDANCE:`);
+      console.log(`  Final position: (${pos.x.toFixed(3)}, ${pos.y.toFixed(3)})`);
+      console.log(`  Final angle: ${normalizedAngle.toFixed(1)}°`);
+      console.log(`  Change from initial: ${normalizedAngle.toFixed(1)}° vs 115.7° = ${(normalizedAngle - 115.7).toFixed(1)}° shift`);
+    }
+
     // DEBUG: Log final positions after collision avoidance
     console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
     ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
