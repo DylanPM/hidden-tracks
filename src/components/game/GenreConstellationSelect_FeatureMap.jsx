@@ -453,6 +453,36 @@ export function GenreConstellationSelect({ onLaunch }) {
     const pushStrength = 2.0; // Stronger push (increased from 1.5)
     const maxIterations = 6; // More iterations (doubled from 3)
 
+    // FIRST PASS: Enforce parent exclusion zone (run BEFORE any other collision detection)
+    // Parent is always at (0, 0) when nested, so push all children away from origin
+    const parentNode = items.find(item => item.isParent);
+    if (parentNode) {
+      // Parent exclusion zone:
+      // - Parent node radius: 27px
+      // - Label text space (circular text around edge): ~35px
+      // - Buffer: 20px
+      // Total: 82px minimum distance from parent center
+      const PARENT_EXCLUSION_RADIUS = 82;
+
+      items.forEach(item => {
+        if (item.isParent) return; // Skip the parent itself
+
+        const dx = item.x - parentNode.x;
+        const dy = item.y - parentNode.y;
+        const distanceFromParent = Math.sqrt(dx * dx + dy * dy);
+
+        // If inside exclusion zone, push radially outward to the boundary
+        if (distanceFromParent < PARENT_EXCLUSION_RADIUS) {
+          const angle = Math.atan2(dy, dx);
+          // Place at exclusion boundary (or slightly beyond if already close)
+          const targetDistance = Math.max(PARENT_EXCLUSION_RADIUS, distanceFromParent + 20);
+          item.x = parentNode.x + Math.cos(angle) * targetDistance;
+          item.y = parentNode.y + Math.sin(angle) * targetDistance;
+        }
+      });
+    }
+
+    // SECOND PASS: Regular node-to-node collision avoidance
     for (let iteration = 0; iteration < maxIterations; iteration++) {
       let hadCollision = false;
 
