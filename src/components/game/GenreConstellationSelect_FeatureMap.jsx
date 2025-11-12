@@ -141,10 +141,11 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Difficulty (kept for compatibility)
   const [difficulty] = useState('medium');
 
-  // Filter out instrumentalness from feature_angles for display
+  // Filter out instrumentalness and speechiness from feature_angles for display
+  // Speechiness removed because 95% of music normalizes to ~0.5 (neutral), adding noise without useful differentiation
   const displayFeatures = useMemo(() => {
     if (!manifest?.global?.display?.feature_angles) return [];
-    return manifest.global.display.feature_angles.filter(f => f !== 'instrumentalness');
+    return manifest.global.display.feature_angles.filter(f => f !== 'instrumentalness' && f !== 'speechiness');
   }, [manifest]);
 
   // Load manifest

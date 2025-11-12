@@ -18,8 +18,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const { feature_angles: rawFeatureAngles, projection_scale, speechiness_contrast_gamma } = manifest.global.display;
     const { quantiles: globalQuantiles } = manifest.global;
 
-    // Filter out instrumentalness from display
-    const feature_angles = rawFeatureAngles.filter(f => f !== 'instrumentalness');
+    // Filter out instrumentalness and speechiness from display
+    // Speechiness removed because 95% of music normalizes to ~0.5 (neutral), adding noise without useful differentiation
+    const feature_angles = rawFeatureAngles.filter(f => f !== 'instrumentalness' && f !== 'speechiness');
 
     // Compute local quantiles from siblings if provided
     const computeLocalQuantiles = (siblings) => {
@@ -244,11 +245,38 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       featureWeights.sort((a, b) => b.absWeight - a.absWeight);
       const topFeatures = featureWeights.slice(0, TOP_N_FEATURES);
 
-      // Calculate position using ONLY the top N most distinctive features
+      // CENTROID + PUSH POSITIONING
+      // Calculate geometric center (centroid) of top-N features, then push toward most distinctive
+      // This positions nodes at the "spikes" of their disco floor polygon, avoiding clustering at parent center
+
+      // Calculate centroid: average position of all top-N feature endpoints
+      let centroidX = 0, centroidY = 0;
       topFeatures.forEach(feat => {
-        x += feat.weight * Math.cos(feat.angle);
-        y += feat.weight * Math.sin(feat.angle);
+        const distance = feat.absWeight; // Use absolute weight as distance
+        centroidX += distance * Math.cos(feat.angle);
+        centroidY += distance * Math.sin(feat.angle);
       });
+      centroidX /= topFeatures.length;
+      centroidY /= topFeatures.length;
+
+      // Push from centroid toward most distinctive feature (highest absolute weight)
+      const mostDistinctive = topFeatures[0];
+      const distinctiveX = mostDistinctive.absWeight * Math.cos(mostDistinctive.angle);
+      const distinctiveY = mostDistinctive.absWeight * Math.sin(mostDistinctive.angle);
+
+      // Direction vector from centroid to most distinctive feature
+      const pushDirX = distinctiveX - centroidX;
+      const pushDirY = distinctiveY - centroidY;
+      const pushDirMag = Math.sqrt(pushDirX*pushDirX + pushDirY*pushDirY);
+
+      // Normalize and scale by push factor
+      const PUSH_FACTOR = 0.5; // Controls how far from centroid to polygon spike
+      const normalizedPushX = (pushDirX / pushDirMag) * PUSH_FACTOR;
+      const normalizedPushY = (pushDirY / pushDirMag) * PUSH_FACTOR;
+
+      // Final position at polygon extremity
+      x = centroidX + normalizedPushX;
+      y = centroidY + normalizedPushY;
 
       // Apply exaggeration AFTER summing to preserve balance
       x *= effectiveExaggeration;
@@ -270,7 +298,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       'Caribbean & African': { region: 'danceability-high', position: 'single' },
       'classical': { region: 'acousticness-high', position: 'outer' },
       'jazz': { region: 'acousticness-high', position: 'inner' },
-      'hip hop': { region: 'speechiness-high', position: 'single' },
+      // 'hip hop': { region: 'speechiness-high', position: 'single' }, // speechiness removed, let it calculate naturally
       'electronic': { region: 'energy-high', position: 'single' },
       'rock': { region: 'danceability-low', position: 'single' },
       'latin': { region: 'valence-high', position: 'outer' },
