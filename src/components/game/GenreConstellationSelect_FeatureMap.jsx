@@ -1067,7 +1067,8 @@ export function GenreConstellationSelect({ onLaunch }) {
             const maxRadius = 230;
             const minRadius = 50;
 
-            // Create 12 points at 30° intervals, one per triangle
+            // Create 24 points (2 per triangle) to form teeth/tangs pattern
+            // Each triangle gets a horizontal line across it at the appropriate radius
             const points = [];
 
             for (let pointIndex = 0; pointIndex < numPoints; pointIndex++) {
@@ -1084,11 +1085,24 @@ export function GenreConstellationSelect({ onLaunch }) {
                 ? minRadius + (weight * (maxRadius - minRadius))
                 : minRadius + ((1 - weight) * (maxRadius - minRadius));
 
-              const angle = pointIndex * pointAngleStep;
+              // Triangle edges (30° width)
+              const centerAngle = pointIndex * pointAngleStep;
+              const startAngle = centerAngle - pointAngleStep / 2;
+              const endAngle = centerAngle + pointAngleStep / 2;
+
+              // Add two points: one at each edge of the triangle at this radius
+              // This creates a horizontal line across the triangle
               points.push({
-                angle,
-                x: CENTER_X + Math.cos(angle) * radius,
-                y: CENTER_Y + Math.sin(angle) * radius,
+                angle: startAngle,
+                x: CENTER_X + Math.cos(startAngle) * radius,
+                y: CENTER_Y + Math.sin(startAngle) * radius,
+                weight: isHighEnd ? weight : (1 - weight),
+                strength: isHighEnd ? weight : (1 - weight)
+              });
+              points.push({
+                angle: endAngle,
+                x: CENTER_X + Math.cos(endAngle) * radius,
+                y: CENTER_Y + Math.sin(endAngle) * radius,
                 weight: isHighEnd ? weight : (1 - weight),
                 strength: isHighEnd ? weight : (1 - weight)
               });
