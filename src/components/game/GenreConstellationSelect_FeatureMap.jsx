@@ -557,6 +557,17 @@ export function GenreConstellationSelect({ onLaunch }) {
       if (!hadCollision) break; // Early exit if no collisions found
     }
 
+    // FINAL CLAMPING: Ensure collision detection didn't push nodes outside boundary
+    const MAX_DISTANCE = 190; // Same as used in position clamping above
+    items.forEach(item => {
+      const distance = Math.sqrt(item.x * item.x + item.y * item.y);
+      if (distance > MAX_DISTANCE) {
+        const scale = MAX_DISTANCE / distance;
+        item.x *= scale;
+        item.y *= scale;
+      }
+    });
+
     return items;
   };
 
