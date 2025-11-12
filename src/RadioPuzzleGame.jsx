@@ -30,26 +30,32 @@ const getArtistString = (track) => {
     : track.artists;
 };
 
-const transformSeed = (profileSeed) => ({
-  id: profileSeed.id,
-  name: profileSeed.name,
-  artists: profileSeed.artists,
-  year: profileSeed.year,
-  popularity: profileSeed.popularity,
-  genres: profileSeed.genres || [],
-  danceability: profileSeed.danceability,
-  energy: profileSeed.energy,
-  valence: profileSeed.valence,
-  acousticness: profileSeed.acousticness,
-  instrumentalness: profileSeed.instrumentalness,
-  liveness: profileSeed.liveness,
-  speechiness: profileSeed.speechiness,
-  tempo: profileSeed.tempo,
-  loudness: profileSeed.loudness,
-  mode: profileSeed.mode,
-  key: profileSeed.key,
-  time_signature: profileSeed.time_signature
-});
+const transformSeed = (profileSeed, firstTrack = null) => {
+  // New JSON format: audio features are in tracks[0], not in seed
+  // If firstTrack is provided, use its audio features; otherwise fall back to seed
+  const featureSource = firstTrack || profileSeed;
+
+  return {
+    id: profileSeed.id,
+    name: profileSeed.name,
+    artists: profileSeed.artists,
+    year: profileSeed.year,
+    popularity: profileSeed.popularity,
+    genres: profileSeed.genres || [],
+    danceability: featureSource.danceability,
+    energy: featureSource.energy,
+    valence: featureSource.valence,
+    acousticness: featureSource.acousticness,
+    instrumentalness: featureSource.instrumentalness,
+    liveness: featureSource.liveness,
+    speechiness: featureSource.speechiness,
+    tempo: featureSource.tempo,
+    loudness: featureSource.loudness,
+    mode: featureSource.mode,
+    key: featureSource.key,
+    time_signature: featureSource.time_signature
+  };
+};
 
 const transformTrack = (profileTrack) => ({
   id: profileTrack.id,
@@ -229,7 +235,8 @@ function RadioPuzzleGame() {
       }
 
       // Transform once into game format
-      const gameSeed = transformSeed(rawProfile.seed);
+      // Pass first track to get audio features (new JSON format)
+      const gameSeed = transformSeed(rawProfile.seed, rawProfile.tracks[0]);
       const gameTracks = rawProfile.tracks.map(transformTrack);
 
       const correctCount = gameTracks.filter(t => t.correct).length;
