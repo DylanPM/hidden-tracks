@@ -936,6 +936,39 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const nicheInner = sortedByPopularity[1];
       scaledResult[nicheInner].x = centerX + Math.cos(nicheAngle) * SPLAY_RADIUS_INNER;
       scaledResult[nicheInner].y = centerY + Math.sin(nicheAngle) * SPLAY_RADIUS_INNER;
+
+      console.log(`  Splayed: ${acousticOuter}, ${acousticInner}, ${nicheOuter}, ${nicheInner}`);
+    }
+
+    // 3a2. BEBOP AND HARD BOP: Extra separation (they're very similar)
+    if (scaledResult['jazz.bebop'] && scaledResult['jazz.hard bop']) {
+      const bebop = scaledResult['jazz.bebop'];
+      const hardBop = scaledResult['jazz.hard bop'];
+      const dx = hardBop.x - bebop.x;
+      const dy = hardBop.y - bebop.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const MIN_SEPARATION = 45; // Ensure at least 45px apart
+
+      if (dist < MIN_SEPARATION) {
+        const pushDist = (MIN_SEPARATION - dist) / 2;
+        const angle = Math.atan2(dy, dx);
+        bebop.x -= Math.cos(angle) * pushDist;
+        bebop.y -= Math.sin(angle) * pushDist;
+        hardBop.x += Math.cos(angle) * pushDist;
+        hardBop.y += Math.sin(angle) * pushDist;
+        console.log(`🎷 Pushed bebop/hard bop apart by ${pushDist.toFixed(1)}px`);
+      }
+    }
+
+    // 3a3. SWING: Push towards sad (floor shows dip there, but node is near happy)
+    if (scaledResult['jazz.swing']) {
+      console.log('🎷 Applying swing manual positioning...');
+      const swing = scaledResult['jazz.swing'];
+      const shiftAmount = 35; // Significant shift to match floor
+      // Move towards sad (opposite of happy/valence direction)
+      swing.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
+      swing.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
+      console.log(`  Shifted ${shiftAmount}px towards sad`);
     }
 
     // 3b. PUNK AND METAL: Push apart
@@ -963,11 +996,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       }
     }
 
-    // 3c. EAST COAST AND SOUTHERN RAP: Push apart
+    // 3c. EAST COAST AND SOUTHERN HIP HOP: Push apart
     console.log('🎤 Available hip hop keys:', Object.keys(scaledResult).filter(k => k.startsWith('hip hop.')));
-    if (scaledResult['hip hop.Regional Hip Hop.east coast rap'] && scaledResult['hip hop.Regional Hip Hop.southern hip hop']) {
-      console.log('🎤 Applying east coast/southern rap manual positioning...');
-      const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast rap'];
+    if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop'] && scaledResult['hip hop.Regional Hip Hop.southern hip hop']) {
+      console.log('🎤 Applying east coast/southern hip hop manual positioning...');
+      const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
       const southern = scaledResult['hip hop.Regional Hip Hop.southern hip hop'];
       const dx = southern.x - eastCoast.x;
       const dy = southern.y - eastCoast.y;
@@ -995,18 +1028,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Shift southern rock towards electric, move classic country down, move indie folk down
     console.log('🤠 Available country keys:', Object.keys(scaledResult).filter(k => k.startsWith('country.')));
 
-    if (scaledResult['country.Modern.southern rock']) {
+    if (scaledResult['country.southern rock']) {
       console.log('🤠 Applying southern rock manual positioning...');
-      const southernRock = scaledResult['country.Modern.southern rock'];
+      const southernRock = scaledResult['country.southern rock'];
       const shiftAmount = 20; // 75% of node diameter (assuming ~27px diameter)
       southernRock.x += Math.cos(energyAngle) * shiftAmount;
       southernRock.y += Math.sin(energyAngle) * shiftAmount;
       console.log(`  Shifted ${shiftAmount}px towards electric`);
     }
 
-    if (scaledResult['country.Traditional.classic country']) {
+    if (scaledResult['country.classic country']) {
       console.log('🤠 Applying classic country manual positioning...');
-      const classicCountry = scaledResult['country.Traditional.classic country'];
+      const classicCountry = scaledResult['country.classic country'];
       const shiftAmount = 20;
       // Move "down" - towards lower valence (sad)
       classicCountry.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
@@ -1014,9 +1047,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       console.log(`  Shifted ${shiftAmount}px towards sad`);
     }
 
-    if (scaledResult['country.Modern.indie folk']) {
+    if (scaledResult['country.indie folk']) {
       console.log('🤠 Applying indie folk manual positioning...');
-      const indieFolk = scaledResult['country.Modern.indie folk'];
+      const indieFolk = scaledResult['country.indie folk'];
       const shiftAmount = 20;
       // Move "down" - towards lower valence (sad)
       indieFolk.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
@@ -1025,20 +1058,26 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     }
 
     // 3f. TECHNO: Move towards fast
+    console.log('🎧 Available electronic keys:', Object.keys(scaledResult).filter(k => k.startsWith('electronic.')).slice(0, 8));
     if (scaledResult['electronic.Subgenres.techno']) {
+      console.log('🎧 Applying techno manual positioning...');
       const techno = scaledResult['electronic.Subgenres.techno'];
       const shiftAmount = 30;
       techno.x += Math.cos(tempoAngle) * shiftAmount;
       techno.y += Math.sin(tempoAngle) * shiftAmount;
+      console.log(`  Shifted ${shiftAmount}px towards fast`);
     }
 
-    // 3g. KPOP: Move away from sad
+    // 3g. KPOP: Move away from sad (floor doesn't show it should be that sad)
+    console.log('💿 Available pop keys:', Object.keys(scaledResult).filter(k => k.startsWith('pop.')).slice(0, 8));
     if (scaledResult['pop.Regional.k-pop']) {
+      console.log('💿 Applying k-pop manual positioning...');
       const kpop = scaledResult['pop.Regional.k-pop'];
-      const shiftAmount = 30;
+      const shiftAmount = 40; // Increased from 30 for more noticeable effect
       // Move towards happy (positive valence direction)
       kpop.x += Math.cos(valenceAngle) * shiftAmount;
       kpop.y += Math.sin(valenceAngle) * shiftAmount;
+      console.log(`  Shifted ${shiftAmount}px towards happy`);
     }
 
     // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
