@@ -859,6 +859,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Applied after collision avoidance to handle edge cases where semantic similarity
     // creates overlaps that generic collision avoidance can't resolve well
 
+    // DEBUG: Log ALL genre structures to understand hierarchy
+    console.log('\n📋 GENRE STRUCTURE AUDIT:');
+    ['jazz', 'rock', 'hip hop', 'country', 'electronic', 'pop'].forEach(parent => {
+      const keys = Object.keys(scaledResult).filter(k => k.startsWith(parent + '.'));
+      console.log(`  ${parent}:`, keys.slice(0, 8)); // Show first 8 to keep it readable
+    });
+    console.log('');
+
     // Helper: Get feature axis angles for reference
     const acousticAngle = featureAngles['acousticness'];
     const speechAngle = featureAngles['speechiness'];
