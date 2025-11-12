@@ -207,86 +207,89 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         });
       }
 
-      // GREEDY TRIANGLE ASSIGNMENT APPROACH
-      // Treat the 12 triangles as scarce spatial resources and assign genres to them
-      // using a greedy algorithm that maximizes each genre's "happiness" (extremeness)
-      //
-      // This ensures genres are positioned where their disco floor actually extends,
-      // solving the mismatch between node position and disco floor visualization.
+      // GREEDY TRIANGLE AUCTION
+      // Each genre bids on triangles where it's extreme (> 0.15 from neutral)
+      // Genres pick in order of distinctiveness (most extreme gets first pick)
 
-      // Calculate all feature percentiles
-      const featurePercentiles = [];
-      feature_angles.forEach(featureName => {
+      const trianglePreferences = [];
+      const numTriangles = feature_angles.length * 2;
+      const triangleAngleStep = (Math.PI * 2) / numTriangles;
+
+      // Calculate preference scores for ALL triangles this genre could go in
+      feature_angles.forEach((featureName, featureIndex) => {
         if (activeFeatures[featureName] === false) return;
 
         const rawValue = features[featureName];
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
 
-        // Calculate extremeness (distance from neutral 0.5)
         const extremeness = Math.abs(percentile - 0.5);
 
-        featurePercentiles.push({
-          name: featureName,
-          percentile,
-          extremeness,
-          angle: featureAngles[featureName]
-        });
+        // Bid on triangles where we're extreme (> 0.15 from neutral)
+        if (extremeness > 0.15) {
+          const highTriangleIndex = featureIndex;
+          const lowTriangleIndex = featureIndex + feature_angles.length;
+
+          // Prefer high triangle if percentile > 0.5
+          if (percentile > 0.5) {
+            trianglePreferences.push({
+              triangleIndex: highTriangleIndex,
+              featureName,
+              extremeness,
+              percentile,
+              angle: highTriangleIndex * triangleAngleStep,
+              isHigh: true
+            });
+          } else {
+            // Prefer low triangle if percentile < 0.5
+            trianglePreferences.push({
+              triangleIndex: lowTriangleIndex,
+              featureName,
+              extremeness,
+              percentile,
+              angle: lowTriangleIndex * triangleAngleStep,
+              isHigh: false
+            });
+          }
+        }
       });
 
-      // Sort by extremeness (most distinctive first)
-      featurePercentiles.sort((a, b) => b.extremeness - a.extremeness);
+      // Sort by extremeness (best fits first)
+      trianglePreferences.sort((a, b) => b.extremeness - a.extremeness);
 
-      // Find the MOST extreme feature (primary assignment)
-      const primaryFeature = featurePercentiles[0];
+      // Pick best triangle (highest extremeness)
+      const chosenTriangle = trianglePreferences[0];
 
-      // Determine which triangle to assign to:
-      // Each feature has 2 triangles (high/low) at 30° intervals
-      // Triangle 0 = feature 0 high, Triangle 6 = feature 0 low, etc.
-      const featureIndex = feature_angles.indexOf(primaryFeature.name);
-      const numTriangles = feature_angles.length * 2;
-      const triangleAngleStep = (Math.PI * 2) / numTriangles; // 30° for 12 triangles
+      // If no extreme features, position at center
+      if (!chosenTriangle) {
+        return { x: 0, y: 0 };
+      }
 
-      // Assign to high or low triangle based on percentile
-      const assignToHigh = primaryFeature.percentile > 0.5;
-      const triangleIndex = assignToHigh ? featureIndex : (featureIndex + feature_angles.length);
+      // Position within assigned triangle
+      const assignedAngle = chosenTriangle.angle;
+      const baseRadius = chosenTriangle.extremeness * 2; // Scale 0-0.5 to 0-1
 
-      // Calculate center angle of assigned triangle
-      const assignedAngle = triangleIndex * triangleAngleStep;
-
-      // Calculate radius based on extremeness of primary feature
-      // More extreme = further from center
-      const baseRadius = primaryFeature.extremeness * 2; // Scale 0-1 to 0-2
-
-      // Use secondary features for radial adjustment within the triangle
-      // This creates variation while staying in the assigned region
+      // Secondary features add variation
       let radialAdjustment = 0;
-      if (featurePercentiles.length > 1) {
-        // Average extremeness of next 2 features (if available)
-        const secondaryExtremeness = featurePercentiles.slice(1, 3)
-          .reduce((sum, f) => sum + f.extremeness, 0) / Math.min(2, featurePercentiles.length - 1);
-        radialAdjustment = secondaryExtremeness * 0.3; // 30% influence
+      let angularVariation = 0;
+
+      if (trianglePreferences.length > 1) {
+        const secondaryExtremeness = trianglePreferences.slice(1, 3)
+          .reduce((sum, f) => sum + f.extremeness, 0) / Math.min(2, trianglePreferences.length - 1);
+        radialAdjustment = secondaryExtremeness * 0.3;
+
+        const secondaryFeature = trianglePreferences[1];
+        const secondaryWeight = (secondaryFeature.percentile - 0.5) * 2;
+        angularVariation = (secondaryWeight * 0.25) * (triangleAngleStep / 2);
       }
 
       const finalRadius = baseRadius + radialAdjustment;
-
-      // Calculate final position within assigned triangle's angular range
-      // Add slight angular variation based on secondary features (±7.5° within 30° triangle)
-      let angularVariation = 0;
-      if (featurePercentiles.length > 1) {
-        const secondaryFeature = featurePercentiles[1];
-        // Use sign of secondary feature weight for variation direction
-        const secondaryWeight = (secondaryFeature.percentile - 0.5) * 2;
-        angularVariation = (secondaryWeight * 0.25) * (triangleAngleStep / 2); // ±25% of half-triangle width
-      }
-
       const finalAngle = assignedAngle + angularVariation;
 
-      // Convert polar to Cartesian
+      // Convert to Cartesian
       x = Math.cos(finalAngle) * finalRadius;
       y = Math.sin(finalAngle) * finalRadius;
 
-      // Apply exaggeration AFTER positioning
       x *= effectiveExaggeration;
       y *= effectiveExaggeration;
 
