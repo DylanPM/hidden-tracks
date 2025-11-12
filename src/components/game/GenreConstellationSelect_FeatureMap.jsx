@@ -756,56 +756,47 @@ export function GenreConstellationSelect({ onLaunch }) {
   // If you add/remove attributes, both systems will auto-adjust based on displayFeatures.length
   // ============================================================================
 
-  // Axis configuration (bidirectional labels) - segments based on feature count
+  // Axis configuration (bidirectional labels) - 12 labels at 30° intervals
   const axisConfig = useMemo(() => {
     if (!manifest?.global) return [];
 
-    // POSITIONING ANGLES: One angle per feature spanning full circle
-    const numFeatures = displayFeatures.length;
-    const featureAngleStep = (Math.PI * 2) / numFeatures;
+    // 12 labels total (6 features × 2 ends), evenly spaced at 30° intervals
+    // Opposite labels (180° apart) represent the same feature
+    const numLabels = displayFeatures.length * 2;
+    const labelAngleStep = (Math.PI * 2) / numLabels; // 30° for 12 labels
     const axisRadius = 340; // Distance from center to axis label (outside octagon ring, further out)
 
     const labels = [];
 
-    displayFeatures.forEach((feature, i) => {
+    // Create 12 labels at 30° intervals
+    for (let labelIndex = 0; labelIndex < numLabels; labelIndex++) {
+      // Determine which feature and end this label represents
+      const featureIndex = labelIndex % displayFeatures.length;
+      const feature = displayFeatures[featureIndex];
       const config = FEATURE_CONFIG[feature];
       const enabled = activeFeatures[feature] !== false;
 
-      if (!config) return;
+      if (!config) continue;
 
-      // High end at angle that matches positioning calculation
-      const highAngle = i * featureAngleStep;
+      // First 6 labels are "high" ends, next 6 are "low" ends
+      const isHighEnd = labelIndex < displayFeatures.length;
+      const end = isHighEnd ? 'high' : 'low';
+      const endConfig = config[end];
+
+      const angle = labelIndex * labelAngleStep;
       labels.push({
         feature,
-        end: 'high',
-        angle: highAngle,
-        x: Math.cos(highAngle) * axisRadius,
-        y: Math.sin(highAngle) * axisRadius,
-        emoji: config.high.emoji,
-        name: config.high.name,
-        desc: config.high.desc,
-        info: config.high.info,
+        end,
+        angle,
+        x: Math.cos(angle) * axisRadius,
+        y: Math.sin(angle) * axisRadius,
+        emoji: endConfig.emoji,
+        name: endConfig.name,
+        desc: endConfig.desc,
+        info: endConfig.info,
         enabled
       });
-
-      // Low end: For even number of features, offset by half-step to avoid overlap
-      // For odd number, use direct opposite (180°)
-      const isEvenFeatures = numFeatures % 2 === 0;
-      const lowOffset = isEvenFeatures ? Math.PI + (featureAngleStep / 2) : Math.PI;
-      const lowAngle = highAngle + lowOffset;
-      labels.push({
-        feature,
-        end: 'low',
-        angle: lowAngle,
-        x: Math.cos(lowAngle) * axisRadius,
-        y: Math.sin(lowAngle) * axisRadius,
-        emoji: config.low.emoji,
-        name: config.low.name,
-        desc: config.low.desc,
-        info: config.low.info,
-        enabled
-      });
-    });
+    }
 
     return labels;
   }, [manifest, activeFeatures, displayFeatures]);
@@ -1019,14 +1010,19 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           )}
 
-          {/* Subtle background floor coloring - segments based on feature count */}
-          {displayFeatures.map((feature, i) => {
-            // HYBRID: Use POSITIONING ANGLES for center, RING SEGMENT width for triangles
-            // (See "ANGLE CALCULATION SYSTEM" comment above for details)
-            const numSegments = displayFeatures.length * 2;
-            const segmentAngleStep = (Math.PI * 2) / numSegments;
-            const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
+          {/* Subtle background floor coloring - 12 triangles at 30° intervals */}
+          {Array.from({ length: displayFeatures.length * 2 }).map((_, triangleIndex) => {
+            // 12 triangles total (6 features × 2 ends), evenly spaced at 30° intervals
+            // Opposite triangles (180° apart) share the same color
+            const numTriangles = displayFeatures.length * 2;
+            const triangleAngleStep = (Math.PI * 2) / numTriangles; // 30° for 12 triangles
             const radius = 250;
+
+            // Determine which feature this triangle belongs to
+            // Triangles 0 and 6 are feature 0, triangles 1 and 7 are feature 1, etc.
+            const featureIndex = triangleIndex % displayFeatures.length;
+            const feature = displayFeatures[featureIndex];
+            const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
 
             // Check if this feature is hovered (either high or low end)
             const isFeatureHovered = hoveredAxisLabel && hoveredAxisLabel.startsWith(feature + '-');
@@ -1035,51 +1031,27 @@ export function GenreConstellationSelect({ onLaunch }) {
             // Three states: not in use (off), in use (on), on hover
             const floorOpacity = isFeatureHovered ? 0.35 : (isFeatureEnabled ? 0.12 : 0.05);
 
-            // High end segment: use positioning angle but narrow segment width
-            const highAngle = i * (Math.PI * 2) / displayFeatures.length; // Positioning angle
-            const highStartAngle = highAngle - segmentAngleStep / 2;
-            const highEndAngle = highAngle + segmentAngleStep / 2;
-
-            // Low end segment: For even features, offset by half-step to avoid overlap
-            const isEvenFeatures = displayFeatures.length % 2 === 0;
-            const lowOffset = isEvenFeatures ? Math.PI + (segmentAngleStep / 2) : Math.PI;
-            const lowAngle = highAngle + lowOffset;
-            const lowStartAngle = lowAngle - segmentAngleStep / 2;
-            const lowEndAngle = lowAngle + segmentAngleStep / 2;
+            // Triangle centered at this angle
+            const angle = triangleIndex * triangleAngleStep;
+            const startAngle = angle - triangleAngleStep / 2;
+            const endAngle = angle + triangleAngleStep / 2;
 
             return (
-              <g key={`floor-bg-${feature}`}>
-                {/* High end segment */}
-                <path
-                  d={`
-                    M ${CENTER_X} ${CENTER_Y}
-                    L ${CENTER_X + Math.cos(highStartAngle) * radius} ${CENTER_Y + Math.sin(highStartAngle) * radius}
-                    L ${CENTER_X + Math.cos(highEndAngle) * radius} ${CENTER_Y + Math.sin(highEndAngle) * radius}
-                    Z
-                  `}
-                  fill={featureColor}
-                  opacity={floorOpacity}
-                  style={{
-                    pointerEvents: 'none',
-                    transition: 'opacity 0.2s ease-out'
-                  }}
-                />
-                {/* Low end segment */}
-                <path
-                  d={`
-                    M ${CENTER_X} ${CENTER_Y}
-                    L ${CENTER_X + Math.cos(lowStartAngle) * radius} ${CENTER_Y + Math.sin(lowStartAngle) * radius}
-                    L ${CENTER_X + Math.cos(lowEndAngle) * radius} ${CENTER_Y + Math.sin(lowEndAngle) * radius}
-                    Z
-                  `}
-                  fill={featureColor}
-                  opacity={floorOpacity}
-                  style={{
-                    pointerEvents: 'none',
-                    transition: 'opacity 0.2s ease-out'
-                  }}
-                />
-              </g>
+              <path
+                key={`floor-triangle-${triangleIndex}`}
+                d={`
+                  M ${CENTER_X} ${CENTER_Y}
+                  L ${CENTER_X + Math.cos(startAngle) * radius} ${CENTER_Y + Math.sin(startAngle) * radius}
+                  L ${CENTER_X + Math.cos(endAngle) * radius} ${CENTER_Y + Math.sin(endAngle) * radius}
+                  Z
+                `}
+                fill={featureColor}
+                opacity={floorOpacity}
+                style={{
+                  pointerEvents: 'none',
+                  transition: 'opacity 0.2s ease-out'
+                }}
+              />
             );
           })}
 
@@ -1087,46 +1059,40 @@ export function GenreConstellationSelect({ onLaunch }) {
           {focusedNodeFeatureWeights && (() => {
             if (displayFeatures.length === 0) return null;
 
-            // POSITIONING ANGLES: Used for disco floor shape to match node positioning
-            // (See "ANGLE CALCULATION SYSTEM" comment above for details)
-            const numFeatures = displayFeatures.length;
-            const featureAngleStep = (Math.PI * 2) / numFeatures;
+            // 12 points at 30° intervals (matching triangle centers)
+            const numPoints = displayFeatures.length * 2;
+            const pointAngleStep = (Math.PI * 2) / numPoints; // 30° for 12 points
             // Disco floor radius extended to better fill visual space to ring (230px)
             // Ring is at 245px, nodes clamped at 190px, so 230px gives good visual balance
             const maxRadius = 230;
             const minRadius = 50;
 
-            // Create points at evenly-spaced angles (one for each feature's high and low)
+            // Create 12 points at 30° intervals, one per triangle
             const points = [];
 
-            displayFeatures.forEach((feature, i) => {
+            for (let pointIndex = 0; pointIndex < numPoints; pointIndex++) {
+              // Determine which feature and end this point represents
+              const featureIndex = pointIndex % displayFeatures.length;
+              const feature = displayFeatures[featureIndex];
               const weight = focusedNodeFeatureWeights[feature];
 
-              // High end point matches positioning angle
-              const highAngle = i * featureAngleStep;
-              const highRadius = minRadius + (weight * (maxRadius - minRadius));
-              points.push({
-                angle: highAngle,
-                x: CENTER_X + Math.cos(highAngle) * highRadius,
-                y: CENTER_Y + Math.sin(highAngle) * highRadius,
-                weight,
-                strength: weight
-              });
+              // First 6 points are "high" ends, next 6 are "low" ends
+              const isHighEnd = pointIndex < displayFeatures.length;
 
-              // Low end point 180° opposite (normalize to [0, 2π) range)
-              const lowAngle = (highAngle + Math.PI) % (Math.PI * 2);
-              const lowRadius = minRadius + ((1 - weight) * (maxRadius - minRadius));
-              points.push({
-                angle: lowAngle,
-                x: CENTER_X + Math.cos(highAngle + Math.PI) * lowRadius, // Use unnormalized for trig
-                y: CENTER_Y + Math.sin(highAngle + Math.PI) * lowRadius,
-                weight: 1 - weight,
-                strength: 1 - weight
-              });
-            });
+              // Calculate radius based on feature weight
+              const radius = isHighEnd
+                ? minRadius + (weight * (maxRadius - minRadius))
+                : minRadius + ((1 - weight) * (maxRadius - minRadius));
 
-            // Sort points by angle to connect them in circular order (prevents crossing lines)
-            points.sort((a, b) => a.angle - b.angle);
+              const angle = pointIndex * pointAngleStep;
+              points.push({
+                angle,
+                x: CENTER_X + Math.cos(angle) * radius,
+                y: CENTER_Y + Math.sin(angle) * radius,
+                weight: isHighEnd ? weight : (1 - weight),
+                strength: isHighEnd ? weight : (1 - weight)
+              });
+            }
 
             // Create path connecting all points in circular order
             const pathData = points.map((p, i) =>
