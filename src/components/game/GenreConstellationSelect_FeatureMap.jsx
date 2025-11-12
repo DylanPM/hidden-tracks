@@ -338,14 +338,30 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     (async () => {
       try {
+        // Helper function to slugify text (matches profile generation logic)
+        const slugify = (text) => {
+          return text
+            .toLowerCase()
+            .replace(/['']/g, '-') // Replace apostrophes with hyphens
+            .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+            .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+        };
+
         const tracks = await Promise.all(
           seeds.map(async seed => {
             try {
-              // Convert manifest filename format to actual file format
-              // Manifest: artist-song-title.json → Actual: artist_song-title.json
-              const actualFilename = seed.filename.replace('-', '_');
+              // Construct actual filename from artist and name fields
+              // Manifest format: artist-song-title.json (all hyphens)
+              // Actual format: artist_song-title.json (underscore separator)
+              const artistSlug = slugify(seed.artist);
+              const nameSlug = slugify(seed.name);
+              const actualFilename = `${artistSlug}_${nameSlug}.json`;
+
               const res = await fetch(`/profiles/${actualFilename}`);
-              if (!res.ok) return null;
+              if (!res.ok) {
+                console.warn(`Failed to fetch: ${actualFilename} (from ${seed.artist} - ${seed.name})`);
+                return null;
+              }
               const profile = await res.json();
 
               // Clamp track position too
