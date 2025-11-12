@@ -829,18 +829,22 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     const { quantiles } = manifest.global;
 
-    // Normalize each feature to 0-1 using quantiles
-    const weights = {};
+    // TOP-N DISTINCTIVE FEATURES: Match the node positioning algorithm
+    // Use only the most extreme features for disco floor too, so it matches node position
+    const TOP_N_FEATURES = 2;
+
+    // Calculate all percentiles
+    const allWeights = [];
     displayFeatures.forEach(feature => {
       const value = nodeFeatures[feature];
       if (value == null || isNaN(value)) {
-        weights[feature] = 0.5;
+        allWeights.push({ feature, percentile: 0.5, weight: 0, absWeight: 0 });
         return;
       }
 
       const q = quantiles[feature];
       if (!q) {
-        weights[feature] = 0.5;
+        allWeights.push({ feature, percentile: 0.5, weight: 0, absWeight: 0 });
         return;
       }
 
@@ -851,7 +855,23 @@ export function GenreConstellationSelect({ onLaunch }) {
       else if (value <= q.p90) percentile = 0.5 + 0.4 * ((value - q.p50) / (q.p90 - q.p50));
       else percentile = 0.9 + 0.1 * Math.min(1, (value - q.p90) / (q.p90 - q.p50));
 
-      weights[feature] = percentile;
+      const weight = (percentile - 0.5) * 2; // Convert to -1 to +1
+      allWeights.push({ feature, percentile, weight, absWeight: Math.abs(weight) });
+    });
+
+    // Sort by absolute weight and use only top N
+    allWeights.sort((a, b) => b.absWeight - a.absWeight);
+
+    // Build weights object: top N get their percentile, rest get 0.5 (neutral/invisible)
+    const weights = {};
+    displayFeatures.forEach(feature => {
+      const isTopN = allWeights.slice(0, TOP_N_FEATURES).some(w => w.feature === feature);
+      if (isTopN) {
+        const weightData = allWeights.find(w => w.feature === feature);
+        weights[feature] = weightData.percentile;
+      } else {
+        weights[feature] = 0.5; // Neutral = not shown on disco floor
+      }
     });
 
     return weights;
