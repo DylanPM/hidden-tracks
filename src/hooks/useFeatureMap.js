@@ -302,22 +302,38 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               ? averagedParentFeatures[genreKey]
               : node.features;
 
+            // DEBUG: Log specific genres to diagnose valence issues
+            const debugKeys = ['pop.Regional.k-pop', 'pop.k-pop', 'pop.kpop'];
+            if (debugKeys.includes(key)) {
+              console.log(`\n🔍 POSITION DEBUG: ${key}`);
+              console.log(`  Raw features:`, features);
+              console.log(`  Feature angles order:`, feature_angles);
 
-            // DEBUG: Log first track found to check if it's using correct features
-            if (depth >= 2 && !window.__firstTrackLogged) {
-              window.__firstTrackLogged = true;
-              window.__firstTrackKey = key;
-              console.log(`\n🎵 TRACK DEBUG: ${key}`);
-              console.log(`  Depth: ${depth} (root=0, subgenre=1, track=2+)`);
-              console.log(`  isRootGenre: ${isRootGenre}`);
-              console.log(`  Using features:`, features);
-              console.log(`  Has own features:`, !!node.features);
-              if (features) {
-                console.log(`  Features: energy=${features.energy?.toFixed(3)}, valence=${features.valence?.toFixed(3)}, danceability=${features.danceability?.toFixed(3)}`);
-              }
+              // Calculate and show each feature's contribution
+              feature_angles.forEach((fname, idx) => {
+                const rawVal = features?.[fname];
+                const q = quantiles[fname];
+                let percentile = 0.5;
+                if (rawVal != null && q) {
+                  if (rawVal <= q.p10) percentile = 0.1;
+                  else if (rawVal <= q.p50) percentile = 0.1 + 0.4 * ((rawVal - q.p10) / (q.p50 - q.p10));
+                  else if (rawVal <= q.p90) percentile = 0.5 + 0.4 * ((rawVal - q.p50) / (q.p90 - q.p50));
+                  else percentile = 0.9 + 0.1 * Math.min(1, (rawVal - q.p90) / (q.p90 - q.p50));
+                }
+                const weight = (percentile - 0.5) * 2;
+                const angle = (idx * (Math.PI * 2) / feature_angles.length) * 180 / Math.PI;
+                console.log(`    ${fname}: raw=${rawVal?.toFixed(3)}, percentile=${percentile.toFixed(3)}, weight=${weight.toFixed(3)}, angle=${angle.toFixed(1)}°`);
+              });
             }
 
             rawResult[key] = projectTo2D(features, depth);
+
+            // Show final position for debug genres
+            if (debugKeys.includes(key)) {
+              const pos = rawResult[key];
+              const finalAngle = (Math.atan2(pos.y, pos.x) * 180 / Math.PI + 360) % 360;
+              console.log(`  Final position: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) at ${finalAngle.toFixed(1)}°`);
+            }
           }
         }
       }
