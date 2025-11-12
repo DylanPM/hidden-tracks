@@ -494,13 +494,19 @@ export function GenreConstellationSelect({ onLaunch }) {
     }
 
     // SECOND PASS: Regular node-to-node collision avoidance with feature-aware push
-    for (let iteration = 0; iteration < maxIterations; iteration++) {
-      let hadCollision = false;
+    // SKIP for root-level view - collision avoidance already handled in useFeatureMap
+    // Only needed for nested views where tracks are positioned in a circle
+    const isRootView = viewStack.length === 0 && !loadedTracks.length;
+    const skipSecondPass = isRootView;
 
-      for (let i = 0; i < items.length; i++) {
-        for (let j = i + 1; j < items.length; j++) {
-          const item1 = items[i];
-          const item2 = items[j];
+    if (!skipSecondPass) {
+      for (let iteration = 0; iteration < maxIterations; iteration++) {
+        let hadCollision = false;
+
+        for (let i = 0; i < items.length; i++) {
+          for (let j = i + 1; j < items.length; j++) {
+            const item1 = items[i];
+            const item2 = items[j];
 
           const dx = item2.x - item1.x;
           const dy = item2.y - item1.y;
@@ -556,6 +562,7 @@ export function GenreConstellationSelect({ onLaunch }) {
 
       if (!hadCollision) break; // Early exit if no collisions found
     }
+    } // End skipSecondPass check
 
     // FINAL CLAMPING: Ensure collision detection didn't push nodes outside boundary
     const MAX_DISTANCE = 190; // Same as used in position clamping above

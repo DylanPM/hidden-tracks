@@ -869,6 +869,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // 3a. JAZZ SUBGENRES: Create 4-position splay for tightly clustered jazz styles
     // These genres are semantically very similar, so we manually position them
     // in a small cluster around their average semantic position
+
+    // DEBUG: Log available keys to find correct paths
+    console.log('🎷 Available jazz keys:', Object.keys(scaledResult).filter(k => k.startsWith('jazz.')));
+
     const jazzGenres = {
       'jazz.Styles.fusion': scaledResult['jazz.Styles.fusion'],
       'jazz.Eras.bebop': scaledResult['jazz.Eras.bebop'],
@@ -877,9 +881,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     };
 
     if (Object.values(jazzGenres).every(pos => pos)) {
+      console.log('🎷 Applying jazz manual positioning...');
       // Calculate center of cluster
       const centerX = Object.values(jazzGenres).reduce((sum, pos) => sum + pos.x, 0) / 4;
       const centerY = Object.values(jazzGenres).reduce((sum, pos) => sum + pos.y, 0) / 4;
+      console.log(`  Center: (${centerX.toFixed(1)}, ${centerY.toFixed(1)})`);
 
       // Determine which jazz genre is most acoustic, least niche, etc.
       const jazzFeatures = {
@@ -925,13 +931,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     }
 
     // 3b. PUNK AND METAL: Push apart
+    console.log('🎸 Available rock keys:', Object.keys(scaledResult).filter(k => k.startsWith('rock.')));
     if (scaledResult['rock.Heavy.punk'] && scaledResult['rock.Heavy.metal']) {
+      console.log('🎸 Applying punk/metal manual positioning...');
       const punk = scaledResult['rock.Heavy.punk'];
       const metal = scaledResult['rock.Heavy.metal'];
       const dx = metal.x - punk.x;
       const dy = metal.y - punk.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const MIN_SEPARATION = 60; // Minimum distance between punk and metal
+      console.log(`  Initial distance: ${dist.toFixed(1)}px`);
 
       if (dist < MIN_SEPARATION) {
         const pushDist = (MIN_SEPARATION - dist) / 2;
@@ -940,6 +949,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         punk.y -= Math.sin(angle) * pushDist;
         metal.x += Math.cos(angle) * pushDist;
         metal.y += Math.sin(angle) * pushDist;
+        console.log(`  Pushed apart by ${pushDist.toFixed(1)}px`);
+      } else {
+        console.log(`  No adjustment needed (already separated)`);
       }
     }
 
