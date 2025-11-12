@@ -874,10 +874,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     console.log('🎷 Available jazz keys:', Object.keys(scaledResult).filter(k => k.startsWith('jazz.')));
 
     const jazzGenres = {
-      'jazz.Styles.fusion': scaledResult['jazz.Styles.fusion'],
-      'jazz.Eras.bebop': scaledResult['jazz.Eras.bebop'],
-      'jazz.Styles.cool jazz': scaledResult['jazz.Styles.cool jazz'],
-      'jazz.Eras.hard bop': scaledResult['jazz.Eras.hard bop']
+      'jazz.jazz fusion': scaledResult['jazz.jazz fusion'],
+      'jazz.bebop': scaledResult['jazz.bebop'],
+      'jazz.cool jazz': scaledResult['jazz.cool jazz'],
+      'jazz.hard bop': scaledResult['jazz.hard bop']
     };
 
     if (Object.values(jazzGenres).every(pos => pos)) {
@@ -889,10 +889,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
       // Determine which jazz genre is most acoustic, least niche, etc.
       const jazzFeatures = {
-        'jazz.Styles.fusion': scaledResult['jazz.Styles.fusion'].features,
-        'jazz.Eras.bebop': scaledResult['jazz.Eras.bebop'].features,
-        'jazz.Styles.cool jazz': scaledResult['jazz.Styles.cool jazz'].features,
-        'jazz.Eras.hard bop': scaledResult['jazz.Eras.hard bop'].features
+        'jazz.jazz fusion': scaledResult['jazz.jazz fusion'].features,
+        'jazz.bebop': scaledResult['jazz.bebop'].features,
+        'jazz.cool jazz': scaledResult['jazz.cool jazz'].features,
+        'jazz.hard bop': scaledResult['jazz.hard bop'].features
       };
 
       // Sort by acousticness (high to low) and popularity (low to high)
@@ -939,7 +939,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const dx = metal.x - punk.x;
       const dy = metal.y - punk.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const MIN_SEPARATION = 60; // Minimum distance between punk and metal
+      const MIN_SEPARATION = 100; // Minimum distance between punk and metal (increased from 60)
       console.log(`  Initial distance: ${dist.toFixed(1)}px`);
 
       if (dist < MIN_SEPARATION) {
@@ -956,13 +956,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     }
 
     // 3c. EAST COAST AND SOUTHERN RAP: Push apart
+    console.log('🎤 Available hip hop keys:', Object.keys(scaledResult).filter(k => k.startsWith('hip hop.')));
     if (scaledResult['hip hop.Regional Hip Hop.east coast rap'] && scaledResult['hip hop.Regional Hip Hop.southern hip hop']) {
+      console.log('🎤 Applying east coast/southern rap manual positioning...');
       const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast rap'];
       const southern = scaledResult['hip hop.Regional Hip Hop.southern hip hop'];
       const dx = southern.x - eastCoast.x;
       const dy = southern.y - eastCoast.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const MIN_SEPARATION = 50;
+      const MIN_SEPARATION = 70; // Increased from 50
+      console.log(`  Initial distance: ${dist.toFixed(1)}px`);
 
       if (dist < MIN_SEPARATION) {
         const pushDist = (MIN_SEPARATION - dist) / 2;
@@ -971,6 +974,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         eastCoast.y -= Math.sin(angle) * pushDist;
         southern.x += Math.cos(angle) * pushDist;
         southern.y += Math.sin(angle) * pushDist;
+        console.log(`  Pushed apart by ${pushDist.toFixed(1)}px`);
+      } else {
+        console.log(`  No adjustment needed (already separated)`);
       }
     }
 
@@ -979,27 +985,35 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // 3e. COUNTRY SUBGENRES: Fine positioning adjustments
     // Shift southern rock towards electric, move classic country down, move indie folk down
+    console.log('🤠 Available country keys:', Object.keys(scaledResult).filter(k => k.startsWith('country.')));
+
     if (scaledResult['country.Modern.southern rock']) {
+      console.log('🤠 Applying southern rock manual positioning...');
       const southernRock = scaledResult['country.Modern.southern rock'];
       const shiftAmount = 20; // 75% of node diameter (assuming ~27px diameter)
       southernRock.x += Math.cos(energyAngle) * shiftAmount;
       southernRock.y += Math.sin(energyAngle) * shiftAmount;
+      console.log(`  Shifted ${shiftAmount}px towards electric`);
     }
 
     if (scaledResult['country.Traditional.classic country']) {
+      console.log('🤠 Applying classic country manual positioning...');
       const classicCountry = scaledResult['country.Traditional.classic country'];
       const shiftAmount = 20;
       // Move "down" - towards lower valence (sad)
       classicCountry.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
       classicCountry.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
+      console.log(`  Shifted ${shiftAmount}px towards sad`);
     }
 
     if (scaledResult['country.Modern.indie folk']) {
+      console.log('🤠 Applying indie folk manual positioning...');
       const indieFolk = scaledResult['country.Modern.indie folk'];
       const shiftAmount = 20;
       // Move "down" - towards lower valence (sad)
       indieFolk.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
       indieFolk.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
+      console.log(`  Shifted ${shiftAmount}px towards sad`);
     }
 
     // 3f. TECHNO: Move towards fast
