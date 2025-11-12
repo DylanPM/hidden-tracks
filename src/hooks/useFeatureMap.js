@@ -350,14 +350,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       processNode(manifest[genreKey], [genreKey]);
     });
 
-    // DEBUG: Log manifest features for problem genres AND compare to actual seed averages
+    // DEBUG: Manifest feature comparison (commented out)
+    // Uncomment to verify manifest features match actual seed profiles
+    /*
     const debugGenres = [
       'hip hop.Trap & Bass.trap',
       'hip hop.Alternative Hip Hop',
       'hip hop.Regional Hip Hop.west coast rap'
     ];
-
-    // Helper function to slugify (matches profile generation logic)
     const slugify = (text) => {
       return text
         .toLowerCase()
@@ -365,8 +365,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
     };
-
-    // Load actual seed profiles and compare to manifest
     debugGenres.forEach(async (path) => {
       const pathParts = path.split('.');
       let node = manifest;
@@ -375,33 +373,25 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         else if (node.subgenres?.[part]) node = node.subgenres[part];
         else return;
       }
-
       if (node && node.features && node.seeds) {
         console.log(`\n🔍 ${path} MANIFEST FEATURES (used for positioning):`);
         console.log(`  energy: ${node.features.energy?.toFixed(3)}`);
         console.log(`  valence: ${node.features.valence?.toFixed(3)}`);
         console.log(`  danceability: ${node.features.danceability?.toFixed(3)}`);
         console.log(`  Seeds count: ${node.seeds?.length || 0}`);
-
-        // Load actual seed profiles to calculate real averages
         try {
           const profiles = await Promise.all(
             node.seeds.map(async (seed) => {
               const artistSlug = slugify(seed.artist);
               const nameSlug = slugify(seed.name);
               const filename = `${artistSlug}_${nameSlug}.json`;
-
               try {
                 const res = await fetch(`/profiles/${filename}`);
                 if (!res.ok) return null;
                 const profile = await res.json();
-
                 const trackData = profile.tracks?.[0];
                 if (!trackData) return null;
-
-                // Calculate tempo_norm from raw tempo
                 const tempo_norm = Math.max(0, Math.min(1, (trackData.tempo - 60) / 120));
-
                 return {
                   energy: trackData.energy,
                   valence: trackData.valence,
@@ -417,11 +407,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               }
             })
           );
-
           const validProfiles = profiles.filter(p => p !== null);
-
           if (validProfiles.length > 0) {
-            // Calculate averages
             const avg = {
               energy: validProfiles.reduce((sum, p) => sum + p.energy, 0) / validProfiles.length,
               valence: validProfiles.reduce((sum, p) => sum + p.valence, 0) / validProfiles.length,
@@ -431,17 +418,13 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               tempo_norm: validProfiles.reduce((sum, p) => sum + p.tempo_norm, 0) / validProfiles.length,
               popularity: validProfiles.reduce((sum, p) => sum + p.popularity, 0) / validProfiles.length
             };
-
             console.log(`\n📊 ${path} ACTUAL SEED AVERAGES (${validProfiles.length} seeds loaded):`);
             console.log(`  energy: ${avg.energy.toFixed(3)} (manifest: ${node.features.energy?.toFixed(3)}, diff: ${(avg.energy - node.features.energy).toFixed(3)})`);
             console.log(`  valence: ${avg.valence.toFixed(3)} (manifest: ${node.features.valence?.toFixed(3)}, diff: ${(avg.valence - node.features.valence).toFixed(3)})`);
             console.log(`  danceability: ${avg.danceability.toFixed(3)} (manifest: ${node.features.danceability?.toFixed(3)}, diff: ${(avg.danceability - node.features.danceability).toFixed(3)})`);
-
-            // Highlight significant differences
             const energyDiff = Math.abs(avg.energy - node.features.energy);
             const valenceDiff = Math.abs(avg.valence - node.features.valence);
             const danceDiff = Math.abs(avg.danceability - node.features.danceability);
-
             if (energyDiff > 0.05 || valenceDiff > 0.05 || danceDiff > 0.05) {
               console.log(`\n⚠️  SIGNIFICANT MISMATCH DETECTED! Manifest features don't match actual seeds.`);
               if (energyDiff > 0.05) console.log(`  - Energy off by ${energyDiff.toFixed(3)}`);
@@ -454,6 +437,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         }
       }
     });
+    */
 
     // ADAPTIVE SCALING with log transform and collision avoidance
     const TARGET_RADIUS = 195; // Reduced from 220 to add padding (ring is at 245px, inner at 245)
@@ -841,7 +825,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       }
     });
 
-    // DEBUG: Check ambient position AFTER collision avoidance
+    // DEBUG: Collision avoidance checks (commented out)
+    /*
     if (scaledResult['electronic.ambient']) {
       const pos = scaledResult['electronic.ambient'];
       const angle = Math.atan2(pos.y, pos.x) * 180 / Math.PI;
@@ -851,8 +836,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       console.log(`  Final angle: ${normalizedAngle.toFixed(1)}°`);
       console.log(`  Change from initial: ${normalizedAngle.toFixed(1)}° vs 115.7° = ${(normalizedAngle - 115.7).toFixed(1)}° shift`);
     }
-
-    // DEBUG: Check if first track moved due to collision avoidance
     if (window.__firstTrackKey && scaledResult[window.__firstTrackKey]) {
       const finalPos = scaledResult[window.__firstTrackKey];
       const initialPos = window.__firstTrackInitialPos;
@@ -869,6 +852,159 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           console.log(`  Final: (${finalPos.x.toFixed(1)}, ${finalPos.y.toFixed(1)})`);
         }
       }
+    }
+    */
+
+    // MANUAL POSITIONING ADJUSTMENTS for overlapping genres
+    // Applied after collision avoidance to handle edge cases where semantic similarity
+    // creates overlaps that generic collision avoidance can't resolve well
+
+    // Helper: Get feature axis angles for reference
+    const acousticAngle = featureAngles['acousticness'];
+    const speechAngle = featureAngles['speechiness'];
+    const energyAngle = featureAngles['energy'];
+    const tempoAngle = featureAngles['tempo_norm'];
+    const valenceAngle = featureAngles['valence'];
+
+    // 3a. JAZZ SUBGENRES: Create 4-position splay for tightly clustered jazz styles
+    // These genres are semantically very similar, so we manually position them
+    // in a small cluster around their average semantic position
+    const jazzGenres = {
+      'jazz.Styles.fusion': scaledResult['jazz.Styles.fusion'],
+      'jazz.Eras.bebop': scaledResult['jazz.Eras.bebop'],
+      'jazz.Styles.cool jazz': scaledResult['jazz.Styles.cool jazz'],
+      'jazz.Eras.hard bop': scaledResult['jazz.Eras.hard bop']
+    };
+
+    if (Object.values(jazzGenres).every(pos => pos)) {
+      // Calculate center of cluster
+      const centerX = Object.values(jazzGenres).reduce((sum, pos) => sum + pos.x, 0) / 4;
+      const centerY = Object.values(jazzGenres).reduce((sum, pos) => sum + pos.y, 0) / 4;
+
+      // Determine which jazz genre is most acoustic, least niche, etc.
+      const jazzFeatures = {
+        'jazz.Styles.fusion': scaledResult['jazz.Styles.fusion'].features,
+        'jazz.Eras.bebop': scaledResult['jazz.Eras.bebop'].features,
+        'jazz.Styles.cool jazz': scaledResult['jazz.Styles.cool jazz'].features,
+        'jazz.Eras.hard bop': scaledResult['jazz.Eras.hard bop'].features
+      };
+
+      // Sort by acousticness (high to low) and popularity (low to high)
+      const sortedByAcoustic = Object.entries(jazzFeatures)
+        .sort(([,a], [,b]) => (b.acousticness || 0) - (a.acousticness || 0))
+        .map(([key]) => key);
+      const sortedByPopularity = Object.entries(jazzFeatures)
+        .sort(([,a], [,b]) => (a.popularity || 50) - (b.popularity || 50))
+        .map(([key]) => key);
+
+      // Assign positions: acoustic outer, acoustic inner, niche outer, niche inner
+      const SPLAY_RADIUS_OUTER = 30; // Distance from center for outer positions
+      const SPLAY_RADIUS_INNER = 15; // Distance from center for inner positions
+
+      // Position 1: Most acoustic, outer (towards acoustic axis)
+      const acousticOuter = sortedByAcoustic[0];
+      scaledResult[acousticOuter].x = centerX + Math.cos(acousticAngle) * SPLAY_RADIUS_OUTER;
+      scaledResult[acousticOuter].y = centerY + Math.sin(acousticAngle) * SPLAY_RADIUS_OUTER;
+
+      // Position 2: Second most acoustic, inner (towards acoustic axis)
+      const acousticInner = sortedByAcoustic[1];
+      scaledResult[acousticInner].x = centerX + Math.cos(acousticAngle) * SPLAY_RADIUS_INNER;
+      scaledResult[acousticInner].y = centerY + Math.sin(acousticAngle) * SPLAY_RADIUS_INNER;
+
+      // Position 3: Most niche (least popular), outer (towards niche/away from popular)
+      const nicheOuter = sortedByPopularity[0];
+      const popularityAngle = featureAngles['popularity'];
+      const nicheAngle = popularityAngle + Math.PI; // Opposite direction
+      scaledResult[nicheOuter].x = centerX + Math.cos(nicheAngle) * SPLAY_RADIUS_OUTER;
+      scaledResult[nicheOuter].y = centerY + Math.sin(nicheAngle) * SPLAY_RADIUS_OUTER;
+
+      // Position 4: Second most niche, inner
+      const nicheInner = sortedByPopularity[1];
+      scaledResult[nicheInner].x = centerX + Math.cos(nicheAngle) * SPLAY_RADIUS_INNER;
+      scaledResult[nicheInner].y = centerY + Math.sin(nicheAngle) * SPLAY_RADIUS_INNER;
+    }
+
+    // 3b. PUNK AND METAL: Push apart
+    if (scaledResult['rock.Heavy.punk'] && scaledResult['rock.Heavy.metal']) {
+      const punk = scaledResult['rock.Heavy.punk'];
+      const metal = scaledResult['rock.Heavy.metal'];
+      const dx = metal.x - punk.x;
+      const dy = metal.y - punk.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const MIN_SEPARATION = 60; // Minimum distance between punk and metal
+
+      if (dist < MIN_SEPARATION) {
+        const pushDist = (MIN_SEPARATION - dist) / 2;
+        const angle = Math.atan2(dy, dx);
+        punk.x -= Math.cos(angle) * pushDist;
+        punk.y -= Math.sin(angle) * pushDist;
+        metal.x += Math.cos(angle) * pushDist;
+        metal.y += Math.sin(angle) * pushDist;
+      }
+    }
+
+    // 3c. EAST COAST AND SOUTHERN RAP: Push apart
+    if (scaledResult['hip hop.Regional Hip Hop.east coast rap'] && scaledResult['hip hop.Regional Hip Hop.southern hip hop']) {
+      const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast rap'];
+      const southern = scaledResult['hip hop.Regional Hip Hop.southern hip hop'];
+      const dx = southern.x - eastCoast.x;
+      const dy = southern.y - eastCoast.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const MIN_SEPARATION = 50;
+
+      if (dist < MIN_SEPARATION) {
+        const pushDist = (MIN_SEPARATION - dist) / 2;
+        const angle = Math.atan2(dy, dx);
+        eastCoast.x -= Math.cos(angle) * pushDist;
+        eastCoast.y -= Math.sin(angle) * pushDist;
+        southern.x += Math.cos(angle) * pushDist;
+        southern.y += Math.sin(angle) * pushDist;
+      }
+    }
+
+    // 3d. WEST COAST RAP: User noted it seems too sad - no adjustment needed yet,
+    // waiting to verify if manifest features are now correct
+
+    // 3e. COUNTRY SUBGENRES: Fine positioning adjustments
+    // Shift southern rock towards electric, move classic country down, move indie folk down
+    if (scaledResult['country.Modern.southern rock']) {
+      const southernRock = scaledResult['country.Modern.southern rock'];
+      const shiftAmount = 20; // 75% of node diameter (assuming ~27px diameter)
+      southernRock.x += Math.cos(energyAngle) * shiftAmount;
+      southernRock.y += Math.sin(energyAngle) * shiftAmount;
+    }
+
+    if (scaledResult['country.Traditional.classic country']) {
+      const classicCountry = scaledResult['country.Traditional.classic country'];
+      const shiftAmount = 20;
+      // Move "down" - towards lower valence (sad)
+      classicCountry.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
+      classicCountry.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
+    }
+
+    if (scaledResult['country.Modern.indie folk']) {
+      const indieFolk = scaledResult['country.Modern.indie folk'];
+      const shiftAmount = 20;
+      // Move "down" - towards lower valence (sad)
+      indieFolk.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
+      indieFolk.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
+    }
+
+    // 3f. TECHNO: Move towards fast
+    if (scaledResult['electronic.Subgenres.techno']) {
+      const techno = scaledResult['electronic.Subgenres.techno'];
+      const shiftAmount = 30;
+      techno.x += Math.cos(tempoAngle) * shiftAmount;
+      techno.y += Math.sin(tempoAngle) * shiftAmount;
+    }
+
+    // 3g. KPOP: Move away from sad
+    if (scaledResult['pop.Regional.k-pop']) {
+      const kpop = scaledResult['pop.Regional.k-pop'];
+      const shiftAmount = 30;
+      // Move towards happy (positive valence direction)
+      kpop.x += Math.cos(valenceAngle) * shiftAmount;
+      kpop.y += Math.sin(valenceAngle) * shiftAmount;
     }
 
     // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
