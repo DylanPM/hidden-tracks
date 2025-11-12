@@ -350,6 +350,32 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       processNode(manifest[genreKey], [genreKey]);
     });
 
+    // DEBUG: Log manifest features for problem genres
+    // Will compare to averaged features later
+    const debugGenres = [
+      'hip hop.Trap & Bass.trap',
+      'hip hop.Alternative Hip Hop',
+      'hip hop.Regional Hip Hop.west coast rap'
+    ];
+
+    debugGenres.forEach(path => {
+      const pathParts = path.split('.');
+      let node = manifest;
+      for (const part of pathParts) {
+        if (node[part]) node = node[part];
+        else if (node.subgenres?.[part]) node = node.subgenres[part];
+        else return;
+      }
+
+      if (node && node.features) {
+        console.log(`\n🔍 ${path} MANIFEST FEATURES (used for positioning):`);
+        console.log(`  energy: ${node.features.energy?.toFixed(3)}`);
+        console.log(`  valence: ${node.features.valence?.toFixed(3)}`);
+        console.log(`  danceability: ${node.features.danceability?.toFixed(3)}`);
+        console.log(`  Seeds count: ${node.seeds?.length || 0}`);
+      }
+    });
+
     // ADAPTIVE SCALING with log transform and collision avoidance
     const TARGET_RADIUS = 195; // Reduced from 220 to add padding (ring is at 245px, inner at 245)
 
