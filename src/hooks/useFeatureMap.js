@@ -767,14 +767,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       if (!hadCollision) break;
     }
 
-    // DEBUG: Log ambient collisions once
-    if (ambientCollisions.length > 0) {
-      console.log(`\n⚠️ AMBIENT COLLISIONS (first iteration):`);
-      ambientCollisions.forEach(collision => {
-        console.log(`  vs ${collision.other} (${collision.relationship}): ${collision.distance}px (min: ${collision.minDistance}px)`);
-      });
-    }
-
     // Final clamping pass to ensure ALL nodes stay within boundary
     Object.keys(scaledResult).forEach(key => {
       const node = scaledResult[key];
