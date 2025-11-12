@@ -1555,7 +1555,7 @@ export function GenreConstellationSelect({ onLaunch }) {
       </div>
 
       {/* Hidden audio preview iframe for UK garage tracks on hover */}
-      {hoveredItem?.type === 'track' &&
+      {/* {hoveredItem?.type === 'track' &&
        hoveredItem?.track?.uri &&
        viewStack.some(path => path.toLowerCase().includes('uk garage')) && (
         <iframe
@@ -1572,7 +1572,7 @@ export function GenreConstellationSelect({ onLaunch }) {
           allow="autoplay; encrypted-media"
           title="Audio Preview"
         />
-      )}
+      )} */}
 
       {/* Animations */}
       <style>{`
