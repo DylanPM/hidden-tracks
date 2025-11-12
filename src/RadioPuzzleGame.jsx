@@ -206,23 +206,39 @@ function RadioPuzzleGame() {
   // ============================================================================
 
   const loadProfileForSeed = async (seed) => {
-    if (!seed || !seed.filename) {
-      console.error('❌ No filename on seed:', seed);
+    if (!seed || (!seed.filename && (!seed.artist || !seed.name))) {
+      console.error('❌ No filename or artist/name on seed:', seed);
       return;
     }
-    
+
     if (profileLoadingRef.current) {
       console.log('⏭️ Profile already loading, ignoring duplicate request');
       return;
     }
-    
+
     try {
       profileLoadingRef.current = true;
       setPhase('loading');
-      
-      console.log('📂 Loading profile:', seed.filename);
-      
-      const response = await fetch(`/profiles/${seed.filename}`);
+
+      // Helper function to slugify text (matches profile generation logic)
+      const slugify = (text) => {
+        return text
+          .toLowerCase()
+          .replace(/['']/g, '-') // Replace apostrophes with hyphens
+          .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+          .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+      };
+
+      // Construct actual filename from artist and name fields
+      // Manifest format: artist-song-title.json (all hyphens)
+      // Actual format: artist_song-title.json (underscore separator)
+      const artistSlug = slugify(seed.artist);
+      const nameSlug = slugify(seed.name);
+      const actualFilename = `${artistSlug}_${nameSlug}.json`;
+
+      console.log('📂 Loading profile:', actualFilename);
+
+      const response = await fetch(`/profiles/${actualFilename}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
