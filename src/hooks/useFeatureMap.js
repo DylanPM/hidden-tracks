@@ -206,7 +206,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         });
       }
 
-      // Calculate weights - normalize each to unit direction for equal influence
+      // TOP-N DISTINCTIVE FEATURES APPROACH
+      // Instead of using all features (which averages away distinctiveness),
+      // use only the N most extreme features. This positions genres where their
+      // distinctive characteristics are, not at some averaged midpoint.
+      //
+      // Example: K-pop has high energy + high valence + moderate everything else
+      //   Old approach: Positioned near energy (averaged with moderate features)
+      //   New approach: Positioned BETWEEN energy and valence (its 2 distinctive traits)
+      const TOP_N_FEATURES = 2; // Use the 2 most extreme features per genre
+
+      // First, calculate all weights
+      const featureWeights = [];
       feature_angles.forEach(featureName => {
         if (activeFeatures[featureName] === false) return;
 
@@ -215,12 +226,25 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         percentile = applyContrastCurve(percentile, featureName);
 
         // Simple weight: positive = toward axis, negative = away from axis
-        // Keep it simple - just use the deviation from neutral (0.5)
         const weight = (percentile - 0.5) * 2; // Range: -1 to +1
 
-        const angle = featureAngles[featureName];
-        x += weight * Math.cos(angle);
-        y += weight * Math.sin(angle);
+        featureWeights.push({
+          name: featureName,
+          weight: weight,
+          absWeight: Math.abs(weight),
+          angle: featureAngles[featureName],
+          percentile: percentile
+        });
+      });
+
+      // Sort by absolute weight (most extreme first) and take top N
+      featureWeights.sort((a, b) => b.absWeight - a.absWeight);
+      const topFeatures = featureWeights.slice(0, TOP_N_FEATURES);
+
+      // Calculate position using ONLY the top N most distinctive features
+      topFeatures.forEach(feat => {
+        x += feat.weight * Math.cos(feat.angle);
+        y += feat.weight * Math.sin(feat.angle);
       });
 
       // Apply exaggeration AFTER summing to preserve balance
@@ -302,14 +326,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               ? averagedParentFeatures[genreKey]
               : node.features;
 
-            // DEBUG: Log specific genres to diagnose valence issues
+            // DEBUG: Log specific genres to show top-N features approach
             const debugKeys = ['pop.Regional.k-pop', 'pop.k-pop', 'pop.kpop'];
             if (debugKeys.includes(key)) {
-              console.log(`\n🔍 POSITION DEBUG: ${key}`);
+              console.log(`\n🔍 TOP-N FEATURES DEBUG: ${key}`);
               console.log(`  Raw features:`, features);
-              console.log(`  Feature angles order:`, feature_angles);
 
-              // Calculate and show each feature's contribution
+              // Calculate all weights like projectTo2D does
+              const debugWeights = [];
               feature_angles.forEach((fname, idx) => {
                 const rawVal = features?.[fname];
                 const q = quantiles[fname];
@@ -322,7 +346,19 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
                 }
                 const weight = (percentile - 0.5) * 2;
                 const angle = (idx * (Math.PI * 2) / feature_angles.length) * 180 / Math.PI;
-                console.log(`    ${fname}: raw=${rawVal?.toFixed(3)}, percentile=${percentile.toFixed(3)}, weight=${weight.toFixed(3)}, angle=${angle.toFixed(1)}°`);
+                debugWeights.push({ name: fname, raw: rawVal, percentile, weight, absWeight: Math.abs(weight), angle });
+              });
+
+              // Sort by absolute weight
+              debugWeights.sort((a, b) => b.absWeight - a.absWeight);
+
+              console.log(`  Using TOP 2 features only (most distinctive):`);
+              debugWeights.slice(0, 2).forEach((f, i) => {
+                console.log(`    ✓ ${i+1}. ${f.name}: weight=${f.weight.toFixed(3)} at ${f.angle.toFixed(1)}°`);
+              });
+              console.log(`  Excluded (moderate):`);
+              debugWeights.slice(2).forEach(f => {
+                console.log(`    ✗ ${f.name}: weight=${f.weight.toFixed(3)}`);
               });
             }
 
@@ -333,6 +369,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               const pos = rawResult[key];
               const finalAngle = (Math.atan2(pos.y, pos.x) * 180 / Math.PI + 360) % 360;
               console.log(`  Final position: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) at ${finalAngle.toFixed(1)}°`);
+              console.log(`  🎯 Should be between energy (51.4°) and happy (205.7°)`);
             }
           }
         }
@@ -835,6 +872,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const tempoAngle = featureAngles['tempo_norm'];
     const valenceAngle = featureAngles['valence'];
 
+    /* ========================================================================
+       MANUAL POSITIONING INTERVENTIONS (DISABLED FOR TESTING TOP-N APPROACH)
+       ========================================================================
+       These manual fixes were added to address overlaps and positioning issues
+       with the old vector-sum approach. With the new top-N distinctive features
+       approach, these may no longer be needed. Keeping them here commented out
+       so we can selectively re-enable if specific issues remain.
+       ======================================================================== */
+
+    /*
     // 3a. JAZZ SUBGENRES: Targeted manual adjustments
     // Jazz fusion: Move backwards toward center
     if (scaledResult['jazz.jazz fusion']) {
@@ -880,8 +927,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Move east coast rap left (towards wordy/niche, 9 o'clock direction)
     if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop']) {
       const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
-      // 9 o'clock is between speechiness (154°) and popularity (0°/360°)
-      // Average angle is around 257° (or Math.PI * 1.4)
       const leftAngle = Math.PI * 1.05; // Roughly 9 o'clock (189°)
       const shiftAmount = 40; // Width of genre title box
       eastCoast.x += Math.cos(leftAngle) * shiftAmount;
@@ -905,9 +950,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         southern.y += Math.sin(angle) * pushDist;
       }
     }
-
-    // 3d. WEST COAST RAP: User noted it seems too sad - no adjustment needed yet,
-    // waiting to verify if manifest features are now correct
 
     // 3e. COUNTRY SUBGENRES: Fine positioning adjustments
     if (scaledResult['country.southern rock']) {
@@ -946,6 +988,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       kpop.x += Math.cos(valenceAngle) * shiftAmount;
       kpop.y += Math.sin(valenceAngle) * shiftAmount;
     }
+    */
 
     // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
     // console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
