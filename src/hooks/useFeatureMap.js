@@ -207,21 +207,15 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         });
       }
 
-      // TOP-N DISTINCTIVE FEATURES APPROACH
-      // Instead of using all features (which averages away distinctiveness),
-      // use only the N most extreme features. This positions genres where their
-      // distinctive characteristics are, not at some averaged midpoint.
+      // GREEDY TRIANGLE ASSIGNMENT APPROACH
+      // Treat the 12 triangles as scarce spatial resources and assign genres to them
+      // using a greedy algorithm that maximizes each genre's "happiness" (extremeness)
       //
-      // Example: K-pop has high energy + high valence + moderate everything else
-      //   Old approach: Positioned near energy (averaged with moderate features)
-      //   New approach: Positioned BETWEEN energy and valence (its 2 distinctive traits)
-      //
-      // TOP_N = 3 allows similar genres (like jazz subgenres) to separate on their
-      // 3rd-most distinctive feature when their top 2 are identical
-      const TOP_N_FEATURES = 3; // Use the 3 most extreme features per genre
+      // This ensures genres are positioned where their disco floor actually extends,
+      // solving the mismatch between node position and disco floor visualization.
 
-      // First, calculate all weights
-      const featureWeights = [];
+      // Calculate all feature percentiles
+      const featurePercentiles = [];
       feature_angles.forEach(featureName => {
         if (activeFeatures[featureName] === false) return;
 
@@ -229,56 +223,70 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
 
-        // Simple weight: positive = toward axis, negative = away from axis
-        const weight = (percentile - 0.5) * 2; // Range: -1 to +1
+        // Calculate extremeness (distance from neutral 0.5)
+        const extremeness = Math.abs(percentile - 0.5);
 
-        featureWeights.push({
+        featurePercentiles.push({
           name: featureName,
-          weight: weight,
-          absWeight: Math.abs(weight),
-          angle: featureAngles[featureName],
-          percentile: percentile
+          percentile,
+          extremeness,
+          angle: featureAngles[featureName]
         });
       });
 
-      // Sort by absolute weight (most extreme first) and take top N
-      featureWeights.sort((a, b) => b.absWeight - a.absWeight);
-      const topFeatures = featureWeights.slice(0, TOP_N_FEATURES);
+      // Sort by extremeness (most distinctive first)
+      featurePercentiles.sort((a, b) => b.extremeness - a.extremeness);
 
-      // CENTROID + PUSH POSITIONING
-      // Calculate geometric center (centroid) of top-N features, then push toward most distinctive
-      // This positions nodes at the "spikes" of their disco floor polygon, avoiding clustering at parent center
+      // Find the MOST extreme feature (primary assignment)
+      const primaryFeature = featurePercentiles[0];
 
-      // Calculate centroid: average position of all top-N feature endpoints
-      let centroidX = 0, centroidY = 0;
-      topFeatures.forEach(feat => {
-        const distance = feat.absWeight; // Use absolute weight as distance
-        centroidX += distance * Math.cos(feat.angle);
-        centroidY += distance * Math.sin(feat.angle);
-      });
-      centroidX /= topFeatures.length;
-      centroidY /= topFeatures.length;
+      // Determine which triangle to assign to:
+      // Each feature has 2 triangles (high/low) at 30° intervals
+      // Triangle 0 = feature 0 high, Triangle 6 = feature 0 low, etc.
+      const featureIndex = feature_angles.indexOf(primaryFeature.name);
+      const numTriangles = feature_angles.length * 2;
+      const triangleAngleStep = (Math.PI * 2) / numTriangles; // 30° for 12 triangles
 
-      // Push from centroid toward most distinctive feature (highest absolute weight)
-      const mostDistinctive = topFeatures[0];
-      const distinctiveX = mostDistinctive.absWeight * Math.cos(mostDistinctive.angle);
-      const distinctiveY = mostDistinctive.absWeight * Math.sin(mostDistinctive.angle);
+      // Assign to high or low triangle based on percentile
+      const assignToHigh = primaryFeature.percentile > 0.5;
+      const triangleIndex = assignToHigh ? featureIndex : (featureIndex + feature_angles.length);
 
-      // Direction vector from centroid to most distinctive feature
-      const pushDirX = distinctiveX - centroidX;
-      const pushDirY = distinctiveY - centroidY;
-      const pushDirMag = Math.sqrt(pushDirX*pushDirX + pushDirY*pushDirY);
+      // Calculate center angle of assigned triangle
+      const assignedAngle = triangleIndex * triangleAngleStep;
 
-      // Normalize and scale by push factor
-      const PUSH_FACTOR = 0.5; // Controls how far from centroid to polygon spike
-      const normalizedPushX = (pushDirX / pushDirMag) * PUSH_FACTOR;
-      const normalizedPushY = (pushDirY / pushDirMag) * PUSH_FACTOR;
+      // Calculate radius based on extremeness of primary feature
+      // More extreme = further from center
+      const baseRadius = primaryFeature.extremeness * 2; // Scale 0-1 to 0-2
 
-      // Final position at polygon extremity
-      x = centroidX + normalizedPushX;
-      y = centroidY + normalizedPushY;
+      // Use secondary features for radial adjustment within the triangle
+      // This creates variation while staying in the assigned region
+      let radialAdjustment = 0;
+      if (featurePercentiles.length > 1) {
+        // Average extremeness of next 2 features (if available)
+        const secondaryExtremeness = featurePercentiles.slice(1, 3)
+          .reduce((sum, f) => sum + f.extremeness, 0) / Math.min(2, featurePercentiles.length - 1);
+        radialAdjustment = secondaryExtremeness * 0.3; // 30% influence
+      }
 
-      // Apply exaggeration AFTER summing to preserve balance
+      const finalRadius = baseRadius + radialAdjustment;
+
+      // Calculate final position within assigned triangle's angular range
+      // Add slight angular variation based on secondary features (±7.5° within 30° triangle)
+      let angularVariation = 0;
+      if (featurePercentiles.length > 1) {
+        const secondaryFeature = featurePercentiles[1];
+        // Use sign of secondary feature weight for variation direction
+        const secondaryWeight = (secondaryFeature.percentile - 0.5) * 2;
+        angularVariation = (secondaryWeight * 0.25) * (triangleAngleStep / 2); // ±25% of half-triangle width
+      }
+
+      const finalAngle = assignedAngle + angularVariation;
+
+      // Convert polar to Cartesian
+      x = Math.cos(finalAngle) * finalRadius;
+      y = Math.sin(finalAngle) * finalRadius;
+
+      // Apply exaggeration AFTER positioning
       x *= effectiveExaggeration;
       y *= effectiveExaggeration;
 
