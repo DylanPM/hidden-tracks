@@ -338,69 +338,157 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       };
     };
 
-    // Run auction for a group of siblings
+    // Run auction for a group of siblings with two-pass optimization
     const runTriangleAuction = (siblings, depth) => {
-      const assignments = {};
-      const takenTriangles = new Set();
+      // PASS 1: Greedy assignment by triangle preference (not overall extremeness)
+      // Assign triangles in order of how much each genre wants them
+      const triangleAssignments = {}; // triangleIndex -> sibling
+      const siblingAssignments = {}; // siblingKey -> triangleIndex
 
-      // Sort siblings by max extremeness (most distinctive picks first)
-      const sortedSiblings = siblings
-        .map(s => ({
-          ...s,
-          maxExtremeness: Math.max(...s.preferences.map(p => p.extremeness))
-        }))
-        .sort((a, b) => b.maxExtremeness - a.maxExtremeness);
+      // Collect all bids: each (sibling, triangle) pair with its preference score
+      const allBids = [];
+      siblings.forEach(sibling => {
+        sibling.preferences.forEach(pref => {
+          allBids.push({
+            sibling,
+            triangleIndex: pref.triangleIndex,
+            extremeness: pref.extremeness,
+            preference: pref
+          });
+        });
+      });
 
-      // Greedy assignment: each sibling picks their best available triangle
-      sortedSiblings.forEach(sibling => {
-        // Find best available triangle
-        const availablePrefs = sibling.preferences.filter(p => !takenTriangles.has(p.triangleIndex));
+      // Sort bids by extremeness (highest preference first)
+      allBids.sort((a, b) => b.extremeness - a.extremeness);
 
-        if (availablePrefs.length > 0) {
-          const chosen = availablePrefs[0]; // Already sorted by extremeness
-          takenTriangles.add(chosen.triangleIndex);
+      // Greedy assignment: process bids in order, assign if both parties available
+      allBids.forEach(bid => {
+        const triangleTaken = triangleAssignments[bid.triangleIndex] != null;
+        const siblingAssigned = siblingAssignments[bid.sibling.key] != null;
 
-          // Calculate position within assigned triangle
-          const numTriangles = feature_angles.length * 2;
-          const triangleAngleStep = (Math.PI * 2) / numTriangles;
-          const assignedAngle = chosen.angle;
-          const baseRadius = chosen.extremeness * 2;
-
-          // Secondary features add variation
-          let radialAdjustment = 0;
-          let angularVariation = 0;
-
-          if (sibling.preferences.length > 1) {
-            const secondaryExtremeness = sibling.preferences.slice(1, 3)
-              .reduce((sum, f) => sum + f.extremeness, 0) / Math.min(2, sibling.preferences.length - 1);
-            radialAdjustment = secondaryExtremeness * 0.3;
-
-            const secondaryFeature = sibling.preferences[1];
-            const secondaryWeight = (secondaryFeature.percentile - 0.5) * 2;
-            angularVariation = (secondaryWeight * 0.25) * (triangleAngleStep / 2);
-          }
-
-          const finalRadius = baseRadius + radialAdjustment;
-          const finalAngle = assignedAngle + angularVariation;
-
-          // Apply depth-based exaggeration
-          const depthExaggeration = depth === 0 ? 1.2 : (depth === 1 ? 1.2 : 1.1);
-          const featureCountExaggeration = 1.0; // Simplify for auction
-          const effectiveExaggeration = exaggeration * depthExaggeration * featureCountExaggeration;
-
-          // Convert to Cartesian
-          let x = Math.cos(finalAngle) * finalRadius;
-          let y = Math.sin(finalAngle) * finalRadius;
-
-          x *= effectiveExaggeration;
-          y *= effectiveExaggeration;
-
-          assignments[sibling.key] = {
-            x: x * projection_scale,
-            y: y * projection_scale
+        if (!triangleTaken && !siblingAssigned) {
+          triangleAssignments[bid.triangleIndex] = bid.sibling;
+          siblingAssignments[bid.sibling.key] = {
+            triangleIndex: bid.triangleIndex,
+            preference: bid.preference
           };
-        } else {
-          // No available triangles, position at center
+        }
+      });
+
+      // PASS 2: Check for beneficial swaps
+      // If sibling A got triangle X and sibling B got triangle Y,
+      // but B prefers X more than A does, and A prefers Y more than B does, swap
+      const MAX_SWAP_ITERATIONS = 3;
+      for (let iter = 0; iter < MAX_SWAP_ITERATIONS; iter++) {
+        let madeSwap = false;
+
+        const assignedSiblings = Object.keys(siblingAssignments);
+        for (let i = 0; i < assignedSiblings.length; i++) {
+          for (let j = i + 1; j < assignedSiblings.length; j++) {
+            const keyA = assignedSiblings[i];
+            const keyB = assignedSiblings[j];
+
+            const siblingA = siblings.find(s => s.key === keyA);
+            const siblingB = siblings.find(s => s.key === keyB);
+
+            const triangleA = siblingAssignments[keyA].triangleIndex;
+            const triangleB = siblingAssignments[keyB].triangleIndex;
+
+            // How much does A prefer its current triangle?
+            const aPreferenceForA = siblingA.preferences.find(p => p.triangleIndex === triangleA)?.extremeness || 0;
+            // How much does A prefer B's triangle?
+            const aPreferenceForB = siblingA.preferences.find(p => p.triangleIndex === triangleB)?.extremeness || 0;
+
+            // How much does B prefer its current triangle?
+            const bPreferenceForB = siblingB.preferences.find(p => p.triangleIndex === triangleB)?.extremeness || 0;
+            // How much does B prefer A's triangle?
+            const bPreferenceForA = siblingB.preferences.find(p => p.triangleIndex === triangleA)?.extremeness || 0;
+
+            // Calculate happiness improvement from swap
+            const currentHappiness = aPreferenceForA + bPreferenceForB;
+            const swappedHappiness = aPreferenceForB + bPreferenceForA;
+
+            // If swap improves total happiness by at least 0.05, do it
+            if (swappedHappiness > currentHappiness + 0.05) {
+              // Swap assignments
+              const tempA = siblingAssignments[keyA];
+              siblingAssignments[keyA] = {
+                triangleIndex: triangleB,
+                preference: siblingA.preferences.find(p => p.triangleIndex === triangleB)
+              };
+              siblingAssignments[keyB] = {
+                triangleIndex: triangleA,
+                preference: siblingB.preferences.find(p => p.triangleIndex === triangleA)
+              };
+
+              // Update triangle assignments
+              triangleAssignments[triangleA] = siblingB;
+              triangleAssignments[triangleB] = siblingA;
+
+              madeSwap = true;
+            }
+          }
+        }
+
+        if (!madeSwap) break; // No more beneficial swaps
+      }
+
+      // Convert assignments to positions
+      const assignments = {};
+      const numTriangles = feature_angles.length * 2;
+      const triangleAngleStep = (Math.PI * 2) / numTriangles;
+
+      Object.keys(siblingAssignments).forEach(siblingKey => {
+        const sibling = siblings.find(s => s.key === siblingKey);
+        const { triangleIndex, preference } = siblingAssignments[siblingKey];
+
+        if (!preference) {
+          assignments[siblingKey] = { x: 0, y: 0 };
+          return;
+        }
+
+        // Calculate position within assigned triangle
+        const assignedAngle = preference.angle;
+        const baseRadius = preference.extremeness * 2;
+
+        // Secondary features add variation
+        let radialAdjustment = 0;
+        let angularVariation = 0;
+
+        if (sibling.preferences.length > 1) {
+          const secondaryExtremeness = sibling.preferences.slice(1, 3)
+            .reduce((sum, f) => sum + f.extremeness, 0) / Math.min(2, sibling.preferences.length - 1);
+          radialAdjustment = secondaryExtremeness * 0.3;
+
+          const secondaryFeature = sibling.preferences[1];
+          const secondaryWeight = (secondaryFeature.percentile - 0.5) * 2;
+          angularVariation = (secondaryWeight * 0.25) * (triangleAngleStep / 2);
+        }
+
+        const finalRadius = baseRadius + radialAdjustment;
+        const finalAngle = assignedAngle + angularVariation;
+
+        // Apply depth-based exaggeration
+        const depthExaggeration = depth === 0 ? 1.2 : (depth === 1 ? 1.2 : 1.1);
+        const featureCountExaggeration = 1.0;
+        const effectiveExaggeration = exaggeration * depthExaggeration * featureCountExaggeration;
+
+        // Convert to Cartesian
+        let x = Math.cos(finalAngle) * finalRadius;
+        let y = Math.sin(finalAngle) * finalRadius;
+
+        x *= effectiveExaggeration;
+        y *= effectiveExaggeration;
+
+        assignments[siblingKey] = {
+          x: x * projection_scale,
+          y: y * projection_scale
+        };
+      });
+
+      // Handle any unassigned siblings (shouldn't happen but safety check)
+      siblings.forEach(sibling => {
+        if (!assignments[sibling.key]) {
           assignments[sibling.key] = { x: 0, y: 0 };
         }
       });
