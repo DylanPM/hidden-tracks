@@ -874,102 +874,24 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const tempoAngle = featureAngles['tempo_norm'];
     const valenceAngle = featureAngles['valence'];
 
-    // 3a. JAZZ SUBGENRES: Create 4-position splay for tightly clustered jazz styles
-    // These genres are semantically very similar, so we manually position them
-    // in a small cluster around their average semantic position
-
-    // DEBUG: Log available keys to find correct paths
+    // 3a. JAZZ SUBGENRES: Manual positioning DISABLED
+    // User feedback: Made jazz look worse, all on top of each other
+    // Reverting to automatic positioning while we investigate valence issues
+    /*
     console.log('🎷 Available jazz keys:', Object.keys(scaledResult).filter(k => k.startsWith('jazz.')));
-
     const jazzGenres = {
       'jazz.jazz fusion': scaledResult['jazz.jazz fusion'],
       'jazz.bebop': scaledResult['jazz.bebop'],
       'jazz.cool jazz': scaledResult['jazz.cool jazz'],
       'jazz.hard bop': scaledResult['jazz.hard bop']
     };
-
     if (Object.values(jazzGenres).every(pos => pos)) {
       console.log('🎷 Applying jazz manual positioning...');
-      // Calculate center of cluster
-      const centerX = Object.values(jazzGenres).reduce((sum, pos) => sum + pos.x, 0) / 4;
-      const centerY = Object.values(jazzGenres).reduce((sum, pos) => sum + pos.y, 0) / 4;
-      console.log(`  Center: (${centerX.toFixed(1)}, ${centerY.toFixed(1)})`);
-
-      // Determine which jazz genre is most acoustic, least niche, etc.
-      const jazzFeatures = {
-        'jazz.jazz fusion': scaledResult['jazz.jazz fusion'].features,
-        'jazz.bebop': scaledResult['jazz.bebop'].features,
-        'jazz.cool jazz': scaledResult['jazz.cool jazz'].features,
-        'jazz.hard bop': scaledResult['jazz.hard bop'].features
-      };
-
-      // Sort by acousticness (high to low) and popularity (low to high)
-      const sortedByAcoustic = Object.entries(jazzFeatures)
-        .sort(([,a], [,b]) => (b.acousticness || 0) - (a.acousticness || 0))
-        .map(([key]) => key);
-      const sortedByPopularity = Object.entries(jazzFeatures)
-        .sort(([,a], [,b]) => (a.popularity || 50) - (b.popularity || 50))
-        .map(([key]) => key);
-
-      // Assign positions: acoustic outer, acoustic inner, niche outer, niche inner
-      const SPLAY_RADIUS_OUTER = 30; // Distance from center for outer positions
-      const SPLAY_RADIUS_INNER = 15; // Distance from center for inner positions
-
-      // Position 1: Most acoustic, outer (towards acoustic axis)
-      const acousticOuter = sortedByAcoustic[0];
-      scaledResult[acousticOuter].x = centerX + Math.cos(acousticAngle) * SPLAY_RADIUS_OUTER;
-      scaledResult[acousticOuter].y = centerY + Math.sin(acousticAngle) * SPLAY_RADIUS_OUTER;
-
-      // Position 2: Second most acoustic, inner (towards acoustic axis)
-      const acousticInner = sortedByAcoustic[1];
-      scaledResult[acousticInner].x = centerX + Math.cos(acousticAngle) * SPLAY_RADIUS_INNER;
-      scaledResult[acousticInner].y = centerY + Math.sin(acousticAngle) * SPLAY_RADIUS_INNER;
-
-      // Position 3: Most niche (least popular), outer (towards niche/away from popular)
-      const nicheOuter = sortedByPopularity[0];
-      const popularityAngle = featureAngles['popularity'];
-      const nicheAngle = popularityAngle + Math.PI; // Opposite direction
-      scaledResult[nicheOuter].x = centerX + Math.cos(nicheAngle) * SPLAY_RADIUS_OUTER;
-      scaledResult[nicheOuter].y = centerY + Math.sin(nicheAngle) * SPLAY_RADIUS_OUTER;
-
-      // Position 4: Second most niche, inner
-      const nicheInner = sortedByPopularity[1];
-      scaledResult[nicheInner].x = centerX + Math.cos(nicheAngle) * SPLAY_RADIUS_INNER;
-      scaledResult[nicheInner].y = centerY + Math.sin(nicheAngle) * SPLAY_RADIUS_INNER;
-
-      console.log(`  Splayed: ${acousticOuter}, ${acousticInner}, ${nicheOuter}, ${nicheInner}`);
+      // ... jazz positioning code ...
     }
-
-    // 3a2. BEBOP AND HARD BOP: Extra separation (they're very similar)
-    if (scaledResult['jazz.bebop'] && scaledResult['jazz.hard bop']) {
-      const bebop = scaledResult['jazz.bebop'];
-      const hardBop = scaledResult['jazz.hard bop'];
-      const dx = hardBop.x - bebop.x;
-      const dy = hardBop.y - bebop.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const MIN_SEPARATION = 45; // Ensure at least 45px apart
-
-      if (dist < MIN_SEPARATION) {
-        const pushDist = (MIN_SEPARATION - dist) / 2;
-        const angle = Math.atan2(dy, dx);
-        bebop.x -= Math.cos(angle) * pushDist;
-        bebop.y -= Math.sin(angle) * pushDist;
-        hardBop.x += Math.cos(angle) * pushDist;
-        hardBop.y += Math.sin(angle) * pushDist;
-        console.log(`🎷 Pushed bebop/hard bop apart by ${pushDist.toFixed(1)}px`);
-      }
-    }
-
-    // 3a3. SWING: Push towards sad (floor shows dip there, but node is near happy)
-    if (scaledResult['jazz.swing']) {
-      console.log('🎷 Applying swing manual positioning...');
-      const swing = scaledResult['jazz.swing'];
-      const shiftAmount = 35; // Significant shift to match floor
-      // Move towards sad (opposite of happy/valence direction)
-      swing.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
-      swing.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
-      console.log(`  Shifted ${shiftAmount}px towards sad`);
-    }
+    // 3a2. BEBOP AND HARD BOP: Extra separation
+    // 3a3. SWING: Push towards sad
+    */
 
     // 3b. PUNK AND METAL: Push apart
     console.log('🎸 Available rock keys:', Object.keys(scaledResult).filter(k => k.startsWith('rock.')));
@@ -996,10 +918,24 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       }
     }
 
-    // 3c. EAST COAST AND SOUTHERN HIP HOP: Push apart
+    // 3c. EAST COAST AND SOUTHERN HIP HOP: Push apart and adjust east coast left
     console.log('🎤 Available hip hop keys:', Object.keys(scaledResult).filter(k => k.startsWith('hip hop.')));
+
+    // Move east coast rap left (towards wordy/niche, 9 o'clock direction)
+    if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop']) {
+      console.log('🎤 Moving east coast hip hop left...');
+      const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
+      // 9 o'clock is between speechiness (154°) and popularity (0°/360°)
+      // Average angle is around 257° (or Math.PI * 1.4)
+      const leftAngle = Math.PI * 1.05; // Roughly 9 o'clock (189°)
+      const shiftAmount = 40; // Width of genre title box
+      eastCoast.x += Math.cos(leftAngle) * shiftAmount;
+      eastCoast.y += Math.sin(leftAngle) * shiftAmount;
+      console.log(`  Shifted ${shiftAmount}px towards 9 o'clock`);
+    }
+
     if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop'] && scaledResult['hip hop.Regional Hip Hop.southern hip hop']) {
-      console.log('🎤 Applying east coast/southern hip hop manual positioning...');
+      console.log('🎤 Applying east coast/southern hip hop separation...');
       const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
       const southern = scaledResult['hip hop.Regional Hip Hop.southern hip hop'];
       const dx = southern.x - eastCoast.x;
@@ -1079,6 +1015,31 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       kpop.y += Math.sin(valenceAngle) * shiftAmount;
       console.log(`  Shifted ${shiftAmount}px towards happy`);
     }
+
+    // VALENCE DEBUGGING: Check genres that appear too sad
+    console.log('\n😢 VALENCE INVESTIGATION:');
+    console.log(`  Valence axis angle: ${(valenceAngle * 180 / Math.PI).toFixed(1)}°`);
+    const sadCheckGenres = [
+      'jazz.swing',
+      'hip hop.Regional Hip Hop.west coast rap',
+      'pop.Regional.k-pop',
+      'electronic.Subgenres.techno',
+      'electronic.Subgenres.house',
+      'electronic.Subgenres.synthwave'
+    ];
+    sadCheckGenres.forEach(key => {
+      if (scaledResult[key] && scaledResult[key].features) {
+        const pos = scaledResult[key];
+        const feat = pos.features;
+        const angle = Math.atan2(pos.y, pos.x) * 180 / Math.PI;
+        const normalizedAngle = (angle + 360) % 360;
+        console.log(`  ${key}:`);
+        console.log(`    Manifest valence: ${feat.valence?.toFixed(3)}`);
+        console.log(`    Position angle: ${normalizedAngle.toFixed(1)}°`);
+        console.log(`    Distance from center: ${Math.sqrt(pos.x*pos.x + pos.y*pos.y).toFixed(1)}px`);
+      }
+    });
+    console.log('');
 
     // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
     // console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');

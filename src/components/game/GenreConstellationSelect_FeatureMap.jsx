@@ -1298,8 +1298,17 @@ export function GenreConstellationSelect({ onLaunch }) {
             />
           ))}
 
-          {/* Items (genres/subgenres/tracks) */}
-          {items.map(item => {
+          {/* Items (genres/subgenres/tracks) - render hovered item last for z-index on top */}
+          {items
+            .sort((a, b) => {
+              // Hovered item goes last (appears on top in SVG)
+              const aIsHovered = hoveredItem?.key === a.key;
+              const bIsHovered = hoveredItem?.key === b.key;
+              if (aIsHovered) return 1;
+              if (bIsHovered) return -1;
+              return 0;
+            })
+            .map(item => {
             const isSelected = item.key === selectedNodeKey;
             const isHovered = hoveredItem?.key === item.key;
             const nodeRadius = 27; // Same size for all nodes
