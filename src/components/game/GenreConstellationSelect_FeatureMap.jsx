@@ -1094,8 +1094,9 @@ export function GenreConstellationSelect({ onLaunch }) {
             // (See "ANGLE CALCULATION SYSTEM" comment above for details)
             const numFeatures = displayFeatures.length;
             const featureAngleStep = (Math.PI * 2) / numFeatures;
-            // Larger radius for parent-level disco floor visibility (210px)
-            const maxRadius = 210;
+            // Disco floor radius extended to better fill visual space to ring (230px)
+            // Ring is at 245px, nodes clamped at 190px, so 230px gives good visual balance
+            const maxRadius = 230;
             const minRadius = 50;
 
             // Create points at evenly-spaced angles (one for each feature's high and low)
