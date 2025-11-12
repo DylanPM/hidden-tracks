@@ -338,88 +338,173 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       };
     };
 
+    // Run auction for a group of siblings
+    const runTriangleAuction = (siblings, depth) => {
+      const assignments = {};
+      const takenTriangles = new Set();
+
+      // Sort siblings by max extremeness (most distinctive picks first)
+      const sortedSiblings = siblings
+        .map(s => ({
+          ...s,
+          maxExtremeness: Math.max(...s.preferences.map(p => p.extremeness))
+        }))
+        .sort((a, b) => b.maxExtremeness - a.maxExtremeness);
+
+      // Greedy assignment: each sibling picks their best available triangle
+      sortedSiblings.forEach(sibling => {
+        // Find best available triangle
+        const availablePrefs = sibling.preferences.filter(p => !takenTriangles.has(p.triangleIndex));
+
+        if (availablePrefs.length > 0) {
+          const chosen = availablePrefs[0]; // Already sorted by extremeness
+          takenTriangles.add(chosen.triangleIndex);
+
+          // Calculate position within assigned triangle
+          const numTriangles = feature_angles.length * 2;
+          const triangleAngleStep = (Math.PI * 2) / numTriangles;
+          const assignedAngle = chosen.angle;
+          const baseRadius = chosen.extremeness * 2;
+
+          // Secondary features add variation
+          let radialAdjustment = 0;
+          let angularVariation = 0;
+
+          if (sibling.preferences.length > 1) {
+            const secondaryExtremeness = sibling.preferences.slice(1, 3)
+              .reduce((sum, f) => sum + f.extremeness, 0) / Math.min(2, sibling.preferences.length - 1);
+            radialAdjustment = secondaryExtremeness * 0.3;
+
+            const secondaryFeature = sibling.preferences[1];
+            const secondaryWeight = (secondaryFeature.percentile - 0.5) * 2;
+            angularVariation = (secondaryWeight * 0.25) * (triangleAngleStep / 2);
+          }
+
+          const finalRadius = baseRadius + radialAdjustment;
+          const finalAngle = assignedAngle + angularVariation;
+
+          // Apply depth-based exaggeration
+          const depthExaggeration = depth === 0 ? 1.2 : (depth === 1 ? 1.2 : 1.1);
+          const featureCountExaggeration = 1.0; // Simplify for auction
+          const effectiveExaggeration = exaggeration * depthExaggeration * featureCountExaggeration;
+
+          // Convert to Cartesian
+          let x = Math.cos(finalAngle) * finalRadius;
+          let y = Math.sin(finalAngle) * finalRadius;
+
+          x *= effectiveExaggeration;
+          y *= effectiveExaggeration;
+
+          assignments[sibling.key] = {
+            x: x * projection_scale,
+            y: y * projection_scale
+          };
+        } else {
+          // No available triangles, position at center
+          assignments[sibling.key] = { x: 0, y: 0 };
+        }
+      });
+
+      return assignments;
+    };
+
     // Compute positions for all genres and subgenres
     const rawResult = {};
-    const hardCodedKeys = new Set(); // Track which nodes have hard-coded positions
+    const hardCodedKeys = new Set();
 
     const processNode = (node, path = []) => {
       const key = path.join('.');
-      const depth = path.length - 1; // Root genres have depth 0
+      const depth = path.length - 1;
       const genreKey = path[0];
 
       if (node.features) {
-        // SPECIAL CASE: Song of the Day at center (0, 0) to evoke mystery
+        // SPECIAL CASE: Song of the Day at center
         if (node.isSongOfTheDay || genreKey === 'song of the day') {
-          // console.log('🎵 Song of the Day detected:', key, 'isSongOfTheDay:', node.isSongOfTheDay);
           rawResult[key] = { x: 0, y: 0 };
-          hardCodedKeys.add(key); // Mark as hard-coded to skip scaling
+          hardCodedKeys.add(key);
         }
-        // HARD-CODED POSITIONING: Root-level parent genres use optimal semantic placement
+        // HARD-CODED: Root-level parent genres
         else {
           const isRootGenre = depth === 0;
           if (isRootGenre && hardCodedAssignments[genreKey]) {
             rawResult[key] = getHardCodedPosition(hardCodedAssignments[genreKey]);
-            hardCodedKeys.add(key); // Mark as hard-coded to skip scaling
+            hardCodedKeys.add(key);
           }
-          // DYNAMIC POSITIONING: Subgenres and tracks use feature-based calculation
-          // For root-level parent genres not in hard-coded map, use averaged features
+          // DYNAMIC: Will be positioned by auction if has siblings, or individually if alone
           else {
-            const features = (isRootGenre && averagedParentFeatures[genreKey])
-              ? averagedParentFeatures[genreKey]
-              : node.features;
-
-            // DEBUG: Log specific genres to show top-N features approach
-            const debugKeys = ['pop.Regional.k-pop', 'pop.k-pop', 'pop.kpop'];
-            if (debugKeys.includes(key)) {
-              console.log(`\n🔍 TOP-N FEATURES DEBUG: ${key}`);
-              console.log(`  Raw features:`, features);
-
-              // Calculate all weights like projectTo2D does
-              const debugWeights = [];
-              feature_angles.forEach((fname, idx) => {
-                const rawVal = features?.[fname];
-                const q = quantiles[fname];
-                let percentile = 0.5;
-                if (rawVal != null && q) {
-                  if (rawVal <= q.p10) percentile = 0.1;
-                  else if (rawVal <= q.p50) percentile = 0.1 + 0.4 * ((rawVal - q.p10) / (q.p50 - q.p10));
-                  else if (rawVal <= q.p90) percentile = 0.5 + 0.4 * ((rawVal - q.p50) / (q.p90 - q.p50));
-                  else percentile = 0.9 + 0.1 * Math.min(1, (rawVal - q.p90) / (q.p90 - q.p50));
-                }
-                const weight = (percentile - 0.5) * 2;
-                const angle = (idx * (Math.PI * 2) / feature_angles.length) * 180 / Math.PI;
-                debugWeights.push({ name: fname, raw: rawVal, percentile, weight, absWeight: Math.abs(weight), angle });
-              });
-
-              // Sort by absolute weight
-              debugWeights.sort((a, b) => b.absWeight - a.absWeight);
-
-              console.log(`  Using TOP 3 features only (most distinctive):`);
-              debugWeights.slice(0, 3).forEach((f, i) => {
-                console.log(`    ✓ ${i+1}. ${f.name}: weight=${f.weight.toFixed(3)} at ${f.angle.toFixed(1)}°`);
-              });
-              console.log(`  Excluded (moderate):`);
-              debugWeights.slice(3).forEach(f => {
-                console.log(`    ✗ ${f.name}: weight=${f.weight.toFixed(3)}`);
-              });
-            }
-
-            rawResult[key] = projectTo2D(features, depth);
-
-            // Show final position for debug genres
-            if (debugKeys.includes(key)) {
-              const pos = rawResult[key];
-              const finalAngle = (Math.atan2(pos.y, pos.x) * 180 / Math.PI + 360) % 360;
-              console.log(`  Final position: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) at ${finalAngle.toFixed(1)}°`);
-              console.log(`  🎯 Should be between energy (51.4°) and happy (205.7°)`);
-            }
+            // Don't position yet - will be handled by auction below
           }
         }
       }
 
-      // ALWAYS process subgenres regardless of how parent was positioned
+      // Process subgenres with auction
       if (node.subgenres) {
-        Object.keys(node.subgenres).forEach(subkey => {
+        const subgenreKeys = Object.keys(node.subgenres);
+
+        // Collect all sibling preferences
+        const siblings = [];
+        subgenreKeys.forEach(subkey => {
+          const subnode = node.subgenres[subkey];
+          if (!subnode.features) return;
+
+          const siblingKey = [...path, subkey].join('.');
+          const features = subnode.features;
+
+          // Calculate triangle preferences
+          const trianglePreferences = [];
+          const numTriangles = feature_angles.length * 2;
+          const triangleAngleStep = (Math.PI * 2) / numTriangles;
+
+          feature_angles.forEach((featureName, featureIndex) => {
+            if (activeFeatures[featureName] === false) return;
+
+            const rawValue = features[featureName];
+            let percentile = normalizeFeature(rawValue, featureName);
+            percentile = applyContrastCurve(percentile, featureName);
+
+            const extremeness = Math.abs(percentile - 0.5);
+
+            if (extremeness > 0.15) {
+              const highTriangleIndex = featureIndex;
+              const lowTriangleIndex = featureIndex + feature_angles.length;
+
+              if (percentile > 0.5) {
+                trianglePreferences.push({
+                  triangleIndex: highTriangleIndex,
+                  featureName,
+                  extremeness,
+                  percentile,
+                  angle: highTriangleIndex * triangleAngleStep,
+                  isHigh: true
+                });
+              } else {
+                trianglePreferences.push({
+                  triangleIndex: lowTriangleIndex,
+                  featureName,
+                  extremeness,
+                  percentile,
+                  angle: lowTriangleIndex * triangleAngleStep,
+                  isHigh: false
+                });
+              }
+            }
+          });
+
+          trianglePreferences.sort((a, b) => b.extremeness - a.extremeness);
+
+          siblings.push({
+            key: siblingKey,
+            preferences: trianglePreferences,
+            features
+          });
+        });
+
+        // Run auction for siblings
+        const assignments = runTriangleAuction(siblings, depth + 1);
+        Object.assign(rawResult, assignments);
+
+        // Recursively process deeper subgenres
+        subgenreKeys.forEach(subkey => {
           processNode(node.subgenres[subkey], [...path, subkey]);
         });
       }
