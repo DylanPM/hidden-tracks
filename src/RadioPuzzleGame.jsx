@@ -177,6 +177,7 @@ function RadioPuzzleGame() {
     const convertedTracks = tracks.map(track => ({
       id: track.uri,
       name: track.name,
+      artist: track.artist, // Keep original artist field for filename construction
       artists: Array.isArray(track.artist) ? track.artist : [track.artist],
       filename: track.filename
     }));
