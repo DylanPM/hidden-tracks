@@ -806,6 +806,16 @@ export function GenreConstellationSelect({ onLaunch }) {
     const focusedNode = hoveredItem || selectedNode;
     if (!focusedNode || !manifest?.global) return null;
 
+    // TRACK LEVEL: Disable disco floor until user wins
+    // TODO: Future feature - reveal disco floor attributes after successfully completing a puzzle
+    // - Store completed puzzles in localStorage/sessionStorage
+    // - Check if current track.uri has been successfully played
+    // - Only show disco floor for tracks where user has won
+    // For now, disable disco floor entirely at track level
+    if (focusedNode.track || focusedNode.type === 'track') {
+      return null;
+    }
+
     // Determine path: parent/track use viewStack, regular node adds its key
     const pathArray = (focusedNode.isParent || focusedNode.track)
       ? viewStack

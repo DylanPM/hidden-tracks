@@ -412,31 +412,86 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const rawResult = {};
     const hardCodedKeys = new Set();
 
-    const processNode = (node, path = []) => {
-      const key = path.join('.');
-      const depth = path.length - 1;
-      const genreKey = path[0];
+    // STEP 1: Collect all root-level parent genres for auction
+    // Song of the Day stays at center, rest compete for triangles
+    const rootGenres = [];
+    Object.keys(manifest).forEach(genreKey => {
+      if (genreKey === 'global' || genreKey === 'build') return;
 
-      if (node.features) {
-        // SPECIAL CASE: Song of the Day at center
-        if (node.isSongOfTheDay || genreKey === 'song of the day') {
-          rawResult[key] = { x: 0, y: 0 };
-          hardCodedKeys.add(key);
-        }
-        // HARD-CODED: Root-level parent genres
-        else {
-          const isRootGenre = depth === 0;
-          if (isRootGenre && hardCodedAssignments[genreKey]) {
-            rawResult[key] = getHardCodedPosition(hardCodedAssignments[genreKey]);
-            hardCodedKeys.add(key);
-          }
-          // DYNAMIC: Will be positioned by auction if has siblings, or individually if alone
-          else {
-            // Don't position yet - will be handled by auction below
-          }
-        }
+      const genre = manifest[genreKey];
+      if (!genre.features) return;
+
+      // Skip Song of the Day and hard-coded genres
+      if (genre.isSongOfTheDay || genreKey === 'song of the day') {
+        rawResult[genreKey] = { x: 0, y: 0 };
+        hardCodedKeys.add(genreKey);
+        return;
       }
 
+      if (hardCodedAssignments[genreKey]) {
+        rawResult[genreKey] = getHardCodedPosition(hardCodedAssignments[genreKey]);
+        hardCodedKeys.add(genreKey);
+        return;
+      }
+
+      // Use averaged features for parent genres
+      const features = averagedParentFeatures[genreKey] || genre.features;
+
+      // Calculate triangle preferences
+      const trianglePreferences = [];
+      const numTriangles = feature_angles.length * 2;
+      const triangleAngleStep = (Math.PI * 2) / numTriangles;
+
+      feature_angles.forEach((featureName, featureIndex) => {
+        if (activeFeatures[featureName] === false) return;
+
+        const rawValue = features[featureName];
+        let percentile = normalizeFeature(rawValue, featureName);
+        percentile = applyContrastCurve(percentile, featureName);
+
+        const extremeness = Math.abs(percentile - 0.5);
+
+        if (extremeness > 0.15) {
+          const highTriangleIndex = featureIndex;
+          const lowTriangleIndex = featureIndex + feature_angles.length;
+
+          if (percentile > 0.5) {
+            trianglePreferences.push({
+              triangleIndex: highTriangleIndex,
+              featureName,
+              extremeness,
+              percentile,
+              angle: highTriangleIndex * triangleAngleStep,
+              isHigh: true
+            });
+          } else {
+            trianglePreferences.push({
+              triangleIndex: lowTriangleIndex,
+              featureName,
+              extremeness,
+              percentile,
+              angle: lowTriangleIndex * triangleAngleStep,
+              isHigh: false
+            });
+          }
+        }
+      });
+
+      trianglePreferences.sort((a, b) => b.extremeness - a.extremeness);
+
+      rootGenres.push({
+        key: genreKey,
+        preferences: trianglePreferences,
+        features
+      });
+    });
+
+    // Run auction for root genres
+    const rootAssignments = runTriangleAuction(rootGenres, 0);
+    Object.assign(rawResult, rootAssignments);
+
+    // STEP 2: Process subgenres for each root genre
+    const processNode = (node, path = []) => {
       // Process subgenres with auction
       if (node.subgenres) {
         const subgenreKeys = Object.keys(node.subgenres);
@@ -500,8 +555,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         });
 
         // Run auction for siblings
-        const assignments = runTriangleAuction(siblings, depth + 1);
-        Object.assign(rawResult, assignments);
+        if (siblings.length > 0) {
+          const assignments = runTriangleAuction(siblings, path.length);
+          Object.assign(rawResult, assignments);
+        }
 
         // Recursively process deeper subgenres
         subgenreKeys.forEach(subkey => {
