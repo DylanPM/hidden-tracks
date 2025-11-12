@@ -341,7 +341,10 @@ export function GenreConstellationSelect({ onLaunch }) {
         const tracks = await Promise.all(
           seeds.map(async seed => {
             try {
-              const res = await fetch(`/profiles/${seed.filename}`);
+              // Convert manifest filename format to actual file format
+              // Manifest: artist-song-title.json → Actual: artist_song-title.json
+              const actualFilename = seed.filename.replace('-', '_');
+              const res = await fetch(`/profiles/${actualFilename}`);
               if (!res.ok) return null;
               const profile = await res.json();
 
