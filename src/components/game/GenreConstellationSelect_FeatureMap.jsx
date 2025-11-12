@@ -788,8 +788,11 @@ export function GenreConstellationSelect({ onLaunch }) {
         enabled
       });
 
-      // Low end 180° opposite
-      const lowAngle = highAngle + Math.PI;
+      // Low end: For even number of features, offset by half-step to avoid overlap
+      // For odd number, use direct opposite (180°)
+      const isEvenFeatures = numFeatures % 2 === 0;
+      const lowOffset = isEvenFeatures ? Math.PI + (featureAngleStep / 2) : Math.PI;
+      const lowAngle = highAngle + lowOffset;
       labels.push({
         feature,
         end: 'low',
