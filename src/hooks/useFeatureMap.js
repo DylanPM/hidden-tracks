@@ -302,20 +302,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               ? averagedParentFeatures[genreKey]
               : node.features;
 
-            // DEBUG: Log rock subgenres to check features
-            const rockSubgenres = ['rock.Heavy.punk', 'rock.Heavy.metal', 'rock.Heavy.hard rock'];
-            if (rockSubgenres.includes(key)) {
-              console.log(`\n🎸 ROCK SUBGENRE DEBUG: ${key}`);
-              console.log(`  Depth: ${depth}`);
-              console.log(`  isRootGenre: ${isRootGenre}`);
-              console.log(`  Has own features:`, !!node.features);
-              console.log(`  Using features:`, features);
-              if (features) {
-                console.log(`  energy: ${features.energy?.toFixed(3)} (should be HIGH for rock)`);
-                console.log(`  valence: ${features.valence?.toFixed(3)}`);
-                console.log(`  danceability: ${features.danceability?.toFixed(3)}`);
-              }
-            }
 
             // DEBUG: Log first track found to check if it's using correct features
             if (depth >= 2 && !window.__firstTrackLogged) {
@@ -503,17 +489,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         console.log(`  Expected: near energy-high (205.7°) for rock music`);
       }
 
-      // DEBUG: Ambient positioning
-      if (key === 'electronic.ambient') {
-        const angle = Math.atan2(y * scale, x * scale) * 180 / Math.PI;
-        const normalizedAngle = (angle + 360) % 360;
-        console.log(`\n🔍 AMBIENT DEBUG:`);
-        console.log(`  Raw position: (${rawResult[key].x.toFixed(3)}, ${rawResult[key].y.toFixed(3)})`);
-        console.log(`  After adaptive scale (${adaptiveScale.toFixed(3)}): (${x.toFixed(3)}, ${y.toFixed(3)})`);
-        console.log(`  After radial spread: (${(x * scale).toFixed(3)}, ${(y * scale).toFixed(3)})`);
-        console.log(`  Final angle: ${normalizedAngle.toFixed(1)}°`);
-        console.log(`  Expected: ~107.6° (near acousticness at 102.9°)`);
-      }
 
       // DEBUG: Store initial scaled position for first track (before collision avoidance)
       if (key === window.__firstTrackKey && !window.__firstTrackInitialPos) {
@@ -698,9 +673,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return baseAngle;
     };
 
-    // DEBUG: Track ambient collisions (first iteration only)
-    let ambientCollisions = [];
-
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       const keys = Object.keys(scaledResult);
       let hadCollision = false;
@@ -745,17 +717,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
           if (distance < minDistance && distance > 0) {
             hadCollision = true;
-
-            // DEBUG: Track ALL collisions involving ambient (run once on first iteration)
-            if (iteration === 0 && (key1 === 'electronic.ambient' || key2 === 'electronic.ambient')) {
-              const otherKey = key1 === 'electronic.ambient' ? key2 : key1;
-              ambientCollisions.push({
-                other: otherKey,
-                distance: distance.toFixed(1),
-                minDistance: minDistance,
-                relationship: relationship
-              });
-            }
 
             // Push nodes apart using radial separation with exclusion zone avoidance
             // Apply damping: pushes get weaker each iteration to prevent spiraling
@@ -859,14 +820,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Applied after collision avoidance to handle edge cases where semantic similarity
     // creates overlaps that generic collision avoidance can't resolve well
 
-    // DEBUG: Log ALL genre structures to understand hierarchy
-    console.log('\n📋 GENRE STRUCTURE AUDIT:');
-    ['jazz', 'rock', 'hip hop', 'country', 'electronic', 'pop'].forEach(parent => {
-      const keys = Object.keys(scaledResult).filter(k => k.startsWith(parent + '.'));
-      console.log(`  ${parent}:`, keys.slice(0, 8)); // Show first 8 to keep it readable
-    });
-    console.log('');
-
     // Helper: Get feature axis angles for reference
     const acousticAngle = featureAngles['acousticness'];
     const speechAngle = featureAngles['speechiness'];
@@ -874,36 +827,36 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const tempoAngle = featureAngles['tempo_norm'];
     const valenceAngle = featureAngles['valence'];
 
-    // 3a. JAZZ SUBGENRES: Manual positioning DISABLED
-    // User feedback: Made jazz look worse, all on top of each other
-    // Reverting to automatic positioning while we investigate valence issues
-    /*
-    console.log('🎷 Available jazz keys:', Object.keys(scaledResult).filter(k => k.startsWith('jazz.')));
-    const jazzGenres = {
-      'jazz.jazz fusion': scaledResult['jazz.jazz fusion'],
-      'jazz.bebop': scaledResult['jazz.bebop'],
-      'jazz.cool jazz': scaledResult['jazz.cool jazz'],
-      'jazz.hard bop': scaledResult['jazz.hard bop']
-    };
-    if (Object.values(jazzGenres).every(pos => pos)) {
-      console.log('🎷 Applying jazz manual positioning...');
-      // ... jazz positioning code ...
+    // 3a. JAZZ SUBGENRES: Targeted manual adjustments
+    // Jazz fusion: Move backwards toward center
+    if (scaledResult['jazz.jazz fusion']) {
+      const fusion = scaledResult['jazz.jazz fusion'];
+      const distance = Math.sqrt(fusion.x * fusion.x + fusion.y * fusion.y);
+      const angle = Math.atan2(fusion.y, fusion.x);
+      // Move inward by one node diameter (27px) plus text width (~60px) = 87px
+      const newDistance = distance - 87;
+      fusion.x = Math.cos(angle) * newDistance;
+      fusion.y = Math.sin(angle) * newDistance;
     }
-    // 3a2. BEBOP AND HARD BOP: Extra separation
-    // 3a3. SWING: Push towards sad
-    */
+
+    // Bebop: Move up towards laid back (low danceability)
+    if (scaledResult['jazz.bebop']) {
+      const bebop = scaledResult['jazz.bebop'];
+      const danceabilityAngle = featureAngles['danceability'];
+      const laidBackAngle = danceabilityAngle + Math.PI; // Opposite direction (low danceability)
+      const shiftAmount = 13.5; // Half a node diameter
+      bebop.x += Math.cos(laidBackAngle) * shiftAmount;
+      bebop.y += Math.sin(laidBackAngle) * shiftAmount;
+    }
 
     // 3b. PUNK AND METAL: Push apart
-    console.log('🎸 Available rock keys:', Object.keys(scaledResult).filter(k => k.startsWith('rock.')));
     if (scaledResult['rock.Heavy.punk'] && scaledResult['rock.Heavy.metal']) {
-      console.log('🎸 Applying punk/metal manual positioning...');
       const punk = scaledResult['rock.Heavy.punk'];
       const metal = scaledResult['rock.Heavy.metal'];
       const dx = metal.x - punk.x;
       const dy = metal.y - punk.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const MIN_SEPARATION = 100; // Minimum distance between punk and metal (increased from 60)
-      console.log(`  Initial distance: ${dist.toFixed(1)}px`);
 
       if (dist < MIN_SEPARATION) {
         const pushDist = (MIN_SEPARATION - dist) / 2;
@@ -912,18 +865,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         punk.y -= Math.sin(angle) * pushDist;
         metal.x += Math.cos(angle) * pushDist;
         metal.y += Math.sin(angle) * pushDist;
-        console.log(`  Pushed apart by ${pushDist.toFixed(1)}px`);
-      } else {
-        console.log(`  No adjustment needed (already separated)`);
       }
     }
 
     // 3c. EAST COAST AND SOUTHERN HIP HOP: Push apart and adjust east coast left
-    console.log('🎤 Available hip hop keys:', Object.keys(scaledResult).filter(k => k.startsWith('hip hop.')));
-
     // Move east coast rap left (towards wordy/niche, 9 o'clock direction)
     if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop']) {
-      console.log('🎤 Moving east coast hip hop left...');
       const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
       // 9 o'clock is between speechiness (154°) and popularity (0°/360°)
       // Average angle is around 257° (or Math.PI * 1.4)
@@ -931,18 +878,15 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const shiftAmount = 40; // Width of genre title box
       eastCoast.x += Math.cos(leftAngle) * shiftAmount;
       eastCoast.y += Math.sin(leftAngle) * shiftAmount;
-      console.log(`  Shifted ${shiftAmount}px towards 9 o'clock`);
     }
 
     if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop'] && scaledResult['hip hop.Regional Hip Hop.southern hip hop']) {
-      console.log('🎤 Applying east coast/southern hip hop separation...');
       const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
       const southern = scaledResult['hip hop.Regional Hip Hop.southern hip hop'];
       const dx = southern.x - eastCoast.x;
       const dy = southern.y - eastCoast.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const MIN_SEPARATION = 70; // Increased from 50
-      console.log(`  Initial distance: ${dist.toFixed(1)}px`);
 
       if (dist < MIN_SEPARATION) {
         const pushDist = (MIN_SEPARATION - dist) / 2;
@@ -951,9 +895,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         eastCoast.y -= Math.sin(angle) * pushDist;
         southern.x += Math.cos(angle) * pushDist;
         southern.y += Math.sin(angle) * pushDist;
-        console.log(`  Pushed apart by ${pushDist.toFixed(1)}px`);
-      } else {
-        console.log(`  No adjustment needed (already separated)`);
       }
     }
 
@@ -961,71 +902,51 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // waiting to verify if manifest features are now correct
 
     // 3e. COUNTRY SUBGENRES: Fine positioning adjustments
-    // Shift southern rock towards electric, move classic country down, move indie folk down
-    console.log('🤠 Available country keys:', Object.keys(scaledResult).filter(k => k.startsWith('country.')));
-
     if (scaledResult['country.southern rock']) {
-      console.log('🤠 Applying southern rock manual positioning...');
       const southernRock = scaledResult['country.southern rock'];
-      const shiftAmount = 20; // 75% of node diameter (assuming ~27px diameter)
+      const shiftAmount = 20;
       southernRock.x += Math.cos(energyAngle) * shiftAmount;
       southernRock.y += Math.sin(energyAngle) * shiftAmount;
-      console.log(`  Shifted ${shiftAmount}px towards electric`);
     }
 
     if (scaledResult['country.classic country']) {
-      console.log('🤠 Applying classic country manual positioning...');
       const classicCountry = scaledResult['country.classic country'];
       const shiftAmount = 20;
-      // Move "down" - towards lower valence (sad)
       classicCountry.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
       classicCountry.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
-      console.log(`  Shifted ${shiftAmount}px towards sad`);
     }
 
     if (scaledResult['country.indie folk']) {
-      console.log('🤠 Applying indie folk manual positioning...');
       const indieFolk = scaledResult['country.indie folk'];
       const shiftAmount = 20;
-      // Move "down" - towards lower valence (sad)
       indieFolk.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
       indieFolk.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
-      console.log(`  Shifted ${shiftAmount}px towards sad`);
     }
 
     // 3f. TECHNO: Move towards fast
-    console.log('🎧 Available electronic keys:', Object.keys(scaledResult).filter(k => k.startsWith('electronic.')).slice(0, 8));
     if (scaledResult['electronic.Subgenres.techno']) {
-      console.log('🎧 Applying techno manual positioning...');
       const techno = scaledResult['electronic.Subgenres.techno'];
       const shiftAmount = 30;
       techno.x += Math.cos(tempoAngle) * shiftAmount;
       techno.y += Math.sin(tempoAngle) * shiftAmount;
-      console.log(`  Shifted ${shiftAmount}px towards fast`);
     }
 
-    // 3g. KPOP: Move away from sad (floor doesn't show it should be that sad)
-    console.log('💿 Available pop keys:', Object.keys(scaledResult).filter(k => k.startsWith('pop.')).slice(0, 8));
+    // 3g. KPOP: Move away from sad
     if (scaledResult['pop.Regional.k-pop']) {
-      console.log('💿 Applying k-pop manual positioning...');
       const kpop = scaledResult['pop.Regional.k-pop'];
-      const shiftAmount = 40; // Increased from 30 for more noticeable effect
-      // Move towards happy (positive valence direction)
+      const shiftAmount = 40;
       kpop.x += Math.cos(valenceAngle) * shiftAmount;
       kpop.y += Math.sin(valenceAngle) * shiftAmount;
-      console.log(`  Shifted ${shiftAmount}px towards happy`);
     }
 
     // VALENCE DEBUGGING: Check genres that appear too sad
     console.log('\n😢 VALENCE INVESTIGATION:');
     console.log(`  Valence axis angle: ${(valenceAngle * 180 / Math.PI).toFixed(1)}°`);
+
     const sadCheckGenres = [
       'jazz.swing',
       'hip hop.Regional Hip Hop.west coast rap',
-      'pop.Regional.k-pop',
-      'electronic.Subgenres.techno',
-      'electronic.Subgenres.house',
-      'electronic.Subgenres.synthwave'
+      // Will add correct electronic/pop keys after seeing what's available
     ];
     sadCheckGenres.forEach(key => {
       if (scaledResult[key] && scaledResult[key].features) {
