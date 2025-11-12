@@ -300,20 +300,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       };
     };
 
-    // HARD-CODED OPTIMAL REGION ASSIGNMENTS
-    // Root-level parent genres positioned by semantic fit to feature axes
+    // HARD-CODED OPTIMAL REGION ASSIGNMENTS - DISABLED
+    // Now using auction system for all parent genres (better placement)
     // Format: { genreKey: { region: 'feature-direction', position: 'single'|'outer'|'inner' } }
     const hardCodedAssignments = {
-      'pop': { region: 'popularity-high', position: 'single' },
-      'country': { region: 'energy-low', position: 'single' },
-      'Caribbean & African': { region: 'danceability-high', position: 'single' },
-      'classical': { region: 'acousticness-high', position: 'outer' },
-      'jazz': { region: 'acousticness-high', position: 'inner' },
-      // 'hip hop': { region: 'speechiness-high', position: 'single' }, // speechiness removed, let it calculate naturally
-      'electronic': { region: 'energy-high', position: 'single' },
-      'rock': { region: 'danceability-low', position: 'single' },
-      'latin': { region: 'valence-high', position: 'outer' },
-      'r&b / soul / funk': { region: 'valence-high', position: 'inner' }
+      // All disabled - let auction handle placement
     };
 
     // Calculate position from region assignment
@@ -1019,13 +1010,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           const isRoot2 = !key2.includes('.');
           const bothRoot = isRoot1 && isRoot2;
 
-          // SKIP collision avoidance for hard-coded root-level parent genres
-          // They are optimally placed and should not be moved by collision detection
-          const isHardCoded1 = isRoot1 && hardCodedAssignments[key1];
-          const isHardCoded2 = isRoot2 && hardCodedAssignments[key2];
-          if (isHardCoded1 && isHardCoded2) {
-            continue; // Both hard-coded, skip collision resolution
-          }
+          // Note: Hardcoded assignments removed - all genres use auction now
+          const isHardCoded1 = false;
+          const isHardCoded2 = false;
 
           // SKIP collision avoidance for subgenres from different parents
           // They are never visible at the same time, so they shouldn't interact

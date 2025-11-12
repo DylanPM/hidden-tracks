@@ -806,14 +806,10 @@ export function GenreConstellationSelect({ onLaunch }) {
     const focusedNode = hoveredItem || selectedNode;
     if (!focusedNode || !manifest?.global) return null;
 
-    // TRACK LEVEL: Disable disco floor until user wins
-    // TODO: Future feature - reveal disco floor attributes after successfully completing a puzzle
-    // - Store completed puzzles in localStorage/sessionStorage
-    // - Check if current track.uri has been successfully played
-    // - Only show disco floor for tracks where user has won
-    // For now, disable disco floor entirely at track level
+    // TRACK LEVEL: Show instruction circle instead of attribute disco floor
+    // Once user completes the puzzle, they'll discover the track's attributes
     if (focusedNode.track || focusedNode.type === 'track') {
-      return null;
+      return { isInstructionCircle: true }; // Special flag to render instruction text
     }
 
     // Determine path: parent/track use viewStack, regular node adds its key
@@ -1065,8 +1061,32 @@ export function GenreConstellationSelect({ onLaunch }) {
             );
           })}
 
-          {/* Disco floor - connected polygon based on feature weights */}
+          {/* Disco floor - connected polygon based on feature weights OR instruction circle */}
           {focusedNodeFeatureWeights && (() => {
+            // TRACK LEVEL: Show instruction circle
+            if (focusedNodeFeatureWeights.isInstructionCircle) {
+              const ringRadius = 245; // Inner ring radius
+              const circleRadius = ringRadius * 0.85; // 85% of ring size = ~208px
+
+              return (
+                <circle
+                  cx={CENTER_X}
+                  cy={CENTER_Y}
+                  r={circleRadius}
+                  fill="none"
+                  stroke="#1DB954"
+                  strokeWidth="3"
+                  opacity="0.6"
+                  strokeDasharray="8 8"
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1)'
+                  }}
+                />
+              );
+            }
+
+            // GENRE/SUBGENRE LEVEL: Show attribute disco floor
             if (displayFeatures.length === 0) return null;
 
             // 12 points at 30° intervals (matching triangle centers)
@@ -1477,6 +1497,41 @@ export function GenreConstellationSelect({ onLaunch }) {
                 </textPath>
               </text>
             </g>
+          )}
+
+          {/* Track instruction text orbiting around disco floor circle */}
+          {focusedNodeFeatureWeights?.isInstructionCircle && (
+            <>
+              <defs>
+                <path
+                  id="trackInstructionPath"
+                  d={`
+                    M ${CENTER_X} ${CENTER_Y}
+                    m -${245 * 0.85}, 0
+                    a ${245 * 0.85},${245 * 0.85} 0 1,1 ${245 * 0.85 * 2},0
+                    a ${245 * 0.85},${245 * 0.85} 0 1,1 -${245 * 0.85 * 2},0
+                  `}
+                />
+              </defs>
+              <g
+                style={{
+                  transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+                  animation: `orbit 12000ms linear infinite`,
+                  pointerEvents: 'none'
+                }}
+              >
+                <text fontSize={FONT_STYLES.large.fontSize} fill="#1DB954" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
+                  <textPath href="#trackInstructionPath" startOffset="0%">
+                    Successfully create a playlist from this song to discover its attributes
+                  </textPath>
+                </text>
+                <text fontSize={FONT_STYLES.large.fontSize} fill="#1DB954" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
+                  <textPath href="#trackInstructionPath" startOffset="50%">
+                    Successfully create a playlist from this song to discover its attributes
+                  </textPath>
+                </text>
+              </g>
+            </>
           )}
 
           {/* Root-level instruction text (outside ring) */}
