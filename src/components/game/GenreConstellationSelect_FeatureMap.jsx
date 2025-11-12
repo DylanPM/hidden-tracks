@@ -13,14 +13,14 @@ const FONT_STYLES = {
     letterSpacing: '1px'
   },
   large: {
-    // Focus ring text, outer ring labels
-    fontSize: 14,
+    // Focus ring text, outer ring labels, rectangle labels
+    fontSize: 16, // Increased from 14 to 16 (+2)
     fontWeight: 600,
     letterSpacing: '0.5px'
   },
   medium: {
     // Genre node title, inner node text
-    fontSize: 14,
+    fontSize: 15, // Increased from 14 to 15 (+1)
     fontWeight: 600,
     letterSpacing: '0px'
   },
@@ -1063,21 +1063,20 @@ export function GenreConstellationSelect({ onLaunch }) {
 
           {/* Disco floor - connected polygon based on feature weights OR instruction circle */}
           {focusedNodeFeatureWeights && (() => {
-            // TRACK LEVEL: Show instruction circle
+            // TRACK LEVEL: Show filled instruction circle (like disco floor at full radius)
             if (focusedNodeFeatureWeights.isInstructionCircle) {
-              const ringRadius = 245; // Inner ring radius
-              const circleRadius = ringRadius * 0.85; // 85% of ring size = ~208px
+              const instructionRadius = 215; // Fixed radius for track instruction circle
 
               return (
                 <circle
                   cx={CENTER_X}
                   cy={CENTER_Y}
-                  r={circleRadius}
-                  fill="none"
+                  r={instructionRadius}
+                  fill="#1DB954"
+                  fillOpacity="0.15"
                   stroke="#1DB954"
-                  strokeWidth="3"
-                  opacity="0.6"
-                  strokeDasharray="8 8"
+                  strokeWidth="2"
+                  strokeOpacity="0.4"
                   style={{
                     pointerEvents: 'none',
                     transition: 'opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1)'
@@ -1507,16 +1506,16 @@ export function GenreConstellationSelect({ onLaunch }) {
                   id="trackInstructionPath"
                   d={`
                     M ${CENTER_X} ${CENTER_Y}
-                    m -${245 * 0.85}, 0
-                    a ${245 * 0.85},${245 * 0.85} 0 1,1 ${245 * 0.85 * 2},0
-                    a ${245 * 0.85},${245 * 0.85} 0 1,1 -${245 * 0.85 * 2},0
+                    m -215, 0
+                    a 215,215 0 1,1 430,0
+                    a 215,215 0 1,1 -430,0
                   `}
                 />
               </defs>
               <g
                 style={{
                   transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  animation: `orbit 12000ms linear infinite`,
+                  animation: `orbit 16000ms linear infinite`,
                   pointerEvents: 'none'
                 }}
               >

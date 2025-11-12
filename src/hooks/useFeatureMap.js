@@ -742,7 +742,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     */
 
     // ADAPTIVE SCALING with log transform and collision avoidance
-    const TARGET_RADIUS = 195; // Reduced from 220 to add padding (ring is at 245px, inner at 245)
+    const TARGET_RADIUS = 210; // Increased from 195 to push nodes outward (ring is at 245px, inner at 245)
+    const MIN_RADIUS_FROM_CENTER = 70; // Exclusion zone around song of the day at center
 
     // Find maximum distance from center (INCLUDE hard-coded positions to keep scale factor consistent)
     // We include them in calculation but won't scale them later
@@ -1079,11 +1080,24 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       if (!hadCollision) break;
     }
 
-    // Final clamping pass to ensure ALL nodes stay within boundary
+    // Final clamping pass to ensure ALL nodes stay within boundary AND respect center exclusion zone
     Object.keys(scaledResult).forEach(key => {
+      // Skip song of the day - it stays at center
+      if (key === 'song of the day' || key.includes('song-of-the-day') || key.includes('songOfTheDay')) {
+        return;
+      }
+
       const node = scaledResult[key];
       const dist = Math.sqrt(node.x * node.x + node.y * node.y);
-      if (dist > TARGET_RADIUS) {
+
+      // Push away from center if too close (song of the day exclusion zone)
+      if (dist < MIN_RADIUS_FROM_CENTER && dist > 0) {
+        const scale = MIN_RADIUS_FROM_CENTER / dist;
+        node.x *= scale;
+        node.y *= scale;
+      }
+      // Clamp to outer boundary
+      else if (dist > TARGET_RADIUS) {
         const scale = TARGET_RADIUS / dist;
         node.x *= scale;
         node.y *= scale;
