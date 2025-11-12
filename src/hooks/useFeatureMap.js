@@ -350,15 +350,24 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       processNode(manifest[genreKey], [genreKey]);
     });
 
-    // DEBUG: Log manifest features for problem genres
-    // Will compare to averaged features later
+    // DEBUG: Log manifest features for problem genres AND compare to actual seed averages
     const debugGenres = [
       'hip hop.Trap & Bass.trap',
       'hip hop.Alternative Hip Hop',
       'hip hop.Regional Hip Hop.west coast rap'
     ];
 
-    debugGenres.forEach(path => {
+    // Helper function to slugify (matches profile generation logic)
+    const slugify = (text) => {
+      return text
+        .toLowerCase()
+        .replace(/['']/g, '-')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    };
+
+    // Load actual seed profiles and compare to manifest
+    debugGenres.forEach(async (path) => {
       const pathParts = path.split('.');
       let node = manifest;
       for (const part of pathParts) {
@@ -367,12 +376,82 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         else return;
       }
 
-      if (node && node.features) {
+      if (node && node.features && node.seeds) {
         console.log(`\n🔍 ${path} MANIFEST FEATURES (used for positioning):`);
         console.log(`  energy: ${node.features.energy?.toFixed(3)}`);
         console.log(`  valence: ${node.features.valence?.toFixed(3)}`);
         console.log(`  danceability: ${node.features.danceability?.toFixed(3)}`);
         console.log(`  Seeds count: ${node.seeds?.length || 0}`);
+
+        // Load actual seed profiles to calculate real averages
+        try {
+          const profiles = await Promise.all(
+            node.seeds.map(async (seed) => {
+              const artistSlug = slugify(seed.artist);
+              const nameSlug = slugify(seed.name);
+              const filename = `${artistSlug}_${nameSlug}.json`;
+
+              try {
+                const res = await fetch(`/profiles/${filename}`);
+                if (!res.ok) return null;
+                const profile = await res.json();
+
+                const trackData = profile.tracks?.[0];
+                if (!trackData) return null;
+
+                // Calculate tempo_norm from raw tempo
+                const tempo_norm = Math.max(0, Math.min(1, (trackData.tempo - 60) / 120));
+
+                return {
+                  energy: trackData.energy,
+                  valence: trackData.valence,
+                  danceability: trackData.danceability,
+                  acousticness: trackData.acousticness,
+                  speechiness: trackData.speechiness,
+                  tempo_norm: tempo_norm,
+                  popularity: trackData.popularity
+                };
+              } catch (e) {
+                console.warn(`Failed to load: ${filename}`);
+                return null;
+              }
+            })
+          );
+
+          const validProfiles = profiles.filter(p => p !== null);
+
+          if (validProfiles.length > 0) {
+            // Calculate averages
+            const avg = {
+              energy: validProfiles.reduce((sum, p) => sum + p.energy, 0) / validProfiles.length,
+              valence: validProfiles.reduce((sum, p) => sum + p.valence, 0) / validProfiles.length,
+              danceability: validProfiles.reduce((sum, p) => sum + p.danceability, 0) / validProfiles.length,
+              acousticness: validProfiles.reduce((sum, p) => sum + p.acousticness, 0) / validProfiles.length,
+              speechiness: validProfiles.reduce((sum, p) => sum + p.speechiness, 0) / validProfiles.length,
+              tempo_norm: validProfiles.reduce((sum, p) => sum + p.tempo_norm, 0) / validProfiles.length,
+              popularity: validProfiles.reduce((sum, p) => sum + p.popularity, 0) / validProfiles.length
+            };
+
+            console.log(`\n📊 ${path} ACTUAL SEED AVERAGES (${validProfiles.length} seeds loaded):`);
+            console.log(`  energy: ${avg.energy.toFixed(3)} (manifest: ${node.features.energy?.toFixed(3)}, diff: ${(avg.energy - node.features.energy).toFixed(3)})`);
+            console.log(`  valence: ${avg.valence.toFixed(3)} (manifest: ${node.features.valence?.toFixed(3)}, diff: ${(avg.valence - node.features.valence).toFixed(3)})`);
+            console.log(`  danceability: ${avg.danceability.toFixed(3)} (manifest: ${node.features.danceability?.toFixed(3)}, diff: ${(avg.danceability - node.features.danceability).toFixed(3)})`);
+
+            // Highlight significant differences
+            const energyDiff = Math.abs(avg.energy - node.features.energy);
+            const valenceDiff = Math.abs(avg.valence - node.features.valence);
+            const danceDiff = Math.abs(avg.danceability - node.features.danceability);
+
+            if (energyDiff > 0.05 || valenceDiff > 0.05 || danceDiff > 0.05) {
+              console.log(`\n⚠️  SIGNIFICANT MISMATCH DETECTED! Manifest features don't match actual seeds.`);
+              if (energyDiff > 0.05) console.log(`  - Energy off by ${energyDiff.toFixed(3)}`);
+              if (valenceDiff > 0.05) console.log(`  - Valence off by ${valenceDiff.toFixed(3)}`);
+              if (danceDiff > 0.05) console.log(`  - Danceability off by ${danceDiff.toFixed(3)}`);
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to load profiles for ${path}:`, e);
+        }
       }
     });
 
