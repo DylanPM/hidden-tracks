@@ -1040,8 +1040,10 @@ export function GenreConstellationSelect({ onLaunch }) {
             const highStartAngle = highAngle - segmentAngleStep / 2;
             const highEndAngle = highAngle + segmentAngleStep / 2;
 
-            // Low end segment: 180° opposite with same narrow width
-            const lowAngle = highAngle + Math.PI;
+            // Low end segment: For even features, offset by half-step to avoid overlap
+            const isEvenFeatures = displayFeatures.length % 2 === 0;
+            const lowOffset = isEvenFeatures ? Math.PI + (segmentAngleStep / 2) : Math.PI;
+            const lowAngle = highAngle + lowOffset;
             const lowStartAngle = lowAngle - segmentAngleStep / 2;
             const lowEndAngle = lowAngle + segmentAngleStep / 2;
 
