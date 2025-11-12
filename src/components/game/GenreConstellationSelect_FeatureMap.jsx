@@ -831,7 +831,8 @@ export function GenreConstellationSelect({ onLaunch }) {
 
     // TOP-N DISTINCTIVE FEATURES: Match the node positioning algorithm
     // Use only the most extreme features for disco floor too, so it matches node position
-    const TOP_N_FEATURES = 2;
+    // Increased to 3 to help similar genres (jazz subgenres) separate on 3rd feature
+    const TOP_N_FEATURES = 3;
 
     // Calculate all percentiles
     const allWeights = [];

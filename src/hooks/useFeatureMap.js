@@ -214,7 +214,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       // Example: K-pop has high energy + high valence + moderate everything else
       //   Old approach: Positioned near energy (averaged with moderate features)
       //   New approach: Positioned BETWEEN energy and valence (its 2 distinctive traits)
-      const TOP_N_FEATURES = 2; // Use the 2 most extreme features per genre
+      //
+      // TOP_N = 3 allows similar genres (like jazz subgenres) to separate on their
+      // 3rd-most distinctive feature when their top 2 are identical
+      const TOP_N_FEATURES = 3; // Use the 3 most extreme features per genre
 
       // First, calculate all weights
       const featureWeights = [];
@@ -352,12 +355,12 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               // Sort by absolute weight
               debugWeights.sort((a, b) => b.absWeight - a.absWeight);
 
-              console.log(`  Using TOP 2 features only (most distinctive):`);
-              debugWeights.slice(0, 2).forEach((f, i) => {
+              console.log(`  Using TOP 3 features only (most distinctive):`);
+              debugWeights.slice(0, 3).forEach((f, i) => {
                 console.log(`    ✓ ${i+1}. ${f.name}: weight=${f.weight.toFixed(3)} at ${f.angle.toFixed(1)}°`);
               });
               console.log(`  Excluded (moderate):`);
-              debugWeights.slice(2).forEach(f => {
+              debugWeights.slice(3).forEach(f => {
                 console.log(`    ✗ ${f.name}: weight=${f.weight.toFixed(3)}`);
               });
             }
