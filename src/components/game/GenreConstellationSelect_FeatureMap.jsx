@@ -209,15 +209,10 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Compute positions with global normalization (for root level)
   const { positions: rawGlobalPositions, averagedParentFeatures } = useFeatureMap(manifest, exaggeration, activeFeatures, null);
 
-  // Compute positions with local normalization (for nested levels)
-  // Use current level's children for actual positions
-  const siblingFeatures = viewStack.length > 0 && children.length > 0
-    ? children.map(c => c.data?.features).filter(f => f)
-    : null;
-  const { positions: rawLocalPositions } = useFeatureMap(manifest, exaggeration, activeFeatures, siblingFeatures);
-
   // Clamp positions to octagon boundary
-  const globalPositions = useMemo(() => {
+  // IMPORTANT: Always use global quantiles for semantic consistency
+  // This ensures node positions match disco floor rendering at all nesting levels
+  const positions = useMemo(() => {
     const AXIS_RADIUS = 250;
     const MAX_DISTANCE = AXIS_RADIUS - 60;
 
@@ -238,31 +233,6 @@ export function GenreConstellationSelect({ onLaunch }) {
     });
     return clamped;
   }, [rawGlobalPositions]);
-
-  const localPositions = useMemo(() => {
-    const AXIS_RADIUS = 250;
-    const MAX_DISTANCE = AXIS_RADIUS - 60;
-
-    const clamped = {};
-    Object.keys(rawLocalPositions).forEach(key => {
-      const pos = rawLocalPositions[key];
-      const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
-
-      if (distance > MAX_DISTANCE) {
-        const scale = MAX_DISTANCE / distance;
-        clamped[key] = {
-          x: pos.x * scale,
-          y: pos.y * scale
-        };
-      } else {
-        clamped[key] = pos;
-      }
-    });
-    return clamped;
-  }, [rawLocalPositions]);
-
-  // Use global positions for root, local for nested levels
-  const positions = viewStack.length === 0 ? globalPositions : localPositions;
 
   // Song of the Day always at center (0, 0) to evoke mystery
   const songOfTheDayPosition = useMemo(() => {

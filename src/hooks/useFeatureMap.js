@@ -931,29 +931,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       kpop.y += Math.sin(valenceAngle) * shiftAmount;
     }
 
-    // VALENCE DEBUGGING: Check genres that appear too sad
-    console.log('\n😢 VALENCE INVESTIGATION:');
-    console.log(`  Valence axis angle: ${(valenceAngle * 180 / Math.PI).toFixed(1)}°`);
-
-    const sadCheckGenres = [
-      'jazz.swing',
-      'hip hop.Regional Hip Hop.west coast rap',
-      // Will add correct electronic/pop keys after seeing what's available
-    ];
-    sadCheckGenres.forEach(key => {
-      if (scaledResult[key] && scaledResult[key].features) {
-        const pos = scaledResult[key];
-        const feat = pos.features;
-        const angle = Math.atan2(pos.y, pos.x) * 180 / Math.PI;
-        const normalizedAngle = (angle + 360) % 360;
-        console.log(`  ${key}:`);
-        console.log(`    Manifest valence: ${feat.valence?.toFixed(3)}`);
-        console.log(`    Position angle: ${normalizedAngle.toFixed(1)}°`);
-        console.log(`    Distance from center: ${Math.sqrt(pos.x*pos.x + pos.y*pos.y).toFixed(1)}px`);
-      }
-    });
-    console.log('');
-
     // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
     // console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
     // ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
