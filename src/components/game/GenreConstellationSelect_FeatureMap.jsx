@@ -364,16 +364,26 @@ export function GenreConstellationSelect({ onLaunch }) {
               }
               const profile = await res.json();
 
-              // Clamp track position too
+              // New JSON format: features are in tracks[0] instead of seed
+              const trackData = profile.tracks && profile.tracks[0];
+              if (!trackData) {
+                console.warn(`No track data for: ${actualFilename}`);
+                return null;
+              }
+
+              // Calculate tempo_norm from raw tempo (normalize to 0-1 range)
+              // Typical tempo range: 60-180 BPM
+              const tempo_norm = Math.max(0, Math.min(1, (trackData.tempo - 60) / 120));
+
               const rawPos = {
-                danceability: profile.seed.danceability,
-                energy: profile.seed.energy,
-                speechiness: profile.seed.speechiness,
-                acousticness: profile.seed.acousticness,
-                valence: profile.seed.valence,
-                tempo_norm: profile.seed.tempo_norm,
-                popularity: profile.seed.popularity,
-                instrumentalness: profile.seed.instrumentalness
+                danceability: trackData.danceability,
+                energy: trackData.energy,
+                speechiness: trackData.speechiness,
+                acousticness: trackData.acousticness,
+                valence: trackData.valence,
+                tempo_norm: tempo_norm,
+                popularity: trackData.popularity,
+                instrumentalness: trackData.instrumentalness
               };
 
               return {
