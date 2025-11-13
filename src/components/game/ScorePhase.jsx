@@ -21,7 +21,7 @@ export function ScorePhase({
     guessPoints += guess.basePoints;
     challengePlacements.forEach((placedGuessId, challengeIdx) => {
       if (placedGuessId === guess.id && guess.challengeScores[challengeIdx]) {
-        challengePoints += guess.challengeScores[challengeIdx];
+        challengePoints += Math.round(guess.challengeScores[challengeIdx]);
       }
     });
   });

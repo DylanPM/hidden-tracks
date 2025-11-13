@@ -110,7 +110,7 @@ export function TrackAttributes({
 
   return (
     <div className="bg-zinc-900 rounded-lg p-3">
-      <h3 className="text-white font-bold mb-2 text-xl">Track Attributes</h3>
+      <h3 className="text-white font-bold mb-2 text-xl">Starting Track Attributes</h3>
       <div className="grid grid-cols-2 gap-3">
         {attributes.map((attr) => {
           const config = ATTRIBUTE_CONFIG[attr];
@@ -135,56 +135,39 @@ export function TrackAttributes({
                 <Icon className="w-6 h-6" style={{ color: config.color }} />
                 <span className="text-white text-lg font-semibold">{config.label}</span>
               </div>
-              <p className="text-zinc-400 text-sm mb-4">{config.description}</p>
+              <p className="text-zinc-300 text-base mb-4">{config.description}</p>
 
-              {/* Binary gamut visualization with positioned circle */}
+              {/* Binary gamut visualization with number between words */}
               <div className="space-y-2">
-                {/* Labels */}
-                <div className="flex items-center justify-between text-sm">
+                {/* Labels with number in center */}
+                <div className="flex items-center justify-between text-base">
                   <span className={`${
                     isRevealed && position === 'low'
                       ? 'text-green-400 font-bold'
-                      : 'text-zinc-500'
+                      : 'text-zinc-400'
                   }`}>
                     {config.lowLabel}
                   </span>
+
+                  {/* Number between the words */}
+                  <span className={`text-xl font-bold ${
+                    isRevealed ? 'text-white' : 'text-zinc-600'
+                  }`}>
+                    {isRevealed && normalizedValue !== null ? normalizedValue : '?'}
+                  </span>
+
                   <span className={`${
                     isRevealed && position === 'high'
                       ? 'text-green-400 font-bold'
-                      : 'text-zinc-500'
+                      : 'text-zinc-400'
                   }`}>
                     {config.highLabel}
                   </span>
                 </div>
 
-                {/* Line with positioned circle */}
-                <div className="relative h-8 flex items-center">
-                  {/* Background line */}
-                  <div className="absolute w-full h-0.5 bg-zinc-700" />
-
-                  {/* Positioned circle with value */}
-                  {isRevealed && normalizedValue !== null ? (
-                    <div
-                      className="absolute flex items-center justify-center"
-                      style={{ left: `${clampPosition(normalizedValue)}%`, transform: 'translateX(-50%)' }}
-                    >
-                      <div className="relative">
-                        {/* Circle */}
-                        <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                          <span className="text-black text-sm font-bold">
-                            {normalizedValue}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    // Hidden state - show ??? in center
-                    <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center">
-                        <span className="text-zinc-500 text-sm font-bold">?</span>
-                      </div>
-                    </div>
-                  )}
+                {/* Simple line visualization */}
+                <div className="relative h-2 flex items-center">
+                  <div className="absolute w-full h-0.5 bg-zinc-600" />
                 </div>
               </div>
             </div>

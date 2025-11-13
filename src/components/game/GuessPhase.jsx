@@ -172,13 +172,13 @@ export function GuessPhase({
         await new Promise(resolve => setTimeout(resolve, 600));
       }
 
-      // Step 3: Highlight section
+      // Step 3: Highlight section and linger for 2.5s
       setHighlightClues(true);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 2500));
       setHighlightClues(false);
 
-      // Step 4: Peek up (scroll up slightly)
-      window.scrollBy({ top: -200, behavior: 'smooth' });
+      // Step 4: Peek up slightly (scroll up 150px to see bottom of guess options)
+      window.scrollBy({ top: -150, behavior: 'smooth' });
 
       await new Promise(resolve => setTimeout(resolve, 300));
       setIsAnimatingScroll(false);
@@ -392,20 +392,37 @@ export function GuessPhase({
 
           {/* 2. Make Your Guess + Guess Options */}
           <div>
-            <div className={`bg-zinc-900 rounded-lg p-4 mb-2 flex justify-between items-center transition-all ${
+            <div className={`bg-zinc-900 rounded-lg p-4 mb-2 transition-all ${
               flashGuessCounter ? 'ring-4 ring-green-500 ring-opacity-75 scale-105' : ''
             }`}>
-              <div>
-                <h3 className="text-white font-bold text-lg">Make Your Guess</h3>
-                <p className="text-zinc-400 text-sm">Click card to select</p>
-              </div>
-              <div className="text-right">
-                <div className={`text-5xl font-bold text-green-400 transition-all ${
-                  flashGuessCounter ? 'scale-110' : ''
-                }`}>
-                  {guesses.length}
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <h3 className="text-white font-bold text-lg">Make Your Guess</h3>
+                  <p className="text-zinc-400 text-sm">Click card to select</p>
                 </div>
-                <div className="text-sm text-green-500/70 font-semibold">of {maxGuesses || 6}</div>
+              </div>
+
+              {/* Visual counter: 6-5-4-3-2-1 with green circle on current */}
+              <div className="flex items-center gap-4">
+                {[...Array(maxGuesses || 6)].map((_, idx) => {
+                  const guessNum = (maxGuesses || 6) - idx;
+                  const isCurrent = guesses.length === guessNum;
+                  const isPast = guesses.length > guessNum;
+
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-1">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
+                        isCurrent
+                          ? 'bg-green-500 border-green-400 text-black scale-110'
+                          : isPast
+                          ? 'bg-zinc-700 border-zinc-600 text-zinc-500'
+                          : 'bg-zinc-800 border-zinc-600 text-zinc-400'
+                      } ${flashGuessCounter && isCurrent ? 'ring-4 ring-green-400' : ''}`}>
+                        <span className="text-xl font-bold">{guessNum}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -473,48 +490,34 @@ export function GuessPhase({
             />
           )}
 
-          {/* 4. Reveal Attributes - Split into 2 colored boxes */}
+          {/* 4. Reveal Starting Track Attributes - Split into 2 colored boxes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Left box: How to use */}
-            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3">
-              <h3 className="text-white font-bold text-base mb-3">Reveal Attributes</h3>
-              <div className="flex items-center gap-1.5 mb-3">
+            {/* Left box: How to use - Click anywhere to activate */}
+            <div
+              onClick={() => hintsUsed < maxHints && !pendingHintUse && handleHintClick()}
+              className={`bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 ${
+                hintsUsed < maxHints && !pendingHintUse ? 'cursor-pointer hover:bg-blue-900/30 transition' : ''
+              }`}
+            >
+              <h3 className="text-white font-bold text-lg mb-4">Reveal Starting Track Attributes</h3>
+              <div className="flex items-center gap-3 mb-4">
                 {[0, 1, 2].map((idx) => {
                   const isUsed = idx < hintsUsed;
-                  const isCurrent = idx === hintsUsed && pendingHintUse;
-                  const isAvailable = hintsUsed === idx;
 
                   return (
-                    <button
+                    <Search
                       key={idx}
-                      onClick={handleHintClick}
-                      disabled={isUsed || !isAvailable}
-                      className={`transition ${
-                        isUsed
-                          ? 'text-zinc-700 cursor-not-allowed'
-                          : isCurrent
-                          ? 'text-green-400 animate-pulse'
-                          : isAvailable
-                          ? 'text-green-500 hover:text-green-400 cursor-pointer'
-                          : 'text-zinc-600 cursor-not-allowed'
+                      className={`w-10 h-10 transition ${
+                        isUsed ? 'text-zinc-700' : 'text-green-500'
                       }`}
-                      title={
-                        isUsed
-                          ? 'Reveal used'
-                          : isAvailable
-                          ? 'Click to use reveal, then select an attribute'
-                          : 'Previous reveals must be used first'
-                      }
-                    >
-                      <Search className="w-6 h-6" />
-                    </button>
+                    />
                   );
                 })}
               </div>
-              <p className="text-zinc-400 text-sm">
+              <p className="text-zinc-300 text-base">
                 {pendingHintUse
                   ? '👆 Click an attribute above to reveal it!'
-                  : 'Click a magnifying glass, then click an attribute to reveal'}
+                  : 'Click here, then click an attribute to reveal'}
               </p>
             </div>
 
