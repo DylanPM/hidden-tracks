@@ -14,8 +14,8 @@ const FONT_STYLES = {
   },
   large: {
     // Focus ring text, outer ring labels, rectangle labels
-    fontSize: 16, // Increased from 14 to 16 (+2)
-    fontWeight: 600,
+    fontSize: 18, // Increased from 16 to 18 (+2 more)
+    fontWeight: 700, // Increased from 600 to 700 for thicker text
     letterSpacing: '0.5px'
   },
   medium: {
@@ -29,6 +29,172 @@ const FONT_STYLES = {
     fontSize: 9,
     fontWeight: 500,
     letterSpacing: '0px'
+  }
+};
+
+// Color schemes for the visualization
+const COLOR_SCHEMES = {
+  // === SPOTIFY-INSPIRED SCHEMES ===
+  spotify_classic: {
+    name: "Spotify Classic",
+    primary: "#1DB954", // Spotify green
+    background: "#000000",
+    text: "#FFFFFF",
+    textSecondary: "#b7f7cf",
+    features: {
+      danceability: '#9333EA',
+      energy: '#DC2626',
+      speechiness: '#EAB308',
+      acousticness: '#16A34A',
+      valence: '#2563EB',
+      tempo_norm: '#0EA5E9',
+      popularity: '#EC4899'
+    }
+  },
+  spotify_purple: {
+    name: "Spotify Purple Haze",
+    primary: "#A855F7", // Purple
+    background: "#000000",
+    text: "#FFFFFF",
+    textSecondary: "#E9D5FF",
+    features: {
+      danceability: '#C026D3',
+      energy: '#DC2626',
+      speechiness: '#FBBF24',
+      acousticness: '#10B981',
+      valence: '#3B82F6',
+      tempo_norm: '#06B6D4',
+      popularity: '#F472B6'
+    }
+  },
+  spotify_blue: {
+    name: "Spotify Ocean",
+    primary: "#3B82F6", // Blue
+    background: "#000000",
+    text: "#FFFFFF",
+    textSecondary: "#BFDBFE",
+    features: {
+      danceability: '#8B5CF6',
+      energy: '#EF4444',
+      speechiness: '#F59E0B',
+      acousticness: '#059669',
+      valence: '#0EA5E9',
+      tempo_norm: '#06B6D4',
+      popularity: '#EC4899'
+    }
+  },
+  spotify_warm: {
+    name: "Spotify Sunset",
+    primary: "#F59E0B", // Amber
+    background: "#000000",
+    text: "#FFFFFF",
+    textSecondary: "#FDE68A",
+    features: {
+      danceability: '#A855F7',
+      energy: '#DC2626',
+      speechiness: '#FBBF24',
+      acousticness: '#10B981',
+      valence: '#F97316',
+      tempo_norm: '#0EA5E9',
+      popularity: '#EC4899'
+    }
+  },
+  spotify_neon: {
+    name: "Spotify Neon",
+    primary: "#22D3EE", // Cyan
+    background: "#000000",
+    text: "#FFFFFF",
+    textSecondary: "#A5F3FC",
+    features: {
+      danceability: '#C026D3',
+      energy: '#F43F5E',
+      speechiness: '#FDE047',
+      acousticness: '#4ADE80',
+      valence: '#60A5FA',
+      tempo_norm: '#22D3EE',
+      popularity: '#FB7185'
+    }
+  },
+  // === CUSTOM COOL SCHEMES ===
+  cyberpunk: {
+    name: "Cyberpunk",
+    primary: "#FF00FF", // Magenta
+    background: "#000000",
+    text: "#00FFFF",
+    textSecondary: "#FF1493",
+    features: {
+      danceability: '#FF00FF',
+      energy: '#FF0080',
+      speechiness: '#FFFF00',
+      acousticness: '#00FF00',
+      valence: '#00FFFF',
+      tempo_norm: '#0080FF',
+      popularity: '#FF0040'
+    }
+  },
+  vaporwave: {
+    name: "Vaporwave",
+    primary: "#FF71CE", // Hot pink
+    background: "#000000",
+    text: "#01CDFE",
+    textSecondary: "#B967FF",
+    features: {
+      danceability: '#B967FF',
+      energy: '#FF6C11',
+      speechiness: '#FFFB96',
+      acousticness: '#05FFA1',
+      valence: '#01CDFE',
+      tempo_norm: '#FF71CE',
+      popularity: '#FF8FD1'
+    }
+  },
+  midnight: {
+    name: "Midnight Galaxy",
+    primary: "#A78BFA", // Light purple
+    background: "#000000",
+    text: "#E0E7FF",
+    textSecondary: "#C7D2FE",
+    features: {
+      danceability: '#A78BFA',
+      energy: '#FB7185',
+      speechiness: '#FCD34D',
+      acousticness: '#6EE7B7',
+      valence: '#93C5FD',
+      tempo_norm: '#7DD3FC',
+      popularity: '#FBCFE8'
+    }
+  },
+  forest: {
+    name: "Electric Forest",
+    primary: "#10B981", // Emerald
+    background: "#000000",
+    text: "#D1FAE5",
+    textSecondary: "#A7F3D0",
+    features: {
+      danceability: '#8B5CF6',
+      energy: '#F59E0B',
+      speechiness: '#FBBF24',
+      acousticness: '#10B981',
+      valence: '#3B82F6',
+      tempo_norm: '#06B6D4',
+      popularity: '#F472B6'
+    }
+  },
+  fire: {
+    name: "Fire & Ice",
+    primary: "#F97316", // Orange
+    background: "#000000",
+    text: "#FFFFFF",
+    textSecondary: "#FED7AA",
+    features: {
+      danceability: '#C026D3',
+      energy: '#DC2626',
+      speechiness: '#FBBF24',
+      acousticness: '#06B6D4',
+      valence: '#3B82F6',
+      tempo_norm: '#F97316',
+      popularity: '#EC4899'
+    }
   }
 };
 
@@ -140,6 +306,11 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   // Difficulty (kept for compatibility)
   const [difficulty] = useState('medium');
+
+  // Color scheme selection
+  const [colorScheme, setColorScheme] = useState('spotify_classic');
+  const [showColorModal, setShowColorModal] = useState(false);
+  const activeColorScheme = COLOR_SCHEMES[colorScheme];
 
   // Filter out instrumentalness and speechiness from feature_angles for display
   // Speechiness removed because 95% of music normalizes to ~0.5 (neutral), adding noise without useful differentiation
@@ -911,6 +1082,93 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white relative font-sans overflow-hidden">
+      {/* Color scheme modal */}
+      {showColorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70">
+          <div className="w-full max-w-4xl rounded-2xl bg-zinc-900 shadow-xl border border-zinc-800 max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Choose Color Scheme</h2>
+                <button
+                  onClick={() => setShowColorModal(false)}
+                  className="text-zinc-400 hover:text-white transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-white mb-3">Spotify-Inspired</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {['spotify_classic', 'spotify_purple', 'spotify_blue', 'spotify_warm', 'spotify_neon'].map(schemeKey => {
+                    const scheme = COLOR_SCHEMES[schemeKey];
+                    return (
+                      <button
+                        key={schemeKey}
+                        onClick={() => {
+                          setColorScheme(schemeKey);
+                          setShowColorModal(false);
+                        }}
+                        className={`p-4 rounded-lg border-2 transition ${
+                          colorScheme === schemeKey
+                            ? 'border-white bg-zinc-800'
+                            : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500'
+                        }`}
+                      >
+                        <div className="text-white font-semibold mb-2">{scheme.name}</div>
+                        <div className="flex gap-1">
+                          {Object.values(scheme.features).slice(0, 7).map((color, i) => (
+                            <div
+                              key={i}
+                              className="w-4 h-4 rounded"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Alternative Vibes</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {['cyberpunk', 'vaporwave', 'midnight', 'forest', 'fire'].map(schemeKey => {
+                    const scheme = COLOR_SCHEMES[schemeKey];
+                    return (
+                      <button
+                        key={schemeKey}
+                        onClick={() => {
+                          setColorScheme(schemeKey);
+                          setShowColorModal(false);
+                        }}
+                        className={`p-4 rounded-lg border-2 transition ${
+                          colorScheme === schemeKey
+                            ? 'border-white bg-zinc-800'
+                            : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500'
+                        }`}
+                      >
+                        <div className="text-white font-semibold mb-2">{scheme.name}</div>
+                        <div className="flex gap-1">
+                          {Object.values(scheme.features).slice(0, 7).map((color, i) => (
+                            <div
+                              key={i}
+                              className="w-4 h-4 rounded"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Intro modal */}
       {showIntro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70">
@@ -936,6 +1194,15 @@ export function GenreConstellationSelect({ onLaunch }) {
           </div>
         </div>
       )}
+
+      {/* Color scheme button */}
+      <button
+        onClick={() => setShowColorModal(true)}
+        className="fixed top-4 right-4 z-40 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-semibold border border-zinc-700 transition"
+        title="Change color scheme"
+      >
+        🎨 Colors
+      </button>
 
       {/* Main canvas */}
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -1028,7 +1295,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             // Triangles 0 and 6 are feature 0, triangles 1 and 7 are feature 1, etc.
             const featureIndex = triangleIndex % displayFeatures.length;
             const feature = displayFeatures[featureIndex];
-            const featureColor = FEATURE_CONFIG[feature]?.color || '#1DB954';
+            const featureColor = activeColorScheme.features[feature] || activeColorScheme.primary;
 
             // Check if this feature is hovered (either high or low end)
             const isFeatureHovered = hoveredAxisLabel && hoveredAxisLabel.startsWith(feature + '-');
@@ -1072,9 +1339,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                   cx={CENTER_X}
                   cy={CENTER_Y}
                   r={instructionRadius}
-                  fill="#1DB954"
+                  fill="#ffffff"
                   fillOpacity="0.15"
-                  stroke="#1DB954"
+                  stroke="#ffffff"
                   strokeWidth="2"
                   strokeOpacity="0.4"
                   style={{
@@ -1187,7 +1454,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             const startAngle = label.angle - angleStep / 2;
             const endAngle = label.angle + angleStep / 2;
 
-            const featureColor = FEATURE_CONFIG[label.feature]?.color || '#22c55e';
+            const featureColor = activeColorScheme.features[label.feature] || activeColorScheme.primary;
 
             // Create arc path for this segment
             const outerStart = {
@@ -1294,10 +1561,10 @@ export function GenreConstellationSelect({ onLaunch }) {
               y1={CENTER_Y + selectedNodePos.y}
               x2={CENTER_X + item.x}
               y2={CENTER_Y + item.y}
-              stroke="#1DB954"
-              strokeWidth={hoveredItem?.key === item.key ? "4" : "2"}
+              stroke={activeColorScheme.primary}
+              strokeWidth={hoveredItem?.key === item.key ? "5" : "3"}
               opacity={hoveredItem?.key === item.key ? 0.8 : 0.2}
-              strokeDasharray={hoveredItem?.key === item.key ? "0" : "2 2"}
+              strokeDasharray={hoveredItem?.key === item.key ? "0" : "3 3"}
               style={{
                 transition: 'all 0.5s cubic-bezier(0.23, 1, 0.32, 1)'
               }}
@@ -1334,18 +1601,18 @@ export function GenreConstellationSelect({ onLaunch }) {
                     {/* Fill circle - white for song of the day, green for others */}
                     <circle
                       r={focusRingRadius}
-                      fill={item.isSongOfTheDay ? "#FFFFFF" : "#1DB954"}
+                      fill={item.isSongOfTheDay ? "#FFFFFF" : activeColorScheme.primary}
                       opacity="0.15"
                       style={{
                         pointerEvents: 'none',
                         transition: 'opacity 0.2s ease-in'
                       }}
                     />
-                    {/* Stroke ring - white for song of the day, green for others */}
+                    {/* Stroke ring - white for song of the day, primary color for others */}
                     <circle
                       r={focusRingRadius}
                       fill="none"
-                      stroke={item.isSongOfTheDay ? "#FFFFFF" : "#1DB954"}
+                      stroke={item.isSongOfTheDay ? "#FFFFFF" : activeColorScheme.primary}
                       strokeWidth="2"
                       opacity="0.6"
                       style={{
@@ -1359,9 +1626,9 @@ export function GenreConstellationSelect({ onLaunch }) {
                 {/* Main node circle */}
                 <circle
                   r={nodeRadius}
-                  fill={isSelected ? (item.isSongOfTheDay ? '#FFFFFF' : '#1DB954') : isHovered ? '#27272a' : '#18181b'}
+                  fill={isSelected ? (item.isSongOfTheDay ? '#FFFFFF' : activeColorScheme.primary) : isHovered ? '#27272a' : '#18181b'}
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
-                  stroke={item.isSongOfTheDay ? '#FFFFFF' : (isSelected ? '#1DB954' : item.isSelected ? '#eab308' : isHovered ? '#1DB954' : '#1DB954')}
+                  stroke={item.isSongOfTheDay ? '#FFFFFF' : (isSelected ? activeColorScheme.primary : item.isSelected ? '#eab308' : isHovered ? activeColorScheme.primary : activeColorScheme.primary)}
                   strokeWidth={isSelected ? '4' : item.isSelected ? '4' : isHovered ? '3' : '2'}
                   strokeOpacity={isSelected || isHovered ? 1.0 : 0.6}
                   style={{
@@ -1479,7 +1746,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
-              <text fontSize={FONT_STYLES.large.fontSize} fill={hoveredItem?.isSongOfTheDay || selectedNode?.isSongOfTheDay ? "#FFFFFF" : "#b7f7cf"} fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
+              <text fontSize={FONT_STYLES.large.fontSize} fill={hoveredItem?.isSongOfTheDay || selectedNode?.isSongOfTheDay ? activeColorScheme.text : activeColorScheme.textSecondary} fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem
                     ? (hoveredItem.isSongOfTheDay
@@ -1519,12 +1786,12 @@ export function GenreConstellationSelect({ onLaunch }) {
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize={FONT_STYLES.large.fontSize} fill="#1DB954" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
+                <text fontSize={FONT_STYLES.large.fontSize} fill="#ffffff" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
                   <textPath href="#trackInstructionPath" startOffset="0%">
                     Successfully create a playlist from this song to discover its attributes
                   </textPath>
                 </text>
-                <text fontSize={FONT_STYLES.large.fontSize} fill="#1DB954" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
+                <text fontSize={FONT_STYLES.large.fontSize} fill="#ffffff" fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
                   <textPath href="#trackInstructionPath" startOffset="50%">
                     Successfully create a playlist from this song to discover its attributes
                   </textPath>
@@ -1554,12 +1821,12 @@ export function GenreConstellationSelect({ onLaunch }) {
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
+                <text fontSize={FONT_STYLES.largest.fontSize} fill={activeColorScheme.textSecondary} fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#rootPath" startOffset="0%">
                     Click a genre to explore the musical landscape
                   </textPath>
                 </text>
-                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
+                <text fontSize={FONT_STYLES.largest.fontSize} fill={activeColorScheme.textSecondary} fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#rootPath" startOffset="50%">
                     Click a genre to explore the musical landscape
                   </textPath>
@@ -1589,12 +1856,12 @@ export function GenreConstellationSelect({ onLaunch }) {
                   pointerEvents: 'none'
                 }}
               >
-                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
+                <text fontSize={FONT_STYLES.largest.fontSize} fill={activeColorScheme.textSecondary} fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="0%">
                     You're in {viewStack.join(' > ')} • click anywhere inside the ring to zoom out a level
                   </textPath>
                 </text>
-                <text fontSize={FONT_STYLES.largest.fontSize} fill="#b7f7cf" fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
+                <text fontSize={FONT_STYLES.largest.fontSize} fill={activeColorScheme.textSecondary} fontWeight={FONT_STYLES.largest.fontWeight} letterSpacing={FONT_STYLES.largest.letterSpacing}>
                   <textPath href="#backPath" startOffset="50%">
                     You're in {viewStack.join(' > ')} • click anywhere inside the ring to zoom out a level
                   </textPath>

@@ -530,7 +530,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
         const extremeness = Math.abs(percentile - 0.5);
 
-        if (extremeness > 0.15) {
+        // Root genres need higher extremeness threshold to spread better
+        const extremenessThreshold = 0.2; // Increased from 0.15 to be more selective
+
+        if (extremeness > extremenessThreshold) {
           const highTriangleIndex = featureIndex;
           const lowTriangleIndex = featureIndex + feature_angles.length;
 
@@ -556,7 +559,15 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         }
       });
 
-      trianglePreferences.sort((a, b) => b.extremeness - a.extremeness);
+      // Sort by extremeness, with a boost for the MOST extreme feature
+      // This ensures each genre claims its strongest attribute first
+      trianglePreferences.sort((a, b) => {
+        // Apply 2x boost to the single most extreme feature
+        const maxExtremeness = Math.max(...trianglePreferences.map(p => p.extremeness));
+        const aScore = a.extremeness === maxExtremeness ? a.extremeness * 2 : a.extremeness;
+        const bScore = b.extremeness === maxExtremeness ? b.extremeness * 2 : b.extremeness;
+        return bScore - aScore;
+      });
 
       rootGenres.push({
         key: genreKey,
