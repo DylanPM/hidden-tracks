@@ -826,11 +826,16 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
   }
 
   if (phase === 'score') {
+    const hintsUsed = gameState.state.usedHints.filter(Boolean).length;
+
     return (
       <ScorePhase
+        seed={gameState.state.seed}
         guesses={gameState.state.guesses}
         challengePlacements={gameState.state.challengePlacements}
         challenges={gameState.state.challenges}
+        hintsUsed={hintsUsed}
+        maxHints={3}
         onPlayAgain={() => {
           gameState.resetGame();
           gameState.setMultipleChoice([]);
