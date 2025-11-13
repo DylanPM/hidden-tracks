@@ -63,10 +63,12 @@ export function ScorePhase({
   const getSpotifyId = (track) => {
     if (!track || !track.id) return '';
     const id = track.id;
-    if (id.startsWith('spotify:track:')) {
-      return id.split(':')[2];
+    // Ensure id is a string
+    const idString = typeof id === 'string' ? id : String(id);
+    if (idString.startsWith('spotify:track:')) {
+      return idString.split(':')[2];
     }
-    return id;
+    return idString;
   };
 
   const getArtistString = (track) => {

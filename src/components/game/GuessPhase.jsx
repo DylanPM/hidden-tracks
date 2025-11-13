@@ -59,12 +59,14 @@ export function GuessPhase({
   const getSpotifyId = (track) => {
     if (!track || !track.id) return '';
     const id = track.id;
+    // Ensure id is a string
+    const idString = typeof id === 'string' ? id : String(id);
     // If it's a URI (spotify:track:abc123), extract the ID
-    if (id.startsWith('spotify:track:')) {
-      return id.split(':')[2];
+    if (idString.startsWith('spotify:track:')) {
+      return idString.split(':')[2];
     }
     // If it's already just the ID (abc123), return as-is
-    return id;
+    return idString;
   };
 
   const getArtistString = (track) => {
