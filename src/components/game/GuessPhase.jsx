@@ -132,6 +132,16 @@ export function GuessPhase({
   const [pendingHintUse, setPendingHintUse] = useState(false);
   const maxHints = 3;
 
+  // Flash animation for guess counter
+  const [flashGuessCounter, setFlashGuessCounter] = useState(false);
+  useEffect(() => {
+    if (guesses.length > 0) {
+      setFlashGuessCounter(true);
+      const timer = setTimeout(() => setFlashGuessCounter(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [guesses.length]);
+
   const handleHintClick = () => {
     if (hintsUsed >= maxHints) return;
     setPendingHintUse(true);
@@ -337,14 +347,20 @@ export function GuessPhase({
 
           {/* 2. Make Your Guess + Guess Options */}
           <div>
-            <div className="bg-zinc-900 rounded-lg p-3 mb-2 flex justify-between items-center">
+            <div className={`bg-zinc-900 rounded-lg p-4 mb-2 flex justify-between items-center transition-all ${
+              flashGuessCounter ? 'ring-4 ring-green-500 ring-opacity-75 scale-105' : ''
+            }`}>
               <div>
-                <h3 className="text-white font-bold text-base">Make Your Guess</h3>
+                <h3 className="text-white font-bold text-lg">Make Your Guess</h3>
                 <p className="text-zinc-400 text-sm">Click card to select</p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-green-400">{guesses.length}</div>
-                <div className="text-xs text-green-500/70">of {maxGuesses || 6}</div>
+                <div className={`text-5xl font-bold text-green-400 transition-all ${
+                  flashGuessCounter ? 'scale-110' : ''
+                }`}>
+                  {guesses.length}
+                </div>
+                <div className="text-sm text-green-500/70 font-semibold">of {maxGuesses || 6}</div>
               </div>
             </div>
 
