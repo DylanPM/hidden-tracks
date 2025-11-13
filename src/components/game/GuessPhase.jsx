@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { HINT_POINTS, CHALLENGE_POINTS } from '../../constants/gameConfig';
 import { TrackAttributes } from './TrackAttributes';
@@ -140,6 +140,51 @@ export function GuessPhase({
       const timer = setTimeout(() => setFlashGuessCounter(false), 2000);
       return () => clearTimeout(timer);
     }
+  }, [guesses.length]);
+
+  // Refs for scroll targets
+  const correctGuessesRef = useRef(null);
+  const incorrectGuessesRef = useRef(null);
+  const whatWeKnowRef = useRef(null);
+  const [highlightClues, setHighlightClues] = useState(false);
+  const [isAnimatingScroll, setIsAnimatingScroll] = useState(false);
+
+  // Scroll animation sequence after a guess
+  useEffect(() => {
+    if (guesses.length === 0 || isAnimatingScroll) return;
+
+    const latestGuess = guesses[guesses.length - 1];
+    const isCorrect = !latestGuess.incorrect;
+
+    const runScrollSequence = async () => {
+      setIsAnimatingScroll(true);
+
+      // Step 1: Scroll to where the guess landed
+      const targetRef = isCorrect ? correctGuessesRef : incorrectGuessesRef;
+      if (targetRef.current) {
+        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+
+      // Step 2: Scroll to "What We Know So Far"
+      if (whatWeKnowRef.current) {
+        whatWeKnowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+
+      // Step 3: Highlight section
+      setHighlightClues(true);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setHighlightClues(false);
+
+      // Step 4: Peek up (scroll up slightly)
+      window.scrollBy({ top: -200, behavior: 'smooth' });
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setIsAnimatingScroll(false);
+    };
+
+    runScrollSequence();
   }, [guesses.length]);
 
   const handleHintClick = () => {
@@ -482,7 +527,12 @@ export function GuessPhase({
           </div>
 
           {/* 5. What We Know So Far */}
-          <div className="bg-zinc-900 rounded-lg p-4">
+          <div
+            ref={whatWeKnowRef}
+            className={`bg-zinc-900 rounded-lg p-4 transition-all ${
+              highlightClues ? 'ring-4 ring-green-500 ring-opacity-75 scale-105' : ''
+            }`}
+          >
             <h3 className="text-white font-bold mb-2 text-lg">What We Know So Far</h3>
             <p className="text-zinc-400 text-base mb-3">
               Clues from attribute reveals and your guesses
@@ -584,7 +634,7 @@ export function GuessPhase({
               <div className="space-y-6">
                 {/* Correct Guesses */}
                 {correctGuesses.length > 0 && (
-                  <div>
+                  <div ref={correctGuessesRef}>
                     <h3 className="text-green-400 font-bold mb-3 text-lg">
                       Correct Guesses ({correctGuesses.length})
                     </h3>
@@ -630,7 +680,7 @@ export function GuessPhase({
 
                 {/* Incorrect Guesses */}
                 {incorrectGuesses.length > 0 && (
-                  <div>
+                  <div ref={incorrectGuessesRef}>
                     <h3 className="text-red-400 font-bold mb-3 text-lg">
                       Not on Playlist ({incorrectGuesses.length})
                     </h3>
