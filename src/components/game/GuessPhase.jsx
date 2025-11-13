@@ -412,58 +412,57 @@ export function GuessPhase({
             />
           )}
 
-          {/* 4. Reveal Attributes (formerly Hints) - Compact Layout */}
-          <div className="bg-zinc-900 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <h3 className="text-white font-bold text-base">Reveal Attributes</h3>
-                <div className="flex items-center gap-1.5">
-                  {[0, 1, 2].map((idx) => {
-                    const isUsed = idx < hintsUsed;
-                    const isCurrent = idx === hintsUsed && pendingHintUse;
-                    const isAvailable = hintsUsed === idx;
+          {/* 4. Reveal Attributes - Split into 2 colored boxes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Left box: How to use */}
+            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3">
+              <h3 className="text-white font-bold text-base mb-3">Reveal Attributes</h3>
+              <div className="flex items-center gap-1.5 mb-3">
+                {[0, 1, 2].map((idx) => {
+                  const isUsed = idx < hintsUsed;
+                  const isCurrent = idx === hintsUsed && pendingHintUse;
+                  const isAvailable = hintsUsed === idx;
 
-                    return (
-                      <button
-                        key={idx}
-                        onClick={handleHintClick}
-                        disabled={isUsed || !isAvailable}
-                        className={`transition ${
-                          isUsed
-                            ? 'text-zinc-700 cursor-not-allowed'
-                            : isCurrent
-                            ? 'text-green-400 animate-pulse'
-                            : isAvailable
-                            ? 'text-green-500 hover:text-green-400 cursor-pointer'
-                            : 'text-zinc-600 cursor-not-allowed'
-                        }`}
-                        title={
-                          isUsed
-                            ? 'Reveal used'
-                            : isAvailable
-                            ? 'Click to use reveal, then select an attribute'
-                            : 'Previous reveals must be used first'
-                        }
-                      >
-                        <Search className="w-5 h-5" />
-                      </button>
-                    );
-                  })}
-                  <span className="text-zinc-400 text-sm ml-1">
-                    x{maxHints - hintsUsed}
-                  </span>
-                </div>
+                  return (
+                    <button
+                      key={idx}
+                      onClick={handleHintClick}
+                      disabled={isUsed || !isAvailable}
+                      className={`transition ${
+                        isUsed
+                          ? 'text-zinc-700 cursor-not-allowed'
+                          : isCurrent
+                          ? 'text-green-400 animate-pulse'
+                          : isAvailable
+                          ? 'text-green-500 hover:text-green-400 cursor-pointer'
+                          : 'text-zinc-600 cursor-not-allowed'
+                      }`}
+                      title={
+                        isUsed
+                          ? 'Reveal used'
+                          : isAvailable
+                          ? 'Click to use reveal, then select an attribute'
+                          : 'Previous reveals must be used first'
+                      }
+                    >
+                      <Search className="w-6 h-6" />
+                    </button>
+                  );
+                })}
               </div>
-              <div className="text-right">
-                <p className="text-zinc-300 text-sm font-semibold">Unused Reveals Bonus</p>
-                <p className="text-green-400 text-lg font-bold">+{(maxHints - hintsUsed) * HINT_POINTS}pts</p>
-              </div>
+              <p className="text-zinc-400 text-sm">
+                {pendingHintUse
+                  ? '👆 Click an attribute above to reveal it!'
+                  : 'Click a magnifying glass, then click an attribute to reveal'}
+              </p>
             </div>
-            <p className="text-zinc-400 text-xs">
-              {pendingHintUse
-                ? '👆 Click an attribute above to reveal it!'
-                : 'Click a magnifying glass, then click an attribute to reveal'}
-            </p>
+
+            {/* Right box: Score impact */}
+            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 flex flex-col justify-center">
+              <p className="text-zinc-300 text-sm font-semibold mb-1">Unused Reveals Bonus</p>
+              <p className="text-green-400 text-2xl font-bold">+{(maxHints - hintsUsed) * HINT_POINTS}pts</p>
+              <p className="text-zinc-500 text-xs mt-1">{maxHints - hintsUsed} reveals remaining</p>
+            </div>
           </div>
 
           {/* 5. What We Know So Far */}

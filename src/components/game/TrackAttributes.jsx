@@ -14,6 +14,7 @@ const ATTRIBUTE_CONFIG = {
     description: 'Does it make you want to move?',
     lowLabel: 'Laid-back',
     highLabel: 'Danceable',
+    color: '#9333EA',
   },
   energy: {
     icon: Zap,
@@ -21,6 +22,7 @@ const ATTRIBUTE_CONFIG = {
     description: 'How intense does it feel?',
     lowLabel: 'Calm',
     highLabel: 'Energetic',
+    color: '#DC2626',
   },
   acousticness: {
     icon: Radio,
@@ -28,6 +30,7 @@ const ATTRIBUTE_CONFIG = {
     description: 'Is it produced or performed?',
     lowLabel: 'Electronic',
     highLabel: 'Acoustic',
+    color: '#16A34A',
   },
   valence: {
     icon: Smile,
@@ -35,6 +38,7 @@ const ATTRIBUTE_CONFIG = {
     description: 'What\u2019s the mood?',
     lowLabel: 'Sad',
     highLabel: 'Happy',
+    color: '#2563EB',
   },
   tempo: {
     icon: Gauge,
@@ -42,6 +46,7 @@ const ATTRIBUTE_CONFIG = {
     description: 'How fast is it?',
     lowLabel: 'Slow',
     highLabel: 'Fast',
+    color: '#0EA5E9',
   },
   popularity: {
     icon: TrendingUp,
@@ -49,6 +54,7 @@ const ATTRIBUTE_CONFIG = {
     description: 'How well-known is it?',
     lowLabel: 'Niche',
     highLabel: 'Popular',
+    color: '#EC4899',
   },
 };
 
@@ -126,7 +132,7 @@ export function TrackAttributes({
               } ${shouldPulse ? 'animate-pulse' : ''}`}
             >
               <div className="flex items-center gap-2 mb-2">
-                <Icon className="w-6 h-6 text-green-400" />
+                <Icon className="w-6 h-6" style={{ color: config.color }} />
                 <span className="text-white text-lg font-semibold">{config.label}</span>
               </div>
               <p className="text-zinc-400 text-sm mb-4">{config.description}</p>
