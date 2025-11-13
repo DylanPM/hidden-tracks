@@ -594,6 +594,7 @@ export function GuessPhase({
                             {/* Flair System */}
                             <GuessFlair
                               guess={guess}
+                              seed={seed}
                               challenge={assignedChallenge}
                               revealedSeedAttributes={revealedAttributes}
                               isCorrect={true}
@@ -632,6 +633,7 @@ export function GuessPhase({
                           {/* Flair for Incorrect (shows attributes only) */}
                           <GuessFlair
                             guess={guess}
+                            seed={seed}
                             challenge={null}
                             revealedSeedAttributes={revealedAttributes}
                             isCorrect={false}
