@@ -104,7 +104,7 @@ export function TrackAttributes({
 
   return (
     <div className="bg-zinc-900 rounded-lg p-3">
-      <h3 className="text-white font-bold mb-2 text-base">Track Attributes</h3>
+      <h3 className="text-white font-bold mb-2 text-xl">Track Attributes</h3>
       <div className="grid grid-cols-2 gap-3">
         {attributes.map((attr) => {
           const config = ATTRIBUTE_CONFIG[attr];
@@ -121,20 +121,20 @@ export function TrackAttributes({
             <div
               key={attr}
               onClick={() => isClickable && onAttributeClick?.(attr)}
-              className={`bg-zinc-800 rounded p-2 ${
+              className={`bg-zinc-800 rounded p-3 ${
                 isClickable ? 'cursor-pointer hover:bg-zinc-700 transition' : ''
               } ${shouldPulse ? 'animate-pulse' : ''}`}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <Icon className="w-4 h-4 text-green-400" />
-                <span className="text-white text-sm font-semibold">{config.label}</span>
+              <div className="flex items-center gap-2 mb-2">
+                <Icon className="w-6 h-6 text-green-400" />
+                <span className="text-white text-lg font-semibold">{config.label}</span>
               </div>
-              <p className="text-zinc-400 text-xs mb-3">{config.description}</p>
+              <p className="text-zinc-400 text-sm mb-4">{config.description}</p>
 
               {/* Binary gamut visualization with positioned circle */}
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {/* Labels */}
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-sm">
                   <span className={`${
                     isRevealed && position === 'low'
                       ? 'text-green-400 font-bold'
@@ -164,8 +164,8 @@ export function TrackAttributes({
                     >
                       <div className="relative">
                         {/* Circle */}
-                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                          <span className="text-black text-xs font-bold">
+                        <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                          <span className="text-black text-sm font-bold">
                             {normalizedValue}
                           </span>
                         </div>
@@ -174,8 +174,8 @@ export function TrackAttributes({
                   ) : (
                     // Hidden state - show ??? in center
                     <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center justify-center">
-                      <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
-                        <span className="text-zinc-500 text-xs font-bold">?</span>
+                      <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center">
+                        <span className="text-zinc-500 text-sm font-bold">?</span>
                       </div>
                     </div>
                   )}
