@@ -637,9 +637,9 @@ export function GuessPhase({
               <div className="space-y-6">
                 {/* Correct Guesses */}
                 {correctGuesses.length > 0 && (
-                  <div ref={correctGuessesRef}>
-                    <h3 className="text-green-400 font-bold mb-3 text-lg">
-                      Correct Guesses ({correctGuesses.length})
+                  <div ref={correctGuessesRef} className="bg-green-900/10 rounded-lg p-4">
+                    <h3 className="text-green-400 font-bold mb-4 text-2xl flex items-center gap-2">
+                      <span>✓</span> Correct Guesses ({correctGuesses.length})
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {correctGuesses.map((guess, idx) => {
@@ -683,9 +683,9 @@ export function GuessPhase({
 
                 {/* Incorrect Guesses */}
                 {incorrectGuesses.length > 0 && (
-                  <div ref={incorrectGuessesRef}>
-                    <h3 className="text-red-400 font-bold mb-3 text-lg">
-                      Not on Playlist ({incorrectGuesses.length})
+                  <div ref={incorrectGuessesRef} className="bg-red-900/10 rounded-lg p-4">
+                    <h3 className="text-red-400 font-bold mb-4 text-2xl flex items-center gap-2">
+                      <span>✗</span> Not on Playlist ({incorrectGuesses.length})
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {incorrectGuesses.map((guess, idx) => (

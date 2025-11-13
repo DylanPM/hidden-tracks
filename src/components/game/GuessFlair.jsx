@@ -296,23 +296,53 @@ export function GuessFlair({
         </>
       )}
 
-      {/* 3. Points Awarded (if correct) - hangs below challenge or attributes */}
-      {isCorrect && (
+      {/* 3. Points/Feedback Banner - hangs below challenge or attributes */}
+      {isCorrect ? (
         <>
-          {/* Connector line from challenge/attributes to points */}
-          <div className="flex justify-center h-3">
-            <div className="w-0.5 h-full bg-zinc-600" />
+          {/* Two connector lines from attributes to points */}
+          <div className="flex justify-center gap-2 h-3">
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
           </div>
 
           <div
-            className={`bg-green-900/30 border-2 border-green-500 rounded-lg p-2 transform transition-all duration-300 ${
+            className={`bg-green-900/30 border-2 border-green-500 rounded-lg p-3 transform transition-all duration-300 ${
               dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
             }`}
             style={{ transitionDelay: `${animationDelay + (challenge ? 200 : showAttributeFeedback ? 100 : 0)}ms` }}
           >
             <div className="flex justify-center items-center gap-2">
-              <span className="text-green-400 font-bold text-lg">
+              <span className="text-green-400 font-bold text-xl">
                 +{guess.basePoints} points
+              </span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Two connector lines from attributes to feedback */}
+          <div className="flex justify-center gap-2 h-3">
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
+          </div>
+
+          <div
+            className={`bg-red-900/30 border-2 border-red-500 rounded-lg p-3 transform transition-all duration-300 ${
+              dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+            }`}
+            style={{ transitionDelay: `${animationDelay + (showAttributeFeedback ? 100 : 0)}ms` }}
+          >
+            <div className="flex justify-center items-center gap-2">
+              <span className="text-red-400 font-bold text-lg">
+                Not on playlist
               </span>
             </div>
           </div>
