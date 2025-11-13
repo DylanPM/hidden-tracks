@@ -95,6 +95,13 @@ export function TrackAttributes({
     return 'mid';
   };
 
+  const clampPosition = (value) => {
+    // Clamp circle position so it doesn't go off-screen
+    // Circle is w-8 (32px), so radius is 16px. Clamp between 5% and 95%
+    if (value === null) return 50;
+    return Math.min(Math.max(value, 5), 95);
+  };
+
   return (
     <div className="bg-zinc-900 rounded-lg p-3">
       <h3 className="text-white font-bold mb-2 text-base">Track Attributes</h3>
@@ -153,7 +160,7 @@ export function TrackAttributes({
                   {isRevealed && normalizedValue !== null ? (
                     <div
                       className="absolute flex items-center justify-center"
-                      style={{ left: `${normalizedValue}%`, transform: 'translateX(-50%)' }}
+                      style={{ left: `${clampPosition(normalizedValue)}%`, transform: 'translateX(-50%)' }}
                     >
                       <div className="relative">
                         {/* Circle */}

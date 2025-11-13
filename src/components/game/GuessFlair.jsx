@@ -171,6 +171,14 @@ export function GuessFlair({
     return 'mid';
   };
 
+  // Clamp circle position so it doesn't go off-screen
+  // Circle is w-8 (32px), so radius is 16px. Clamp between 5% and 95%
+  const clampPosition = (value) => {
+    if (value === null || value === '?') return 50;
+    const num = typeof value === 'number' ? value : parseFloat(value);
+    return Math.min(Math.max(num, 5), 95);
+  };
+
   return (
     <div className="space-y-0 relative">
       {/* 1. Attribute Feedback (2 half-width boxes with connectors from embed) */}
@@ -207,10 +215,8 @@ export function GuessFlair({
                     if (position === 'high') return 'bg-green-900/40 border-green-500';
                     return 'bg-green-900/30 border-green-600';
                   } else {
-                    // Incorrect guess - red tones
-                    if (position === 'low') return 'bg-red-900/40 border-red-600';
-                    if (position === 'high') return 'bg-orange-900/40 border-orange-600';
-                    return 'bg-red-900/30 border-red-700';
+                    // Incorrect guess - subtle grey tones (less sympathy for the devil!)
+                    return 'bg-zinc-800 border-zinc-700';
                   }
                 };
 
@@ -244,7 +250,7 @@ export function GuessFlair({
                         {displayValue !== '?' && (
                           <div
                             className="absolute flex items-center justify-center"
-                            style={{ left: `${displayValue}%`, transform: 'translateX(-50%)' }}
+                            style={{ left: `${clampPosition(displayValue)}%`, transform: 'translateX(-50%)' }}
                           >
                             <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
                               <span className="text-black text-xs font-bold">

@@ -473,22 +473,20 @@ export function GuessPhase({
               Clues from attribute reveals and your guesses
             </p>
             {(revealClues.length > 0 || clues.length > 0) ? (
-              <ul className="space-y-2.5 text-zinc-300 text-base leading-relaxed">
+              <ol className="space-y-2.5 text-zinc-300 text-base leading-relaxed list-decimal list-inside">
                 {/* Reveal clues first */}
                 {revealClues.map((clue, idx) => (
-                  <li key={`reveal-${idx}`} className="flex items-start">
-                    <span className="text-green-400 mr-2 mt-0.5 text-lg">•</span>
-                    <span className="flex-1">{clue}</span>
+                  <li key={`reveal-${idx}`} className="pl-1">
+                    {clue}
                   </li>
                 ))}
                 {/* Guess-based clues second */}
                 {clues.map((clue, idx) => (
-                  <li key={`guess-${idx}`} className="flex items-start">
-                    <span className="text-green-400 mr-2 mt-0.5 text-lg">•</span>
-                    <span className="flex-1">{clue}</span>
+                  <li key={`guess-${idx}`} className="pl-1">
+                    {clue}
                   </li>
                 ))}
-              </ul>
+              </ol>
             ) : (
               <p className="text-zinc-400 text-base italic">
                 Make a guess or reveal an attribute to discover clues
