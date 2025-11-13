@@ -622,8 +622,8 @@ export function GuessPhase({
                   'feel-good': '#2563EB',        // valence - blue
                   'melancholy': '#2563EB',       // valence - blue
                   'unplugged': '#16A34A',        // acousticness - green
-                  'fast-and-furious': '#0EA5E9', // tempo - cyan
-                  'slow-burn': '#0EA5E9',        // tempo - cyan
+                  'fast-and-furious': '#EAB308', // tempo - yellow/gold
+                  'slow-burn': '#EAB308',        // tempo - yellow/gold
                 };
                 return colorMap[challenge?.id] || '#3B82F6';
               };

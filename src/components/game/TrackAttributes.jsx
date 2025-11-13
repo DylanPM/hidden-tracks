@@ -46,7 +46,7 @@ const ATTRIBUTE_CONFIG = {
     description: 'How fast is it?',
     lowLabel: 'Slow',
     highLabel: 'Fast',
-    color: '#0EA5E9',
+    color: '#EAB308',
   },
   popularity: {
     icon: TrendingUp,

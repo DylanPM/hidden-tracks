@@ -47,7 +47,7 @@ const COLOR_SCHEMES = {
       speechiness: '#EAB308',
       acousticness: '#16A34A',
       valence: '#2563EB',
-      tempo_norm: '#0EA5E9',
+      tempo_norm: '#EAB308', // Changed from cyan to yellow/gold
       popularity: '#EC4899'
     }
   },
@@ -1060,93 +1060,6 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white relative font-sans overflow-hidden">
-      {/* Color scheme modal */}
-      {showColorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70">
-          <div className="w-full max-w-4xl rounded-2xl bg-zinc-900 shadow-xl border border-zinc-800 max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Choose Color Scheme</h2>
-                <button
-                  onClick={() => setShowColorModal(false)}
-                  className="text-zinc-400 hover:text-white transition"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-white mb-3">Spotify-Inspired</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {['spotify_classic', 'spotify_purple', 'spotify_blue', 'spotify_warm', 'spotify_neon'].map(schemeKey => {
-                    const scheme = COLOR_SCHEMES[schemeKey];
-                    return (
-                      <button
-                        key={schemeKey}
-                        onClick={() => {
-                          setColorScheme(schemeKey);
-                          setShowColorModal(false);
-                        }}
-                        className={`p-4 rounded-lg border-2 transition ${
-                          colorScheme === schemeKey
-                            ? 'border-white bg-zinc-800'
-                            : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500'
-                        }`}
-                      >
-                        <div className="text-white font-semibold mb-2">{scheme.name}</div>
-                        <div className="flex gap-1">
-                          {Object.values(scheme.features).slice(0, 7).map((color, i) => (
-                            <div
-                              key={i}
-                              className="w-4 h-4 rounded"
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Alternative Vibes</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {['cyberpunk', 'vaporwave', 'midnight', 'forest', 'fire'].map(schemeKey => {
-                    const scheme = COLOR_SCHEMES[schemeKey];
-                    return (
-                      <button
-                        key={schemeKey}
-                        onClick={() => {
-                          setColorScheme(schemeKey);
-                          setShowColorModal(false);
-                        }}
-                        className={`p-4 rounded-lg border-2 transition ${
-                          colorScheme === schemeKey
-                            ? 'border-white bg-zinc-800'
-                            : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500'
-                        }`}
-                      >
-                        <div className="text-white font-semibold mb-2">{scheme.name}</div>
-                        <div className="flex gap-1">
-                          {Object.values(scheme.features).slice(0, 7).map((color, i) => (
-                            <div
-                              key={i}
-                              className="w-4 h-4 rounded"
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Intro modal */}
       {showIntro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70">
@@ -1172,15 +1085,6 @@ export function GenreConstellationSelect({ onLaunch }) {
           </div>
         </div>
       )}
-
-      {/* Color scheme button */}
-      <button
-        onClick={() => setShowColorModal(true)}
-        className="fixed top-4 right-4 z-40 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-semibold border border-zinc-700 transition"
-        title="Change color scheme"
-      >
-        🎨 Colors
-      </button>
 
       {/* Main canvas */}
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -1616,7 +1520,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   onClick={item.onClick}
                 />
 
-                {/* Node label - show circular text around edge */}
+                {/* Node label - show circular text around edge with background */}
                 <defs>
                   <path
                     id={`nodePath-${item.key}`}
@@ -1628,6 +1532,26 @@ export function GenreConstellationSelect({ onLaunch }) {
                     `}
                   />
                 </defs>
+                {/* Background stroke for text - gives it a dark background for readability */}
+                <text
+                  fill="none"
+                  stroke="#18181b"
+                  strokeWidth="6"
+                  strokeOpacity={isSelected || isHovered ? 1.0 : 0.8}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  fontSize={isHovered ? FONT_STYLES.medium.fontSize + 3 : FONT_STYLES.medium.fontSize}
+                  fontWeight={FONT_STYLES.medium.fontWeight}
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'font-size 0.4s cubic-bezier(0.23, 1, 0.32, 1), stroke-opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1)'
+                  }}
+                >
+                  <textPath href={`#nodePath-${item.key}`} startOffset="0%">
+                    {item.label.length > 20 ? item.label.toLowerCase().slice(0, 20) + '…' : item.label.toLowerCase()}
+                  </textPath>
+                </text>
+                {/* Foreground text */}
                 <text
                   fill="white"
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
