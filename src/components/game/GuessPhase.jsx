@@ -5,7 +5,7 @@ import { TrackAttributes } from './TrackAttributes';
 import { GuessFlair } from './GuessFlair';
 
 // Version tracking
-console.log('🎮 GuessPhase v2.6 - Grammar system for attribute reveals');
+console.log('🎮 GuessPhase v2.7 - Typography polish and bigger clues');
 
 // Grammar system for attribute reveal clues
 const ATTRIBUTE_DESCRIPTIONS = {
@@ -467,25 +467,25 @@ export function GuessPhase({
           </div>
 
           {/* 5. What We Know So Far */}
-          <div className="bg-zinc-900 rounded-lg p-3">
-            <h3 className="text-white font-bold mb-1 text-base">What We Know So Far</h3>
-            <p className="text-zinc-400 text-sm mb-2">
+          <div className="bg-zinc-900 rounded-lg p-4">
+            <h3 className="text-white font-bold mb-2 text-lg">What We Know So Far</h3>
+            <p className="text-zinc-400 text-base mb-3">
               Clues from attribute reveals and your guesses
             </p>
             {(revealClues.length > 0 || clues.length > 0) ? (
-              <ul className="space-y-1.5 text-zinc-300 text-sm">
+              <ul className="space-y-2.5 text-zinc-300 text-base leading-relaxed">
                 {/* Reveal clues first */}
                 {revealClues.map((clue, idx) => (
                   <li key={`reveal-${idx}`} className="flex items-start">
-                    <span className="text-green-400 mr-2">•</span>
-                    <span>{clue}</span>
+                    <span className="text-green-400 mr-2 mt-0.5 text-lg">•</span>
+                    <span className="flex-1">{clue}</span>
                   </li>
                 ))}
                 {/* Guess-based clues second */}
                 {clues.map((clue, idx) => (
                   <li key={`guess-${idx}`} className="flex items-start">
-                    <span className="text-green-400 mr-2">•</span>
-                    <span>{clue}</span>
+                    <span className="text-green-400 mr-2 mt-0.5 text-lg">•</span>
+                    <span className="flex-1">{clue}</span>
                   </li>
                 ))}
               </ul>
