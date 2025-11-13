@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { HINT_POINTS, CHALLENGE_POINTS } from '../../constants/gameConfig';
 import { TrackAttributes } from './TrackAttributes';
+import { GuessFlair } from './GuessFlair';
 
 // Version tracking
-console.log('🎮 GuessPhase v2.4 - Attribute display + magnifying glass hints');
+console.log('🎮 GuessPhase v2.5 - Guess embeds + flair system');
 
 export function GuessPhase({
   seed,
@@ -426,41 +427,106 @@ export function GuessPhase({
             })}
           </div>
 
-          {/* All Guesses */}
-          {guesses.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-white font-bold mb-2">All Guesses</h3>
-              {guesses.map((guess, idx) => (
-                <div
-                  key={guess.id}
-                  className={`p-2 rounded text-sm ${
-                    guess.incorrect
-                      ? 'bg-red-900/30 border border-red-800'
-                      : 'bg-green-900/30 border border-green-800'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-white font-semibold">{guess.song}</p>
-                      <p className="text-zinc-400 text-sm">{guess.artist}</p>
+          {/* Guessed Tracks with Flair */}
+          {guesses.length > 0 && (() => {
+            const correctGuesses = guesses.filter(g => !g.incorrect);
+            const incorrectGuesses = guesses.filter(g => g.incorrect);
+
+            return (
+              <div className="space-y-6">
+                {/* Correct Guesses */}
+                {correctGuesses.length > 0 && (
+                  <div>
+                    <h3 className="text-green-400 font-bold mb-3 text-lg">
+                      Correct Guesses ({correctGuesses.length})
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {correctGuesses.map((guess, idx) => {
+                        // Find if this guess has a challenge
+                        const challengeIdx = challengePlacements.findIndex(
+                          placement => placement === guess.id
+                        );
+                        const assignedChallenge = challengeIdx >= 0 ? challenges[challengeIdx] : null;
+
+                        return (
+                          <div key={guess.id} className="space-y-2">
+                            {/* Spotify Embed */}
+                            <div className="relative">
+                              <iframe
+                                src={`https://open.spotify.com/embed/track/${getSpotifyId({ id: guess.id })}?utm_source=generator`}
+                                width="100%"
+                                height="152"
+                                frameBorder="0"
+                                allowtransparency="true"
+                                allow="encrypted-media"
+                                className="rounded-lg"
+                              />
+                            </div>
+
+                            {/* Flair System */}
+                            <GuessFlair
+                              guess={guess}
+                              challenge={assignedChallenge}
+                              revealedSeedAttributes={revealedAttributes}
+                              isCorrect={true}
+                              animationDelay={idx * 150}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
-                    {!guess.incorrect && (
-                      <span className="text-green-400 font-bold">
-                        +{guess.basePoints}
-                      </span>
-                    )}
                   </div>
-                  {guess.feedback && guess.feedback.length > 0 && (
-                    <div className="mt-2 text-xs text-red-300">
-                      {guess.feedback.map((fb, i) => (
-                        <div key={i}>• {fb}</div>
+                )}
+
+                {/* Incorrect Guesses */}
+                {incorrectGuesses.length > 0 && (
+                  <div>
+                    <h3 className="text-red-400 font-bold mb-3 text-lg">
+                      Not on Playlist ({incorrectGuesses.length})
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {incorrectGuesses.map((guess, idx) => (
+                        <div key={guess.id} className="space-y-2">
+                          {/* Spotify Embed */}
+                          <div className="relative opacity-60">
+                            <iframe
+                              src={`https://open.spotify.com/embed/track/${getSpotifyId({ id: guess.id })}?utm_source=generator`}
+                              width="100%"
+                              height="152"
+                              frameBorder="0"
+                              allowtransparency="true"
+                              allow="encrypted-media"
+                              className="rounded-lg"
+                            />
+                          </div>
+
+                          {/* Flair for Incorrect (shows attributes only) */}
+                          <GuessFlair
+                            guess={guess}
+                            challenge={null}
+                            revealedSeedAttributes={revealedAttributes}
+                            isCorrect={false}
+                            animationDelay={idx * 150}
+                          />
+
+                          {/* Legacy feedback messages */}
+                          {guess.feedback && guess.feedback.length > 0 && (
+                            <div className="bg-red-900/30 border border-red-800 rounded p-2">
+                              <div className="text-xs text-red-300 space-y-1">
+                                {guess.feedback.map((fb, i) => (
+                                  <div key={i}>• {fb}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {guessesLeft === 0 && (
             <button
