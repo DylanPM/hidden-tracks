@@ -22,46 +22,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     // Speechiness removed because 95% of music normalizes to ~0.5 (neutral), adding noise without useful differentiation
     const feature_angles = rawFeatureAngles.filter(f => f !== 'instrumentalness' && f !== 'speechiness');
 
-    // Compute local quantiles from siblings if provided
-    const computeLocalQuantiles = (siblings) => {
-      const localQ = {};
-
-      feature_angles.forEach(featureName => {
-        const values = siblings
-          .map(s => s[featureName])
-          .filter(v => v != null && !isNaN(v))
-          .sort((a, b) => a - b);
-
-        if (values.length === 0) {
-          localQ[featureName] = globalQuantiles[featureName] || { p10: 0, p50: 0.5, p90: 1 };
-          return;
-        }
-
-        const p10Idx = Math.floor(values.length * 0.1);
-        const p50Idx = Math.floor(values.length * 0.5);
-        const p90Idx = Math.floor(values.length * 0.9);
-
-        localQ[featureName] = {
-          p10: values[p10Idx],
-          p50: values[p50Idx],
-          p90: values[p90Idx]
-        };
-      });
-
-      return localQ;
-    };
-
-    // Compute local quantiles for root genres to spread them better
-    // Root genres should be normalized relative to EACH OTHER, not the global dataset
-    const rootGenreKeys = Object.keys(manifest).filter(k => k !== 'global' && k !== 'build');
-    const rootGenreFeatures = rootGenreKeys
-      .map(key => manifest[key]?.features)
-      .filter(f => f != null);
-
-    const rootQuantiles = rootGenreFeatures.length > 0
-      ? computeLocalQuantiles(rootGenreFeatures)
-      : globalQuantiles;
-
     // Use global quantiles everywhere for semantic consistency
     // This ensures positions match the disco floor and semantic meaning is preserved at all levels
     // (Previously used local quantiles for subgenres, which caused position/disco-floor mismatch)
@@ -147,188 +107,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return percentile;
     };
 
-    // Project normalized features to 2D
-    // Depth-based exaggeration: root genres get more extreme positioning
-    const projectTo2D = (features, depth = 0) => {
-      let x = 0;
-      let y = 0;
-
-      // Count active features
-      const activeCount = feature_angles.filter(f => activeFeatures[f] !== false).length;
-
-      // Apply stronger exaggeration for root-level genres
-      // Root (depth 0): 1.2x (using averaged features with exclusion zones)
-      // Level 1: 1.2x (normal)
-      // Level 2+: 1.1x (pushed 10% further for better spacing with ring text)
-      const depthExaggeration = depth === 0 ? 1.2 : (depth === 1 ? 1.2 : 1.1);
-
-      // Feature-count exaggeration: boost spread when fewer features active
-      // 1 feature: 2.5x, 2 features: 1.8x, 3+: 1.0x
-      const featureCountExaggeration = activeCount === 1 ? 2.5 : (activeCount === 2 ? 1.8 : 1.0);
-
-      const effectiveExaggeration = exaggeration * depthExaggeration * featureCountExaggeration;
-
-      // UNIQUE ATTRIBUTE BOOSTING: For root genres, boost their most distinctive attribute
-      // to push similar genres in different directions
-      // TEMPORARILY DISABLED - was causing clustering
-      let uniquenessBoosts = {};
-      if (false && depth === 0) {
-        // Find this genre's most extreme (distinctive) attributes
-        feature_angles.forEach(featureName => {
-          if (activeFeatures[featureName] === false) return;
-          const rawValue = features[featureName];
-          let percentile = normalizeFeature(rawValue, featureName);
-          percentile = applyContrastCurve(percentile, featureName);
-
-          // Extremeness = distance from 0.5 (neutral)
-          const extremeness = Math.abs(percentile - 0.5);
-          uniquenessBoosts[featureName] = extremeness;
-        });
-
-        // Find the most extreme attribute
-        let maxExtremeness = 0;
-        let mostDistinctiveFeature = null;
-        Object.keys(uniquenessBoosts).forEach(feat => {
-          if (uniquenessBoosts[feat] > maxExtremeness) {
-            maxExtremeness = uniquenessBoosts[feat];
-            mostDistinctiveFeature = feat;
-          }
-        });
-
-        // Boost the most distinctive attribute by 1.8x to push genres apart
-        if (mostDistinctiveFeature) {
-          uniquenessBoosts[mostDistinctiveFeature] = 1.8;
-        }
-        // Reset others to 1.0
-        Object.keys(uniquenessBoosts).forEach(feat => {
-          if (feat !== mostDistinctiveFeature) {
-            uniquenessBoosts[feat] = 1.0;
-          }
-        });
-      }
-
-      // GREEDY TRIANGLE AUCTION
-      // Each genre bids on triangles where it's extreme (> 0.15 from neutral)
-      // Genres pick in order of distinctiveness (most extreme gets first pick)
-
-      const trianglePreferences = [];
-      const numTriangles = feature_angles.length * 2;
-      const triangleAngleStep = (Math.PI * 2) / numTriangles;
-
-      // Calculate preference scores for ALL triangles this genre could go in
-      feature_angles.forEach((featureName, featureIndex) => {
-        if (activeFeatures[featureName] === false) return;
-
-        const rawValue = features[featureName];
-        let percentile = normalizeFeature(rawValue, featureName);
-        percentile = applyContrastCurve(percentile, featureName);
-
-        const extremeness = Math.abs(percentile - 0.5);
-
-        // Bid on triangles where we're extreme (> 0.15 from neutral)
-        if (extremeness > 0.15) {
-          const highTriangleIndex = featureIndex;
-          const lowTriangleIndex = featureIndex + feature_angles.length;
-
-          // Prefer high triangle if percentile > 0.5
-          if (percentile > 0.5) {
-            trianglePreferences.push({
-              triangleIndex: highTriangleIndex,
-              featureName,
-              extremeness,
-              percentile,
-              angle: highTriangleIndex * triangleAngleStep,
-              isHigh: true
-            });
-          } else {
-            // Prefer low triangle if percentile < 0.5
-            trianglePreferences.push({
-              triangleIndex: lowTriangleIndex,
-              featureName,
-              extremeness,
-              percentile,
-              angle: lowTriangleIndex * triangleAngleStep,
-              isHigh: false
-            });
-          }
-        }
-      });
-
-      // Sort by extremeness (best fits first)
-      trianglePreferences.sort((a, b) => b.extremeness - a.extremeness);
-
-      // Pick best triangle (highest extremeness)
-      const chosenTriangle = trianglePreferences[0];
-
-      // If no extreme features, position at center
-      if (!chosenTriangle) {
-        return { x: 0, y: 0 };
-      }
-
-      // Position within assigned triangle
-      const assignedAngle = chosenTriangle.angle;
-      const baseRadius = chosenTriangle.extremeness * 2; // Scale 0-0.5 to 0-1
-
-      // Secondary features add variation
-      let radialAdjustment = 0;
-      let angularVariation = 0;
-
-      if (trianglePreferences.length > 1) {
-        const secondaryExtremeness = trianglePreferences.slice(1, 3)
-          .reduce((sum, f) => sum + f.extremeness, 0) / Math.min(2, trianglePreferences.length - 1);
-        radialAdjustment = secondaryExtremeness * 0.3;
-
-        const secondaryFeature = trianglePreferences[1];
-        const secondaryWeight = (secondaryFeature.percentile - 0.5) * 2;
-        angularVariation = (secondaryWeight * 0.25) * (triangleAngleStep / 2);
-      }
-
-      const finalRadius = baseRadius + radialAdjustment;
-      const finalAngle = assignedAngle + angularVariation;
-
-      // Convert to Cartesian
-      x = Math.cos(finalAngle) * finalRadius;
-      y = Math.sin(finalAngle) * finalRadius;
-
-      x *= effectiveExaggeration;
-      y *= effectiveExaggeration;
-
-      // Scale to screen coordinates
-      return {
-        x: x * projection_scale,
-        y: y * projection_scale
-      };
-    };
-
-    // HARD-CODED OPTIMAL REGION ASSIGNMENTS - DISABLED
-    // Now using auction system for all parent genres (better placement)
-    // Format: { genreKey: { region: 'feature-direction', position: 'single'|'outer'|'inner' } }
-    const hardCodedAssignments = {
-      // All disabled - let auction handle placement
-    };
-
-    // Calculate position from region assignment
-    const getHardCodedPosition = (assignment) => {
-      const [feature, direction] = assignment.region.split('-');
-      const baseAngle = featureAngles[feature];
-      const angle = direction === 'high' ? baseAngle : (baseAngle + Math.PI) % (Math.PI * 2);
-
-      // Radius based on position type
-      let radius;
-      if (assignment.position === 'outer') {
-        radius = 185; // Outer radius (5% inward from original 195)
-      } else if (assignment.position === 'inner') {
-        radius = 100; // Inner radius (closer to center for better visual separation)
-      } else {
-        radius = 185; // Single position uses outer radius
-      }
-
-      return {
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius
-      };
-    };
-
     // Run auction for a group of siblings with two-pass optimization
     const runTriangleAuction = (siblings, depth) => {
       // PASS 1: Greedy assignment by triangle preference (not overall extremeness)
@@ -401,16 +179,17 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
             // If swap improves total happiness by at least 0.05, do it
             if (swappedHappiness > currentHappiness + 0.05) {
-              // Swap assignments
-              const tempA = siblingAssignments[keyA];
-              siblingAssignments[keyA] = {
-                triangleIndex: triangleB,
-                preference: siblingA.preferences.find(p => p.triangleIndex === triangleB)
-              };
-              siblingAssignments[keyB] = {
-                triangleIndex: triangleA,
-                preference: siblingB.preferences.find(p => p.triangleIndex === triangleA)
-              };
+              // Swap assignments using destructuring
+              [siblingAssignments[keyA], siblingAssignments[keyB]] = [
+                {
+                  triangleIndex: triangleB,
+                  preference: siblingA.preferences.find(p => p.triangleIndex === triangleB)
+                },
+                {
+                  triangleIndex: triangleA,
+                  preference: siblingB.preferences.find(p => p.triangleIndex === triangleA)
+                }
+              ];
 
               // Update triangle assignments
               triangleAssignments[triangleA] = siblingB;
@@ -500,15 +279,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       const genre = manifest[genreKey];
       if (!genre.features) return;
 
-      // Skip Song of the Day and hard-coded genres
+      // Skip Song of the Day (always at center)
       if (genre.isSongOfTheDay || genreKey === 'song of the day') {
         rawResult[genreKey] = { x: 0, y: 0 };
-        hardCodedKeys.add(genreKey);
-        return;
-      }
-
-      if (hardCodedAssignments[genreKey]) {
-        rawResult[genreKey] = getHardCodedPosition(hardCodedAssignments[genreKey]);
         hardCodedKeys.add(genreKey);
         return;
       }
@@ -1145,136 +918,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     }
     */
 
-    // MANUAL POSITIONING ADJUSTMENTS for overlapping genres
-    // Applied after collision avoidance to handle edge cases where semantic similarity
-    // creates overlaps that generic collision avoidance can't resolve well
-
-    // Helper: Get feature axis angles for reference
-    const acousticAngle = featureAngles['acousticness'];
-    const speechAngle = featureAngles['speechiness'];
-    const energyAngle = featureAngles['energy'];
-    const tempoAngle = featureAngles['tempo_norm'];
-    const valenceAngle = featureAngles['valence'];
-
-    /* ========================================================================
-       MANUAL POSITIONING INTERVENTIONS (DISABLED FOR TESTING TOP-N APPROACH)
-       ========================================================================
-       These manual fixes were added to address overlaps and positioning issues
-       with the old vector-sum approach. With the new top-N distinctive features
-       approach, these may no longer be needed. Keeping them here commented out
-       so we can selectively re-enable if specific issues remain.
-       ======================================================================== */
-
-    /*
-    // 3a. JAZZ SUBGENRES: Targeted manual adjustments
-    // Jazz fusion: Move backwards toward center
-    if (scaledResult['jazz.jazz fusion']) {
-      const fusion = scaledResult['jazz.jazz fusion'];
-      const distance = Math.sqrt(fusion.x * fusion.x + fusion.y * fusion.y);
-      const angle = Math.atan2(fusion.y, fusion.x);
-      // Move inward by one node diameter (27px) plus text width (~60px) = 87px
-      const newDistance = distance - 87;
-      fusion.x = Math.cos(angle) * newDistance;
-      fusion.y = Math.sin(angle) * newDistance;
-    }
-
-    // Bebop: Move up towards laid back (low danceability)
-    if (scaledResult['jazz.bebop']) {
-      const bebop = scaledResult['jazz.bebop'];
-      const danceabilityAngle = featureAngles['danceability'];
-      const laidBackAngle = danceabilityAngle + Math.PI; // Opposite direction (low danceability)
-      const shiftAmount = 13.5; // Half a node diameter
-      bebop.x += Math.cos(laidBackAngle) * shiftAmount;
-      bebop.y += Math.sin(laidBackAngle) * shiftAmount;
-    }
-
-    // 3b. PUNK AND METAL: Push apart
-    if (scaledResult['rock.Heavy.punk'] && scaledResult['rock.Heavy.metal']) {
-      const punk = scaledResult['rock.Heavy.punk'];
-      const metal = scaledResult['rock.Heavy.metal'];
-      const dx = metal.x - punk.x;
-      const dy = metal.y - punk.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const MIN_SEPARATION = 100; // Minimum distance between punk and metal (increased from 60)
-
-      if (dist < MIN_SEPARATION) {
-        const pushDist = (MIN_SEPARATION - dist) / 2;
-        const angle = Math.atan2(dy, dx);
-        punk.x -= Math.cos(angle) * pushDist;
-        punk.y -= Math.sin(angle) * pushDist;
-        metal.x += Math.cos(angle) * pushDist;
-        metal.y += Math.sin(angle) * pushDist;
-      }
-    }
-
-    // 3c. EAST COAST AND SOUTHERN HIP HOP: Push apart and adjust east coast left
-    // Move east coast rap left (towards wordy/niche, 9 o'clock direction)
-    if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop']) {
-      const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
-      const leftAngle = Math.PI * 1.05; // Roughly 9 o'clock (189°)
-      const shiftAmount = 40; // Width of genre title box
-      eastCoast.x += Math.cos(leftAngle) * shiftAmount;
-      eastCoast.y += Math.sin(leftAngle) * shiftAmount;
-    }
-
-    if (scaledResult['hip hop.Regional Hip Hop.east coast hip hop'] && scaledResult['hip hop.Regional Hip Hop.southern hip hop']) {
-      const eastCoast = scaledResult['hip hop.Regional Hip Hop.east coast hip hop'];
-      const southern = scaledResult['hip hop.Regional Hip Hop.southern hip hop'];
-      const dx = southern.x - eastCoast.x;
-      const dy = southern.y - eastCoast.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const MIN_SEPARATION = 70; // Increased from 50
-
-      if (dist < MIN_SEPARATION) {
-        const pushDist = (MIN_SEPARATION - dist) / 2;
-        const angle = Math.atan2(dy, dx);
-        eastCoast.x -= Math.cos(angle) * pushDist;
-        eastCoast.y -= Math.sin(angle) * pushDist;
-        southern.x += Math.cos(angle) * pushDist;
-        southern.y += Math.sin(angle) * pushDist;
-      }
-    }
-
-    // 3e. COUNTRY SUBGENRES: Fine positioning adjustments
-    if (scaledResult['country.southern rock']) {
-      const southernRock = scaledResult['country.southern rock'];
-      const shiftAmount = 20;
-      southernRock.x += Math.cos(energyAngle) * shiftAmount;
-      southernRock.y += Math.sin(energyAngle) * shiftAmount;
-    }
-
-    if (scaledResult['country.classic country']) {
-      const classicCountry = scaledResult['country.classic country'];
-      const shiftAmount = 20;
-      classicCountry.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
-      classicCountry.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
-    }
-
-    if (scaledResult['country.indie folk']) {
-      const indieFolk = scaledResult['country.indie folk'];
-      const shiftAmount = 20;
-      indieFolk.x += Math.cos(valenceAngle + Math.PI) * shiftAmount;
-      indieFolk.y += Math.sin(valenceAngle + Math.PI) * shiftAmount;
-    }
-
-    // 3f. TECHNO: Move towards fast
-    if (scaledResult['electronic.Subgenres.techno']) {
-      const techno = scaledResult['electronic.Subgenres.techno'];
-      const shiftAmount = 30;
-      techno.x += Math.cos(tempoAngle) * shiftAmount;
-      techno.y += Math.sin(tempoAngle) * shiftAmount;
-    }
-
-    // 3g. KPOP: Move away from sad
-    if (scaledResult['pop.Regional.k-pop']) {
-      const kpop = scaledResult['pop.Regional.k-pop'];
-      const shiftAmount = 40;
-      kpop.x += Math.cos(valenceAngle) * shiftAmount;
-      kpop.y += Math.sin(valenceAngle) * shiftAmount;
-    }
-    */
-
-    // DEBUG: Log final positions after collision avoidance (COMMENTED OUT - too verbose)
+    // DEBUG: Log final positions after collision avoidance (DISABLED)
     // console.log('\n🎯 FINAL POSITIONS (after collision avoidance):');
     // ['country', 'jazz', 'electronic', 'hip hop', 'rock'].forEach(key => {
     //   if (scaledResult[key]) {

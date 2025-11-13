@@ -285,7 +285,6 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [selectedNodeKey, setSelectedNodeKey] = useState(null); // Key of node with LAUNCH overlay
 
   // Visual state
-  const [exaggeration, setExaggeration] = useState(1.2);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [hoveredAxisLabel, setHoveredAxisLabel] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(0.85); // Start zoomed out to prevent clipping
@@ -379,7 +378,7 @@ export function GenreConstellationSelect({ onLaunch }) {
   }, [viewStack, manifest]);
 
   // Compute positions with global normalization (for root level)
-  const { positions: rawGlobalPositions, averagedParentFeatures } = useFeatureMap(manifest, exaggeration, activeFeatures, null);
+  const { positions: rawGlobalPositions, averagedParentFeatures } = useFeatureMap(manifest, 1.2, activeFeatures, null);
 
   // Clamp positions to octagon boundary
   // IMPORTANT: Always use global quantiles for semantic consistency
@@ -456,18 +455,6 @@ export function GenreConstellationSelect({ onLaunch }) {
     } else {
       // Keep LAUNCH on the parent node
       setSelectedNodeKey(`parent-${newStack[newStack.length - 1]}`);
-    }
-  };
-
-  const canLaunch = () => seeds.length > 0 || selectedTrack;
-
-  const handleLaunch = () => {
-    if (selectedTrack) {
-      onLaunch([selectedTrack], difficulty);
-      return;
-    }
-    if (seeds.length > 0) {
-      onLaunch(seeds, difficulty);
     }
   };
 
@@ -1053,15 +1040,6 @@ export function GenreConstellationSelect({ onLaunch }) {
   // Toggle feature
   const toggleFeature = (feature) => {
     setActiveFeatures(prev => ({ ...prev, [feature]: !prev[feature] }));
-  };
-
-  // Enable only one feature
-  const enableOnly = (feature) => {
-    const newFeatures = {};
-    Object.keys(activeFeatures).forEach(f => {
-      newFeatures[f] = f === feature;
-    });
-    setActiveFeatures(newFeatures);
   };
 
   // Loading / error states
@@ -1891,26 +1869,6 @@ export function GenreConstellationSelect({ onLaunch }) {
           )}
         </svg>
       </div>
-
-      {/* Hidden audio preview iframe for UK garage tracks on hover */}
-      {/* {hoveredItem?.type === 'track' &&
-       hoveredItem?.track?.uri &&
-       viewStack.some(path => path.toLowerCase().includes('uk garage')) && (
-        <iframe
-          key={hoveredItem.track.uri}
-          src={`https://open.spotify.com/embed/track/${hoveredItem.track.uri.split(':')[2]}?utm_source=generator`}
-          style={{
-            position: 'absolute',
-            left: '-9999px',
-            top: '-9999px',
-            width: '300px',
-            height: '80px'
-          }}
-          frameBorder="0"
-          allow="autoplay; encrypted-media"
-          title="Audio Preview"
-        />
-      )} */}
 
       {/* Animations */}
       <style>{`
