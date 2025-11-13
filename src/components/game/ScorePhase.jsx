@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Sparkles, Trophy } from 'lucide-react';
-import { HINT_POINTS, CHALLENGE_POINTS } from '../../constants/gameConfig';
+import { HINT_POINTS } from '../../constants/gameConfig';
 
 export function ScorePhase({
   seed,
@@ -147,6 +147,7 @@ export function ScorePhase({
               <div>
                 <p className="text-green-400 text-sm font-semibold mb-2">Starting Track</p>
                 <iframe
+                  title={`Spotify player for ${seed.name}`}
                   src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
                   width="100%"
                   height="152"
@@ -162,6 +163,7 @@ export function ScorePhase({
             {correctGuesses.map((guess) => (
               <div key={guess.id}>
                 <iframe
+                  title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                   src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                   width="100%"
                   height="152"

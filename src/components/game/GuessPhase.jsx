@@ -453,6 +453,7 @@ export function GuessPhase({
                             {/* Spotify Embed */}
                             <div className="relative">
                               <iframe
+                                title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                                 src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                                 width="100%"
                                 height="152"
@@ -490,6 +491,7 @@ export function GuessPhase({
                           {/* Spotify Embed */}
                           <div className="relative opacity-60">
                             <iframe
+                              title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                               src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                               width="100%"
                               height="152"

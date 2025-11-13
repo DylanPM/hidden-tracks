@@ -210,7 +210,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
       Object.keys(siblingAssignments).forEach(siblingKey => {
         const sibling = siblings.find(s => s.key === siblingKey);
-        const { triangleIndex, preference } = siblingAssignments[siblingKey];
+        const { preference } = siblingAssignments[siblingKey];
 
         if (!preference) {
           assignments[siblingKey] = { x: 0, y: 0 };
@@ -958,7 +958,7 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     });
 
     return result;
-  }, [manifest, exaggeration, activeFeatures, siblingFeatures]);
+  }, [manifest, exaggeration, activeFeatures]);
 
   // Also return averaged parent features for UI components to use
   const averagedFeatures = useMemo(() => {

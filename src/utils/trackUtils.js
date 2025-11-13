@@ -1,5 +1,3 @@
-import { mapRows } from './slimProfile';
-
 export const normalizeTrack = (track) => {
   if (!track) return null;
   

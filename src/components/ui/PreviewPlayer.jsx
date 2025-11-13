@@ -96,6 +96,7 @@ export function PreviewPlayer({ song, compact = true, overlayCard = false }) {
             {/* Spotify embed */}
             <div className="flex-1 p-2">
               <iframe
+                title={`Spotify player for ${song.name || 'track'}`}
                 src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`}
                 width="100%"
                 height="100%"
@@ -148,6 +149,7 @@ export function PreviewPlayer({ song, compact = true, overlayCard = false }) {
           }}
         >
           <iframe
+            title={`Spotify player for ${song.name || 'track'}`}
             src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`}
             width="100%"
             height="152"
