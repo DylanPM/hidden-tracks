@@ -497,14 +497,14 @@ export function GuessPhase({
           </div>
         </div>
 
-        {/* Challenge Slots + Playlist */}
+        {/* Bonus Challenges */}
         <div className="bg-zinc-900 rounded-lg p-4" data-playlist-section>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-white text-lg font-bold">Your Playlist</h2>
+            <h2 className="text-white text-lg font-bold">Bonus Challenges</h2>
           </div>
 
           <p className="text-zinc-400 text-base mb-3">
-            Fill challenge slots with correct guesses that match the criteria
+            Pick songs that are on the playlist and have these qualities
           </p>
 
           {/* Challenge Slots (2 challenges) */}
@@ -516,33 +516,41 @@ export function GuessPhase({
                 ? guesses.find(g => g.id === placedGuessId)
                 : null;
 
+              // Grey out when attached to a guess (lasting imprint)
+              const isAttached = placedGuess !== null;
+
               return challenge ? (
                 <div
                   key={idx}
                   className={`rounded-lg p-3 border-2 transition ${
-                    isActive
+                    isAttached
+                      ? 'bg-zinc-800/50 border-zinc-700/50 opacity-60'
+                      : isActive
                       ? 'bg-blue-900/50 border-blue-500'
                       : 'bg-zinc-800 border-zinc-700'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className={`font-bold ${isActive ? 'text-blue-300' : 'text-zinc-500'}`}>
+                    <h3 className={`font-bold ${
+                      isAttached ? 'text-zinc-600' : isActive ? 'text-blue-300' : 'text-zinc-500'
+                    }`}>
                       {challenge.name}
                     </h3>
-                    {isActive && (
+                    {isActive && !isAttached && (
                       <span className="text-blue-300 text-sm font-bold">
                         +{CHALLENGE_POINTS}
                       </span>
                     )}
                   </div>
-                  <p className={`text-sm mb-2 ${isActive ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                  <p className={`text-sm mb-2 ${
+                    isAttached ? 'text-zinc-700' : isActive ? 'text-zinc-300' : 'text-zinc-600'
+                  }`}>
                     {challenge.description}
                   </p>
-                  {placedGuess && (
-                    <div className="mt-2 pt-2 border-t border-zinc-700">
-                      <p className="text-white text-base font-semibold">{placedGuess.song}</p>
-                      <p className="text-zinc-400 text-sm">{placedGuess.artist}</p>
-                    </div>
+                  {isAttached && (
+                    <p className="text-zinc-600 text-xs italic mt-2">
+                      Attached to {placedGuess.song}
+                    </p>
                   )}
                   {/* TODO: Add "See examples" functionality - show sample tracks that meet this challenge */}
                 </div>

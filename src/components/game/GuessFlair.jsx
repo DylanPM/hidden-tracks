@@ -126,9 +126,16 @@ export function GuessFlair({
   const getAttributeValue = (track, attr) => {
     if (!track) return null;
 
-    // Use tempo_norm for tempo, regular value for others
+    // Use tempo_norm for tempo, or normalize from raw tempo (BPM)
     if (attr === 'tempo') {
-      return track.tempo_norm ?? null;
+      if (track.tempo_norm !== undefined && track.tempo_norm !== null) {
+        return track.tempo_norm;
+      }
+      // Fallback: normalize raw tempo (assume range 0-200 BPM)
+      if (track.tempo !== undefined && track.tempo !== null) {
+        return Math.min(Math.max(track.tempo / 200, 0), 1);
+      }
+      return null;
     }
 
     // Popularity is 0-100, normalize to 0-1
@@ -165,43 +172,25 @@ export function GuessFlair({
   };
 
   return (
-    <div className="space-y-2 relative">
-      {/* 1. Challenge Badge (if applicable) */}
-      {challenge && (
-        <>
-          <div
-            className={`bg-blue-900/50 border-2 border-blue-500 rounded-lg p-2 transform transition-all duration-300 ${
-              dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
-            }`}
-            style={{ transitionDelay: `${animationDelay}ms` }}
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-blue-300 font-bold text-sm">{challenge.name}</p>
-                <p className="text-zinc-400 text-xs">{challenge.description}</p>
-              </div>
-              <span className="text-blue-300 text-sm font-bold">
-                +{CHALLENGE_POINTS}
-              </span>
-            </div>
-          </div>
-          {/* Visual connector: arrow from challenge to attributes */}
-          {showAttributeFeedback && (
-            <div className="flex justify-center">
-              <ArrowDown className="w-4 h-4 text-zinc-600" />
-            </div>
-          )}
-        </>
-      )}
-
-      {/* 2. Attribute Feedback (2 colored boxes) */}
+    <div className="space-y-0 relative">
+      {/* 1. Attribute Feedback (2 half-width boxes with connectors from embed) */}
       {showAttributeFeedback && guess.trackData && (
         <>
+          {/* Connector lines from embed to attributes */}
+          <div className="flex justify-center gap-2 h-3">
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
+          </div>
+
           <div
             className={`transform transition-all duration-300 ${
               dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
             }`}
-            style={{ transitionDelay: `${animationDelay + (challenge ? 100 : 0)}ms` }}
+            style={{ transitionDelay: `${animationDelay}ms` }}
           >
             <div className="grid grid-cols-2 gap-2">
               {selectedAttrs.map((attr) => {
@@ -251,30 +240,57 @@ export function GuessFlair({
               })}
             </div>
           </div>
-
-          {/* Visual connector: arrow from attributes to points */}
-          {isCorrect && (
-            <div className="flex justify-center">
-              <ArrowDown className="w-4 h-4 text-zinc-600" />
-            </div>
-          )}
         </>
       )}
 
-      {/* 3. Points Awarded (if correct) */}
-      {isCorrect && (
-        <div
-          className={`bg-green-900/30 border-2 border-green-500 rounded-lg p-2 transform transition-all duration-300 ${
-            dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
-          }`}
-          style={{ transitionDelay: `${animationDelay + (challenge ? 200 : showAttributeFeedback ? 100 : 0)}ms` }}
-        >
-          <div className="flex justify-center items-center gap-2">
-            <span className="text-green-400 font-bold text-lg">
-              +{guess.basePoints} points
-            </span>
+      {/* 2. Challenge Badge (if applicable) - hangs below attributes */}
+      {challenge && (
+        <>
+          {/* Connector lines from attributes to challenge */}
+          <div className="flex justify-center h-3">
+            <div className="w-0.5 h-full bg-zinc-600" />
           </div>
-        </div>
+
+          <div
+            className={`bg-blue-900/50 border-2 border-blue-500 rounded-lg p-2 transform transition-all duration-300 ${
+              dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+            }`}
+            style={{ transitionDelay: `${animationDelay + (showAttributeFeedback ? 100 : 0)}ms` }}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-blue-300 font-bold text-sm">{challenge.name}</p>
+                <p className="text-zinc-400 text-xs">{challenge.description}</p>
+              </div>
+              <span className="text-blue-300 text-sm font-bold">
+                +{CHALLENGE_POINTS}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 3. Points Awarded (if correct) - hangs below challenge or attributes */}
+      {isCorrect && (
+        <>
+          {/* Connector line from challenge/attributes to points */}
+          <div className="flex justify-center h-3">
+            <div className="w-0.5 h-full bg-zinc-600" />
+          </div>
+
+          <div
+            className={`bg-green-900/30 border-2 border-green-500 rounded-lg p-2 transform transition-all duration-300 ${
+              dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+            }`}
+            style={{ transitionDelay: `${animationDelay + (challenge ? 200 : showAttributeFeedback ? 100 : 0)}ms` }}
+          >
+            <div className="flex justify-center items-center gap-2">
+              <span className="text-green-400 font-bold text-lg">
+                +{guess.basePoints} points
+              </span>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
