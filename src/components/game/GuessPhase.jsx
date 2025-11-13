@@ -605,11 +605,11 @@ export function GuessPhase({
           </div>
 
           <p className="text-zinc-400 text-base mb-3">
-            Pick songs that are on the playlist and have these qualities
+            For extra points, pick songs that are on the playlist and have these qualities
           </p>
 
-          {/* Challenge Slots (2 challenges) - Color coded by attribute */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+          {/* Challenge Slots (2 challenges) - Color coded by attribute, displayed side by side */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {challenges.slice(0, 2).map((challenge, idx) => {
               const isActive = isChallengeActive(idx);
               const placedGuessId = challengePlacements[idx];
