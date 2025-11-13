@@ -137,37 +137,48 @@ export function TrackAttributes({
               </div>
               <p className="text-zinc-300 text-base mb-4">{config.description}</p>
 
-              {/* Binary gamut visualization with number between words */}
-              <div className="space-y-2">
-                {/* Labels with number in center */}
-                <div className="flex items-center justify-between text-base">
-                  <span className={`${
-                    isRevealed && position === 'low'
-                      ? 'text-green-400 font-bold'
-                      : 'text-zinc-400'
-                  }`}>
-                    {config.lowLabel}
-                  </span>
-
-                  {/* Number between the words */}
-                  <span className={`text-xl font-bold ${
-                    isRevealed ? 'text-white' : 'text-zinc-600'
-                  }`}>
-                    {isRevealed && normalizedValue !== null ? normalizedValue : '?'}
-                  </span>
-
-                  <span className={`${
-                    isRevealed && position === 'high'
-                      ? 'text-green-400 font-bold'
-                      : 'text-zinc-400'
-                  }`}>
-                    {config.highLabel}
-                  </span>
+              {/* Number line visualization with circles */}
+              <div className="flex items-center justify-between gap-1">
+                {/* Low label circle */}
+                <div className={`flex-shrink-0 w-16 h-16 rounded-full border-2 flex items-center justify-center text-center transition ${
+                  isRevealed && position === 'low'
+                    ? `border-[${config.color}] text-white font-bold`
+                    : 'border-zinc-600 text-zinc-400'
+                }`}
+                style={{
+                  backgroundColor: isRevealed && position === 'low' ? config.color : 'transparent'
+                }}>
+                  <span className="text-xs leading-tight px-1">{config.lowLabel}</span>
                 </div>
 
-                {/* Simple line visualization */}
-                <div className="relative h-2 flex items-center">
-                  <div className="absolute w-full h-0.5 bg-zinc-600" />
+                {/* Connecting line (left half) */}
+                <div className="flex-1 h-0.5 bg-zinc-600" />
+
+                {/* Center number circle */}
+                <div className={`flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition ${
+                  isRevealed
+                    ? `border-[${config.color}] text-white font-bold text-lg`
+                    : 'border-zinc-600 text-zinc-600 text-lg'
+                }`}
+                style={{
+                  backgroundColor: isRevealed ? config.color : 'transparent'
+                }}>
+                  {isRevealed && normalizedValue !== null ? normalizedValue : '???'}
+                </div>
+
+                {/* Connecting line (right half) */}
+                <div className="flex-1 h-0.5 bg-zinc-600" />
+
+                {/* High label circle */}
+                <div className={`flex-shrink-0 w-16 h-16 rounded-full border-2 flex items-center justify-center text-center transition ${
+                  isRevealed && position === 'high'
+                    ? `border-[${config.color}] text-white font-bold`
+                    : 'border-zinc-600 text-zinc-400'
+                }`}
+                style={{
+                  backgroundColor: isRevealed && position === 'high' ? config.color : 'transparent'
+                }}>
+                  <span className="text-xs leading-tight px-1">{config.highLabel}</span>
                 </div>
               </div>
             </div>

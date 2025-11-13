@@ -395,34 +395,43 @@ export function GuessPhase({
             <div className={`bg-zinc-900 rounded-lg p-4 mb-2 transition-all ${
               flashGuessCounter ? 'ring-4 ring-green-500 ring-opacity-75 scale-105' : ''
             }`}>
-              <div className="flex justify-between items-center mb-3">
+              <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-white font-bold text-lg">Make Your Guess</h3>
-                  <p className="text-zinc-400 text-sm">Click card to select</p>
+                  <h3 className="text-white font-bold text-2xl">What's on the Playlist?</h3>
+                  <p className="text-zinc-400 text-base">Pick one of 3 songs, or refresh for new choices</p>
                 </div>
               </div>
 
-              {/* Visual counter: 6-5-4-3-2-1 with green circle on current */}
-              <div className="flex items-center gap-4">
-                {[...Array(maxGuesses || 6)].map((_, idx) => {
-                  const guessNum = (maxGuesses || 6) - idx;
-                  const isCurrent = guesses.length === guessNum;
-                  const isPast = guesses.length > guessNum;
+              {/* Guesses Remaining - Number line with connecting line */}
+              <div>
+                <p className="text-zinc-400 text-sm font-semibold mb-2 text-center">
+                  Guesses<br />Remaining
+                </p>
+                <div className="relative flex items-center justify-between px-4">
+                  {/* Background connecting line */}
+                  <div className="absolute left-0 right-0 h-0.5 bg-zinc-600" style={{ top: '50%', transform: 'translateY(-50%)' }} />
 
-                  return (
-                    <div key={idx} className="flex flex-col items-center gap-1">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
-                        isCurrent
-                          ? 'bg-green-500 border-green-400 text-black scale-110'
-                          : isPast
-                          ? 'bg-zinc-700 border-zinc-600 text-zinc-500'
-                          : 'bg-zinc-800 border-zinc-600 text-zinc-400'
-                      } ${flashGuessCounter && isCurrent ? 'ring-4 ring-green-400' : ''}`}>
-                        <span className="text-xl font-bold">{guessNum}</span>
+                  {/* Number circles - counting down from 6 to 1 */}
+                  {[...Array(maxGuesses || 6)].map((_, idx) => {
+                    const guessNum = (maxGuesses || 6) - idx;
+                    const isCurrent = guesses.length === guessNum;
+                    const isPast = guesses.length > guessNum;
+
+                    return (
+                      <div key={idx} className="relative flex items-center justify-center">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center border-3 transition-all z-10 ${
+                          isCurrent
+                            ? 'bg-green-500 border-green-400 text-black scale-110 shadow-lg'
+                            : isPast
+                            ? 'bg-zinc-700 border-zinc-600 text-zinc-500'
+                            : 'bg-zinc-800 border-zinc-600 text-zinc-400'
+                        } ${flashGuessCounter && isCurrent ? 'ring-4 ring-green-400' : ''}`}>
+                          <span className="text-2xl font-bold">{guessNum}</span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -499,33 +508,34 @@ export function GuessPhase({
                 hintsUsed < maxHints && !pendingHintUse ? 'cursor-pointer hover:bg-blue-900/30 transition' : ''
               }`}
             >
-              <h3 className="text-white font-bold text-lg mb-4">Reveal Starting Track Attributes</h3>
-              <div className="flex items-center gap-3 mb-4">
+              <h3 className="text-white font-bold text-xl mb-4">Reveal Starting Track Attributes</h3>
+              <div className="flex items-center justify-center gap-4 mb-4">
                 {[0, 1, 2].map((idx) => {
                   const isUsed = idx < hintsUsed;
 
                   return (
                     <Search
                       key={idx}
-                      className={`w-10 h-10 transition ${
+                      className={`w-12 h-12 transition ${
                         isUsed ? 'text-zinc-700' : 'text-green-500'
                       }`}
                     />
                   );
                 })}
               </div>
-              <p className="text-zinc-300 text-base">
-                {pendingHintUse
-                  ? '👆 Click an attribute above to reveal it!'
-                  : 'Click here, then click an attribute to reveal'}
-              </p>
+              {hintsUsed < maxHints && (
+                <p className="text-zinc-300 text-base text-center">
+                  {pendingHintUse
+                    ? '👆 Click an attribute above to reveal it!'
+                    : 'Click here, then click an attribute to reveal'}
+                </p>
+              )}
             </div>
 
             {/* Right box: Score impact */}
-            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 flex flex-col justify-center">
-              <p className="text-zinc-300 text-sm font-semibold mb-1">Unused Reveals Bonus</p>
-              <p className="text-green-400 text-2xl font-bold">+{(maxHints - hintsUsed) * HINT_POINTS}pts</p>
-              <p className="text-zinc-500 text-xs mt-1">{maxHints - hintsUsed} reveals remaining</p>
+            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 flex flex-col justify-center items-center">
+              <p className="text-zinc-300 text-sm font-semibold mb-2">Unused Reveals Bonus</p>
+              <p className="text-green-400 text-3xl font-bold">+{(maxHints - hintsUsed) * HINT_POINTS}pts</p>
             </div>
           </div>
 
