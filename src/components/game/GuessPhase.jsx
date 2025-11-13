@@ -149,6 +149,11 @@ export function GuessPhase({
   const [highlightClues, setHighlightClues] = useState(false);
   const [isAnimatingScroll, setIsAnimatingScroll] = useState(false);
 
+  // Debug: Animation timing controls
+  const [guessDwellTime, setGuessDwellTime] = useState(2500); // milliseconds
+  const [intelDwellTime, setIntelDwellTime] = useState(2500); // milliseconds
+  const [showDebugControls, setShowDebugControls] = useState(false);
+
   // Scroll animation sequence after a guess
   useEffect(() => {
     if (guesses.length === 0 || isAnimatingScroll) return;
@@ -159,22 +164,23 @@ export function GuessPhase({
     const runScrollSequence = async () => {
       setIsAnimatingScroll(true);
 
-      // Step 1: Scroll to where the guess landed
+      // Step 1: Scroll to where the guess landed and dwell
       const targetRef = isCorrect ? correctGuessesRef : incorrectGuessesRef;
       if (targetRef.current) {
         targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 600)); // Scroll animation time
+        await new Promise(resolve => setTimeout(resolve, guessDwellTime)); // Dwell on guess
       }
 
       // Step 2: Scroll to "What We Know So Far"
       if (whatWeKnowRef.current) {
         whatWeKnowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise(resolve => setTimeout(resolve, 600)); // Scroll animation time
       }
 
-      // Step 3: Highlight section and linger for 2.5s
+      // Step 3: Highlight section and linger
       setHighlightClues(true);
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await new Promise(resolve => setTimeout(resolve, intelDwellTime)); // Dwell on intel
       setHighlightClues(false);
 
       // Step 4: Peek up slightly (scroll up 150px to see bottom of guess options)
@@ -261,18 +267,18 @@ export function GuessPhase({
   // Generate clues from guesses (1 clue per guess)
   const generateClues = () => {
     if (!seed || guesses.length === 0) return [];
-    
+
     const clues = [];
-    const attributes = ['genre', 'year', 'valence', 'popularity', 'danceability', 
+    const attributes = ['genre', 'year', 'valence', 'popularity', 'danceability',
                         'energy', 'acousticness', 'instrumentalness', 'speechiness'];
-    
-    guesses.forEach((guess) => {
+
+    guesses.forEach((guess, guessIndex) => {
       if (!guess.trackData) return;
-      
+
       const guessTrack = guess.trackData;
-      
-      // Pick random attribute
-      const attr = attributes[Math.floor(Math.random() * attributes.length)];
+
+      // Pick deterministic attribute based on guess index (stable across renders)
+      const attr = attributes[guessIndex % attributes.length];
       let clue = '';
       
       if (guess.incorrect) {
@@ -358,7 +364,8 @@ export function GuessPhase({
     return clues;
   };
 
-  const clues = generateClues();
+  // Memoize clues so they don't regenerate on every render
+  const clues = useMemo(() => generateClues(), [guesses, seed]);
 
   return (
     <div
