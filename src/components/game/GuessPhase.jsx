@@ -529,36 +529,61 @@ export function GuessPhase({
             </div>
           </div>
 
-          {/* 5. What We Know So Far */}
+          {/* 5. What We Know So Far - Spotify-style Discovery Feed */}
           <div
             ref={whatWeKnowRef}
-            className={`bg-zinc-900 rounded-lg p-4 transition-all ${
-              highlightClues ? 'ring-4 ring-green-500 ring-opacity-75 scale-105' : ''
+            className={`bg-gradient-to-br from-zinc-900 to-zinc-900/50 rounded-xl p-5 border border-zinc-800 transition-all ${
+              highlightClues ? 'ring-4 ring-green-500 ring-opacity-75 scale-105 border-green-500/50' : ''
             }`}
           >
-            <h3 className="text-white font-bold mb-2 text-lg">What We Know So Far</h3>
-            <p className="text-zinc-400 text-base mb-3">
-              Clues from attribute reveals and your guesses
-            </p>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                <span className="text-xl">💡</span>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-xl">Playlist Intel</h3>
+                <p className="text-zinc-400 text-sm">
+                  What you've discovered
+                </p>
+              </div>
+            </div>
             {(revealClues.length > 0 || clues.length > 0) ? (
-              <ol className="space-y-2.5 text-zinc-300 text-base leading-relaxed list-decimal list-inside">
-                {/* Reveal clues first */}
+              <div className="space-y-3">
+                {/* Reveal clues - styled as insight cards */}
                 {revealClues.map((clue, idx) => (
-                  <li key={`reveal-${idx}`} className="pl-1">
-                    {clue}
-                  </li>
+                  <div
+                    key={`reveal-${idx}`}
+                    className="bg-green-900/20 border border-green-700/40 rounded-lg p-3 flex items-start gap-3 hover:bg-green-900/30 transition"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-green-400 font-bold text-sm">{idx + 1}</span>
+                    </div>
+                    <p className="text-zinc-200 text-base leading-relaxed flex-1">
+                      {clue}
+                    </p>
+                  </div>
                 ))}
-                {/* Guess-based clues second */}
+                {/* Guess-based clues - styled as insight cards */}
                 {clues.map((clue, idx) => (
-                  <li key={`guess-${idx}`} className="pl-1">
-                    {clue}
-                  </li>
+                  <div
+                    key={`guess-${idx}`}
+                    className="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3 flex items-start gap-3 hover:bg-blue-900/30 transition"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-blue-400 font-bold text-sm">{revealClues.length + idx + 1}</span>
+                    </div>
+                    <p className="text-zinc-200 text-base leading-relaxed flex-1">
+                      {clue}
+                    </p>
+                  </div>
                 ))}
-              </ol>
+              </div>
             ) : (
-              <p className="text-zinc-400 text-base italic">
-                Make a guess or reveal an attribute to discover clues
-              </p>
+              <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-6 text-center">
+                <p className="text-zinc-400 text-base">
+                  🎯 Make a guess or reveal an attribute to start discovering clues
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -573,17 +598,37 @@ export function GuessPhase({
             Pick songs that are on the playlist and have these qualities
           </p>
 
-          {/* Challenge Slots (2 challenges) */}
+          {/* Challenge Slots (2 challenges) - Color coded by attribute */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            {challenges.map((challenge, idx) => {
+            {challenges.slice(0, 2).map((challenge, idx) => {
               const isActive = isChallengeActive(idx);
               const placedGuessId = challengePlacements[idx];
               const placedGuess = placedGuessId
                 ? guesses.find(g => g.id === placedGuessId)
                 : null;
 
-              // Grey out when attached to a guess (lasting imprint)
+              // Grey out when attached to a guess (lasting imprint - sticker moved to track)
               const isAttached = placedGuess !== null;
+
+              // Get attribute color based on challenge type
+              const getAttributeColor = () => {
+                const colorMap = {
+                  'mega-hit': '#EC4899',        // popularity - pink
+                  'deep-cut': '#EC4899',         // popularity - pink
+                  'cult-classic': '#EC4899',     // popularity - pink
+                  'high-energy': '#DC2626',      // energy - red
+                  'chill-vibes': '#DC2626',      // energy - red
+                  'dance-floor': '#9333EA',      // danceability - purple
+                  'feel-good': '#2563EB',        // valence - blue
+                  'melancholy': '#2563EB',       // valence - blue
+                  'unplugged': '#16A34A',        // acousticness - green
+                  'fast-and-furious': '#0EA5E9', // tempo - cyan
+                  'slow-burn': '#0EA5E9',        // tempo - cyan
+                };
+                return colorMap[challenge?.id] || '#3B82F6';
+              };
+
+              const attributeColor = challenge ? getAttributeColor() : '#3B82F6';
 
               return challenge ? (
                 <div
@@ -591,34 +636,35 @@ export function GuessPhase({
                   className={`rounded-lg p-3 border-2 transition ${
                     isAttached
                       ? 'bg-zinc-800/50 border-zinc-700/50 opacity-60'
-                      : isActive
-                      ? 'bg-blue-900/50 border-blue-500'
-                      : 'bg-zinc-800 border-zinc-700'
+                      : 'bg-opacity-20'
                   }`}
+                  style={{
+                    backgroundColor: isAttached ? undefined : `${attributeColor}20`,
+                    borderColor: isAttached ? undefined : attributeColor,
+                  }}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h3 className={`font-bold ${
-                      isAttached ? 'text-zinc-600' : isActive ? 'text-blue-300' : 'text-zinc-500'
+                      isAttached ? 'text-zinc-600' : 'text-white'
                     }`}>
                       {challenge.name}
                     </h3>
-                    {isActive && !isAttached && (
-                      <span className="text-blue-300 text-sm font-bold">
+                    {!isAttached && (
+                      <span className="text-white text-sm font-bold">
                         +{CHALLENGE_POINTS}
                       </span>
                     )}
                   </div>
                   <p className={`text-sm mb-2 ${
-                    isAttached ? 'text-zinc-700' : isActive ? 'text-zinc-300' : 'text-zinc-600'
+                    isAttached ? 'text-zinc-700' : 'text-zinc-300'
                   }`}>
                     {challenge.description}
                   </p>
                   {isAttached && (
                     <p className="text-zinc-600 text-xs italic mt-2">
-                      Attached to {placedGuess.song}
+                      Sticker moved to {placedGuess.song}
                     </p>
                   )}
-                  {/* TODO: Add "See examples" functionality - show sample tracks that meet this challenge */}
                 </div>
               ) : (
                 <div key={idx} className="rounded-lg p-4 bg-zinc-800 border-2 border-zinc-700">
