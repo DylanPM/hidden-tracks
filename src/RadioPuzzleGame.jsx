@@ -4,11 +4,13 @@ import { GenreConstellationSelect } from './components/game/GenreConstellationSe
 import { DraftPhase } from './components/game/DraftPhase';
 import { GuessPhase } from './components/game/GuessPhase';
 import { ScorePhase } from './components/game/ScorePhase';
+import { AlgorithmDebugModal, trackAlgorithmStats } from './components/debug/AlgorithmDebugModal';
 import { generateSeedHints } from './utils/gameUtils';
 import { CHALLENGES } from './constants/gameConfig';
 
 const DEMO_MODE = true;
 const DEBUG_MODE = false;
+const DEBUG_ALGORITHM = true; // Toggle to enable/disable algorithm stats tracking
 
 // ============================================================================
 // HELPER FUNCTIONS - Single source of truth for track handling
@@ -471,7 +473,13 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
   }
 
   // 4) set the three choices
-  gameState.setMultipleChoice(fyShuffle(picks));
+  const shuffledPicks = fyShuffle(picks);
+  gameState.setMultipleChoice(shuffledPicks);
+
+  // Track algorithm stats for debugging
+  if (DEBUG_ALGORITHM) {
+    trackAlgorithmStats(shuffledPicks);
+  }
 
   console.log('[MCQ]', {
   difficulty: currentDifficulty,
@@ -741,7 +749,12 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
   // ============================================================================
 
   if (phase === 'constellation') {
-    return <GenreConstellationSelect onLaunch={handleConstellationLaunch} />;
+    return (
+      <>
+        <GenreConstellationSelect onLaunch={handleConstellationLaunch} />
+        <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+      </>
+    );
   }
 
   if (phase === 'error') {
@@ -801,27 +814,30 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
 
   if (phase === 'guess') {
     return (
-      <GuessPhase
-        seed={gameState.state.seed}
-        seedHints={gameState.state.seedHints}
-        revealedHints={gameState.state.revealedHints}
-        challenges={gameState.state.challenges}
-        challengePlacements={gameState.state.challengePlacements}
-        multipleChoiceOptions={gameState.state.multipleChoiceOptions}
-        textInput=""
-        textMatchedSong={null}
-        errorMessage={errorMessage}
-        guesses={gameState.state.guesses}
-        guessesLeft={guessesLeft}
-        maxGuesses={maxGuesses}
-        debugMode={DEBUG_MODE}
-        onRevealHint={(idx) => gameState.revealHint(idx)}
-        onGetHint={getHint}
-        onGuess={handleGuess}
-        onRefreshCandidates={generateMultipleChoice}
-        onTextInput={() => {}}
-        onSeeScore={() => setPhase('score')}
-      />
+      <>
+        <GuessPhase
+          seed={gameState.state.seed}
+          seedHints={gameState.state.seedHints}
+          revealedHints={gameState.state.revealedHints}
+          challenges={gameState.state.challenges}
+          challengePlacements={gameState.state.challengePlacements}
+          multipleChoiceOptions={gameState.state.multipleChoiceOptions}
+          textInput=""
+          textMatchedSong={null}
+          errorMessage={errorMessage}
+          guesses={gameState.state.guesses}
+          guessesLeft={guessesLeft}
+          maxGuesses={maxGuesses}
+          debugMode={DEBUG_MODE}
+          onRevealHint={(idx) => gameState.revealHint(idx)}
+          onGetHint={getHint}
+          onGuess={handleGuess}
+          onRefreshCandidates={generateMultipleChoice}
+          onTextInput={() => {}}
+          onSeeScore={() => setPhase('score')}
+        />
+        <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+      </>
     );
   }
 
@@ -829,34 +845,41 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
     const hintsUsed = gameState.state.usedHints.filter(Boolean).length;
 
     return (
-      <ScorePhase
-        seed={gameState.state.seed}
-        guesses={gameState.state.guesses}
-        challengePlacements={gameState.state.challengePlacements}
-        challenges={gameState.state.challenges}
-        hintsUsed={hintsUsed}
-        maxHints={3}
-        onPlayAgain={() => {
-          gameState.resetGame();
-          gameState.setMultipleChoice([]);
-          setSelectedTracks([]);
-          setLoadedProfile(null);
-          setDifficulty('medium');
-          setCurrentChoice(null);
-          setRemoveMode(false);
-          setErrorMessage('');
-          setProfileLoadError(null);
-          localStorage.removeItem('seedIsLocked');
-          setPhase('constellation');
-        }}
-      />
+      <>
+        <ScorePhase
+          seed={gameState.state.seed}
+          guesses={gameState.state.guesses}
+          challengePlacements={gameState.state.challengePlacements}
+          challenges={gameState.state.challenges}
+          hintsUsed={hintsUsed}
+          maxHints={3}
+          onPlayAgain={() => {
+            gameState.resetGame();
+            gameState.setMultipleChoice([]);
+            setSelectedTracks([]);
+            setLoadedProfile(null);
+            setDifficulty('medium');
+            setCurrentChoice(null);
+            setRemoveMode(false);
+            setErrorMessage('');
+            setProfileLoadError(null);
+            localStorage.removeItem('seedIsLocked');
+            setPhase('constellation');
+          }}
+        />
+        <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 flex items-center justify-center text-white">
-      Loading...
-    </div>
+    <>
+      <div className="min-h-screen bg-black p-8 flex items-center justify-center text-white">
+        Loading...
+      </div>
+      {/* Algorithm Debug Modal (global overlay) */}
+      <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+    </>
   );
 }
 
