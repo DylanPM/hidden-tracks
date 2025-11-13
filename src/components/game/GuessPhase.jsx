@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { HINT_POINTS, CHALLENGE_POINTS } from '../../constants/gameConfig';
 import { TrackAttributes } from './TrackAttributes';
