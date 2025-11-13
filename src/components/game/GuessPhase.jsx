@@ -192,12 +192,16 @@ export function GuessPhase({
     setPendingHintUse(true);
   };
 
+  const handleCancelReveal = () => {
+    setPendingHintUse(false);
+  };
+
   const handleAttributeReveal = (attribute) => {
     if (!pendingHintUse || hintsUsed >= maxHints || !seed) return;
 
     // Get attribute value from seed
     const value = seed[attribute === 'tempo' ? 'tempo_norm' : attribute];
-    if (value === undefined) return;
+    if (value === undefined || value === null || isNaN(value)) return;
 
     // Determine range (low < 0.35, high > 0.65, else mid)
     let range;
@@ -357,7 +361,10 @@ export function GuessPhase({
   const clues = generateClues();
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-3 md:p-6">
+    <div
+      className="min-h-screen bg-zinc-950 p-3 md:p-6"
+      onClick={() => pendingHintUse && handleCancelReveal()}
+    >
       <div className="max-w-7xl mx-auto">
         
         {/* Linear Layout: All sections in proper order */}
@@ -490,22 +497,31 @@ export function GuessPhase({
 
           {/* 3. Track Attributes */}
           {seed && (
-            <TrackAttributes
-              track={seed}
-              revealedAttributes={revealedAttributes}
-              onAttributeClick={handleAttributeReveal}
-              clickableAttributes={pendingHintUse}
-              pulseUnrevealed={pendingHintUse}
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <TrackAttributes
+                track={seed}
+                revealedAttributes={revealedAttributes}
+                onAttributeClick={handleAttributeReveal}
+                clickableAttributes={pendingHintUse}
+                pulseUnrevealed={pendingHintUse}
+              />
+            </div>
           )}
 
           {/* 4. Reveal Starting Track Attributes - Split into 2 colored boxes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Left box: How to use - Click anywhere to activate */}
+            {/* Left box: How to use - Click anywhere to activate or cancel */}
             <div
-              onClick={() => hintsUsed < maxHints && !pendingHintUse && handleHintClick()}
+              onClick={() => {
+                if (hintsUsed >= maxHints) return;
+                if (pendingHintUse) {
+                  handleCancelReveal();
+                } else {
+                  handleHintClick();
+                }
+              }}
               className={`bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 ${
-                hintsUsed < maxHints && !pendingHintUse ? 'cursor-pointer hover:bg-blue-900/30 transition' : ''
+                hintsUsed < maxHints ? 'cursor-pointer hover:bg-blue-900/30 transition' : ''
               }`}
             >
               <h3 className="text-white font-bold text-xl mb-4">Reveal Starting Track Attributes</h3>
@@ -769,17 +785,6 @@ export function GuessPhase({
                             isCorrect={false}
                             animationDelay={idx * 150}
                           />
-
-                          {/* Legacy feedback messages */}
-                          {guess.feedback && guess.feedback.length > 0 && (
-                            <div className="bg-red-900/30 border border-red-800 rounded p-2">
-                              <div className="text-xs text-red-300 space-y-1">
-                                {guess.feedback.map((fb, i) => (
-                                  <div key={i}>• {fb}</div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>

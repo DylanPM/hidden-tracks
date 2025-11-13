@@ -8,14 +8,14 @@ import { CHALLENGE_POINTS } from '../../constants/gameConfig';
  * Includes: challenge badge, attribute feedback with smart selection, and points awarded
  */
 
-// Attribute labels for display
-const ATTRIBUTE_LABELS = {
-  danceability: { lowLabel: 'Laid-back', highLabel: 'Danceable' },
-  energy: { lowLabel: 'Calm', highLabel: 'Energetic' },
-  acousticness: { lowLabel: 'Electronic', highLabel: 'Acoustic' },
-  valence: { lowLabel: 'Sad', highLabel: 'Happy' },
-  tempo: { lowLabel: 'Slow', highLabel: 'Fast' },
-  popularity: { lowLabel: 'Niche', highLabel: 'Popular' },
+// Attribute configuration for display
+const ATTRIBUTE_CONFIG = {
+  danceability: { lowLabel: 'Laid-back', highLabel: 'Danceable', color: '#9333EA' },
+  energy: { lowLabel: 'Calm', highLabel: 'Energetic', color: '#DC2626' },
+  acousticness: { lowLabel: 'Electronic', highLabel: 'Acoustic', color: '#16A34A' },
+  valence: { lowLabel: 'Sad', highLabel: 'Happy', color: '#2563EB' },
+  tempo: { lowLabel: 'Slow', highLabel: 'Fast', color: '#EAB308' },
+  popularity: { lowLabel: 'Niche', highLabel: 'Popular', color: '#EC4899' },
 };
 
 // Determine which attributes a challenge tests
@@ -205,17 +205,13 @@ export function GuessFlair({
                 const value = getAttributeValue(guess.trackData, attr);
                 const displayValue = formatAttributeValue(attr, value);
                 const position = getPosition(value);
-                const labels = ATTRIBUTE_LABELS[attr];
+                const config = ATTRIBUTE_CONFIG[attr];
 
-                // Color based on correct/incorrect and position
+                // Color based on correct/incorrect
                 const getBgColor = () => {
                   if (isCorrect) {
-                    // Correct guess - green tones
-                    if (position === 'low') return 'bg-emerald-900/40 border-emerald-600';
-                    if (position === 'high') return 'bg-green-900/40 border-green-500';
                     return 'bg-green-900/30 border-green-600';
                   } else {
-                    // Incorrect guess - subtle grey tones (less sympathy for the devil!)
                     return 'bg-zinc-800 border-zinc-700';
                   }
                 };
@@ -225,40 +221,46 @@ export function GuessFlair({
                     key={attr}
                     className={`rounded-lg p-2 border-2 ${getBgColor()}`}
                   >
-                    <p className="text-white font-semibold capitalize text-sm mb-2">
+                    <p className="text-white font-semibold capitalize text-sm mb-3">
                       {attr}
                     </p>
 
-                    {/* Binary gamut visualization - same as TrackAttributes */}
-                    <div className="space-y-1">
-                      {/* Labels */}
-                      <div className="flex items-center justify-between text-xs">
-                        <span className={position === 'low' ? 'text-white font-bold' : 'text-zinc-500'}>
-                          {labels.lowLabel}
-                        </span>
-                        <span className={position === 'high' ? 'text-white font-bold' : 'text-zinc-500'}>
-                          {labels.highLabel}
-                        </span>
+                    {/* Number line visualization with circles - matching TrackAttributes */}
+                    <div className="flex items-center justify-between gap-1">
+                      {/* Low label circle */}
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-center transition text-[10px]`}
+                        style={{
+                          borderColor: position === 'low' ? config.color : '#52525b',
+                          backgroundColor: position === 'low' ? config.color : 'transparent',
+                          color: position === 'low' ? 'white' : '#a1a1aa'
+                        }}>
+                        <span className="leading-tight px-0.5">{config.lowLabel}</span>
                       </div>
 
-                      {/* Line with positioned circle */}
-                      <div className="relative h-8 flex items-center">
-                        {/* Background line */}
-                        <div className="absolute w-full h-0.5 bg-zinc-700" />
+                      {/* Connecting line (left half) */}
+                      <div className="flex-1 h-0.5 bg-zinc-600" />
 
-                        {/* Positioned circle with value */}
-                        {displayValue !== '?' && (
-                          <div
-                            className="absolute flex items-center justify-center"
-                            style={{ left: `${clampPosition(displayValue)}%`, transform: 'translateX(-50%)' }}
-                          >
-                            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                              <span className="text-black text-xs font-bold">
-                                {displayValue}
-                              </span>
-                            </div>
-                          </div>
-                        )}
+                      {/* Center number circle */}
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition text-sm font-bold`}
+                        style={{
+                          borderColor: config.color,
+                          backgroundColor: config.color,
+                          color: 'white'
+                        }}>
+                        {displayValue}
+                      </div>
+
+                      {/* Connecting line (right half) */}
+                      <div className="flex-1 h-0.5 bg-zinc-600" />
+
+                      {/* High label circle */}
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-center transition text-[10px]`}
+                        style={{
+                          borderColor: position === 'high' ? config.color : '#52525b',
+                          backgroundColor: position === 'high' ? config.color : 'transparent',
+                          color: position === 'high' ? 'white' : '#a1a1aa'
+                        }}>
+                        <span className="leading-tight px-0.5">{config.highLabel}</span>
                       </div>
                     </div>
                   </div>
@@ -269,26 +271,34 @@ export function GuessFlair({
         </>
       )}
 
-      {/* 2. Challenge Badge (if applicable) - hangs below attributes */}
+      {/* 2. Challenge Badge (if applicable) - 1/2 width cards: description + points */}
       {challenge && (
         <>
           {/* Connector lines from attributes to challenge */}
-          <div className="flex justify-center h-3">
-            <div className="w-0.5 h-full bg-zinc-600" />
+          <div className="flex justify-center gap-2 h-3">
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
+            <div className="w-1/2 flex justify-center">
+              <div className="w-0.5 h-full bg-zinc-600" />
+            </div>
           </div>
 
           <div
-            className={`bg-blue-900/50 border-2 border-blue-500 rounded-lg p-2 transform transition-all duration-300 ${
+            className={`grid grid-cols-2 gap-2 transform transition-all duration-300 ${
               dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
             }`}
             style={{ transitionDelay: `${animationDelay + (showAttributeFeedback ? 100 : 0)}ms` }}
           >
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-blue-300 font-bold text-sm">{challenge.name}</p>
-                <p className="text-zinc-400 text-xs">{challenge.description}</p>
-              </div>
-              <span className="text-blue-300 text-sm font-bold">
+            {/* Left box: Challenge name and description */}
+            <div className="bg-blue-900/50 border-2 border-blue-500 rounded-lg p-3">
+              <p className="text-blue-300 font-bold text-base mb-1">{challenge.name}</p>
+              <p className="text-zinc-300 text-sm">{challenge.description}</p>
+            </div>
+
+            {/* Right box: Points - Spotify treatment */}
+            <div className="bg-blue-900/50 border-2 border-blue-500 rounded-lg p-3 flex items-center justify-center">
+              <span className="text-blue-300 text-3xl font-bold">
                 +{CHALLENGE_POINTS}
               </span>
             </div>
@@ -340,10 +350,17 @@ export function GuessFlair({
             }`}
             style={{ transitionDelay: `${animationDelay + (showAttributeFeedback ? 100 : 0)}ms` }}
           >
-            <div className="flex justify-center items-center gap-2">
-              <span className="text-red-400 font-bold text-lg">
+            <div className="text-center">
+              <span className="text-red-400 font-bold text-lg block mb-2">
                 Not on playlist
               </span>
+              {guess.feedback && guess.feedback.length > 0 && (
+                <div className="text-sm text-red-300 space-y-1">
+                  {guess.feedback.map((fb, i) => (
+                    <div key={i}>{fb}</div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </>
