@@ -11,42 +11,42 @@ const ATTRIBUTE_CONFIG = {
   danceability: {
     icon: Music,
     label: 'Danceability',
-    description: 'Rhythmic groove and beat strength',
+    description: 'Does it make you want to move?',
     lowLabel: 'Laid-back',
     highLabel: 'Danceable',
   },
   energy: {
     icon: Zap,
     label: 'Energy',
-    description: 'Intensity and activity level',
+    description: 'How intense does it feel?',
     lowLabel: 'Calm',
     highLabel: 'Energetic',
   },
   acousticness: {
     icon: Radio,
     label: 'Acousticness',
-    description: 'Presence of acoustic vs electronic elements',
+    description: 'Is it produced or performed?',
     lowLabel: 'Electronic',
     highLabel: 'Acoustic',
   },
   valence: {
     icon: Smile,
     label: 'Valence',
-    description: 'Musical positivity and mood',
+    description: 'What\u2019s the mood?',
     lowLabel: 'Sad',
     highLabel: 'Happy',
   },
   tempo: {
     icon: Gauge,
     label: 'Tempo',
-    description: 'Speed and pace of the track',
+    description: 'How fast is it?',
     lowLabel: 'Slow',
     highLabel: 'Fast',
   },
   popularity: {
     icon: TrendingUp,
     label: 'Popularity',
-    description: 'How well-known the track is',
+    description: 'How well-known is it?',
     lowLabel: 'Niche',
     highLabel: 'Popular',
   },
@@ -122,28 +122,57 @@ export function TrackAttributes({
                 <Icon className="w-4 h-4 text-green-400" />
                 <span className="text-white text-sm font-semibold">{config.label}</span>
               </div>
-              <p className="text-zinc-400 text-xs mb-2">{config.description}</p>
+              <p className="text-zinc-400 text-xs mb-3">{config.description}</p>
 
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className={`${
-                  isRevealed && position === 'low'
-                    ? 'text-green-400 font-bold'
-                    : 'text-zinc-500'
-                }`}>
-                  {config.lowLabel}
-                </span>
-                <span className={`text-lg font-bold ${
-                  isRevealed ? 'text-white' : 'text-zinc-600'
-                }`}>
-                  {isRevealed && normalizedValue !== null ? normalizedValue : '???'}
-                </span>
-                <span className={`${
-                  isRevealed && position === 'high'
-                    ? 'text-green-400 font-bold'
-                    : 'text-zinc-500'
-                }`}>
-                  {config.highLabel}
-                </span>
+              {/* Binary gamut visualization with positioned circle */}
+              <div className="space-y-1">
+                {/* Labels */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className={`${
+                    isRevealed && position === 'low'
+                      ? 'text-green-400 font-bold'
+                      : 'text-zinc-500'
+                  }`}>
+                    {config.lowLabel}
+                  </span>
+                  <span className={`${
+                    isRevealed && position === 'high'
+                      ? 'text-green-400 font-bold'
+                      : 'text-zinc-500'
+                  }`}>
+                    {config.highLabel}
+                  </span>
+                </div>
+
+                {/* Line with positioned circle */}
+                <div className="relative h-8 flex items-center">
+                  {/* Background line */}
+                  <div className="absolute w-full h-0.5 bg-zinc-700" />
+
+                  {/* Positioned circle with value */}
+                  {isRevealed && normalizedValue !== null ? (
+                    <div
+                      className="absolute flex items-center justify-center"
+                      style={{ left: `${normalizedValue}%`, transform: 'translateX(-50%)' }}
+                    >
+                      <div className="relative">
+                        {/* Circle */}
+                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                          <span className="text-black text-xs font-bold">
+                            {normalizedValue}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Hidden state - show ??? in center
+                    <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                        <span className="text-zinc-500 text-xs font-bold">?</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

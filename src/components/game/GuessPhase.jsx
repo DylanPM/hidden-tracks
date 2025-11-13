@@ -5,7 +5,95 @@ import { TrackAttributes } from './TrackAttributes';
 import { GuessFlair } from './GuessFlair';
 
 // Version tracking
-console.log('🎮 GuessPhase v2.5 - Guess embeds + flair system');
+console.log('🎮 GuessPhase v2.6 - Grammar system for attribute reveals');
+
+// Grammar system for attribute reveal clues
+const ATTRIBUTE_DESCRIPTIONS = {
+  danceability: {
+    low: {
+      adjective: "laid-back",
+      guidance: "have a relaxed groove, focus on feel over rhythm, or keep listeners seated"
+    },
+    mid: {
+      adjective: "moderately danceable",
+      guidance: "balance rhythm with melody, offer a comfortable groove, or let you sway along"
+    },
+    high: {
+      adjective: "danceable",
+      guidance: "make people move, have infectious rhythms, or get you out of your seat"
+    }
+  },
+  energy: {
+    low: {
+      adjective: "calm",
+      guidance: "create a mellow atmosphere, take it slow, or let you breathe"
+    },
+    mid: {
+      adjective: "moderate energy",
+      guidance: "maintain steady momentum, balance intensity with restraint, or keep things moving"
+    },
+    high: {
+      adjective: "energetic",
+      guidance: "go hard, bring intensity, or keep the adrenaline pumping"
+    }
+  },
+  acousticness: {
+    low: {
+      adjective: "electronic",
+      guidance: "lean on production, embrace synthetic textures, or prioritize the mix"
+    },
+    mid: {
+      adjective: "balanced production",
+      guidance: "blend organic and electronic elements, or mix live instruments with studio polish"
+    },
+    high: {
+      adjective: "acoustic",
+      guidance: "feature live instruments, embrace raw performance, or highlight organic sound"
+    }
+  },
+  valence: {
+    low: {
+      adjective: "melancholy",
+      guidance: "embrace darker moods, explore introspective themes, or sit in the shadows"
+    },
+    mid: {
+      adjective: "bittersweet",
+      guidance: "balance light and dark, blend hope with reflection, or walk the emotional middle"
+    },
+    high: {
+      adjective: "upbeat",
+      guidance: "radiate positivity, bring feel-good vibes, or lift the mood"
+    }
+  },
+  tempo: {
+    low: {
+      adjective: "slow-tempo",
+      guidance: "take their time, let moments breathe, or keep the pace relaxed"
+    },
+    mid: {
+      adjective: "moderate tempo",
+      guidance: "maintain a comfortable pace, balance urgency with ease, or keep a steady rhythm"
+    },
+    high: {
+      adjective: "fast-tempo",
+      guidance: "pick up the pace, bring urgency, or keep the energy high with quick rhythms"
+    }
+  },
+  popularity: {
+    low: {
+      adjective: "niche",
+      guidance: "explore deep cuts, feature lesser-known artists, or dig into the underground"
+    },
+    mid: {
+      adjective: "moderately popular",
+      guidance: "mix familiar and fresh, balance hits with discoveries, or span the mainstream-to-indie spectrum"
+    },
+    high: {
+      adjective: "popular",
+      guidance: "feature well-known tracks, lean toward mainstream appeal, or include familiar favorites"
+    }
+  }
+};
 
 export function GuessPhase({
   seed,
@@ -39,6 +127,7 @@ export function GuessPhase({
 
   // Attribute hint system
   const [revealedAttributes, setRevealedAttributes] = useState({});
+  const [revealClues, setRevealClues] = useState([]);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [pendingHintUse, setPendingHintUse] = useState(false);
   const maxHints = 3;
@@ -49,9 +138,38 @@ export function GuessPhase({
   };
 
   const handleAttributeReveal = (attribute) => {
-    if (!pendingHintUse || hintsUsed >= maxHints) return;
+    if (!pendingHintUse || hintsUsed >= maxHints || !seed) return;
 
+    // Get attribute value from seed
+    const value = seed[attribute === 'tempo' ? 'tempo_norm' : attribute];
+    if (value === undefined) return;
+
+    // Determine range (low < 0.35, high > 0.65, else mid)
+    let range;
+    if (value < 0.35) range = 'low';
+    else if (value > 0.65) range = 'high';
+    else range = 'mid';
+
+    // Get description
+    const description = ATTRIBUTE_DESCRIPTIONS[attribute];
+    if (!description) return;
+
+    const { adjective, guidance } = description[range];
+
+    // Format the value for display
+    let displayValue;
+    if (attribute === 'tempo' || attribute === 'popularity') {
+      displayValue = Math.round(value * (attribute === 'tempo' ? 100 : 1));
+    } else {
+      displayValue = Math.round(value * 100);
+    }
+
+    // Create clue text
+    const clue = `🔍 Starting track's ${attribute} is ${displayValue}, a ${adjective} track. Look for songs that ${guidance}.`;
+
+    // Update state
     setRevealedAttributes(prev => ({ ...prev, [attribute]: true }));
+    setRevealClues(prev => [...prev, clue]);
     setHintsUsed(prev => prev + 1);
     setPendingHintUse(false);
   };
@@ -188,22 +306,23 @@ export function GuessPhase({
       <div className="max-w-7xl mx-auto">
         
         {/* Linear Layout: All sections in proper order */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3 mb-6">
 
           {/* 1. Starting Track */}
           {seed && (
             <div className="bg-zinc-900 rounded-lg p-3 border-2 border-green-500 relative">
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-green-400 font-bold text-sm">Starting Track</h2>
+                <h2 className="text-green-400 font-bold text-base">Starting Track</h2>
                 <button
                   onClick={() => window.location.reload()}
-                  className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded border border-zinc-600 hover:border-zinc-500 transition-all cursor-pointer"
+                  className="px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded border border-zinc-600 hover:border-zinc-500 transition-all cursor-pointer"
                 >
-                  Want a different track? Click here to return to the map.
+                  Want a different track? Return to map.
                 </button>
               </div>
-              <div className="relative max-w-2xl">
+              <div className="relative">
                 <iframe
+                  title={`Spotify player for ${seed.name}`}
                   src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
                   width="100%"
                   height="152"
@@ -216,85 +335,26 @@ export function GuessPhase({
             </div>
           )}
 
-          {/* 2. Track Attributes */}
-          {seed && (
-            <TrackAttributes
-              track={seed}
-              revealedAttributes={revealedAttributes}
-              onAttributeClick={handleAttributeReveal}
-              clickableAttributes={pendingHintUse}
-              pulseUnrevealed={pendingHintUse}
-            />
-          )}
-
-          {/* 3. Hints */}
-          <div className="bg-zinc-900 rounded-lg p-3">
-            <h3 className="text-white font-bold mb-1 text-base">Hints</h3>
-            <p className="text-zinc-400 text-sm mb-2">
-              Use hints to reveal track attributes ({hintsUsed}/{maxHints} used)
-            </p>
-            <div className="flex justify-center gap-4 py-2">
-              {[0, 1, 2].map((idx) => {
-                const isUsed = idx < hintsUsed;
-                const isCurrent = idx === hintsUsed && pendingHintUse;
-
-                return (
-                  <button
-                    key={idx}
-                    onClick={handleHintClick}
-                    disabled={isUsed || hintsUsed > idx}
-                    className={`transition ${
-                      isUsed
-                        ? 'text-zinc-700 cursor-not-allowed'
-                        : isCurrent
-                        ? 'text-green-400 animate-pulse'
-                        : hintsUsed === idx
-                        ? 'text-green-500 hover:text-green-400 cursor-pointer'
-                        : 'text-zinc-600 cursor-not-allowed'
-                    }`}
-                    title={
-                      isUsed
-                        ? 'Hint used'
-                        : hintsUsed === idx
-                        ? `Click to use hint ${idx + 1}, then select an attribute`
-                        : 'Previous hints must be used first'
-                    }
-                  >
-                    <Search className="w-8 h-8" />
-                  </button>
-                );
-              })}
-            </div>
-            {pendingHintUse && (
-              <p className="text-green-400 text-sm text-center mt-2">
-                Click an attribute above to reveal it!
-              </p>
-            )}
-            <p className="text-zinc-500 text-xs text-center mt-2">
-              Unused hints are worth {HINT_POINTS} points each
-            </p>
-          </div>
-
-          {/* 4 & 5. Make Your Guess + Guess Options */}
+          {/* 2. Make Your Guess + Guess Options */}
           <div>
-            <div className="bg-zinc-900 rounded-lg p-3 mb-3 flex justify-between items-center">
+            <div className="bg-zinc-900 rounded-lg p-3 mb-2 flex justify-between items-center">
               <div>
-                <h3 className="text-white font-bold mb-1 text-base">Make Your Guess</h3>
-                <p className="text-zinc-400 text-sm">Click card to select, use controls at bottom to play/scrub</p>
+                <h3 className="text-white font-bold text-base">Make Your Guess</h3>
+                <p className="text-zinc-400 text-sm">Click card to select</p>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-green-400">{guesses.length}</div>
-                <div className="text-sm text-green-500/70">of {maxGuesses || 6}</div>
+                <div className="text-2xl font-bold text-green-400">{guesses.length}</div>
+                <div className="text-xs text-green-500/70">of {maxGuesses || 6}</div>
               </div>
             </div>
 
             {errorMessage && (
-              <div className="bg-red-900 border border-red-600 text-white px-3 py-2 rounded mb-3 text-sm">
+              <div className="bg-red-900 border border-red-600 text-white px-3 py-2 rounded mb-2 text-sm">
                 {errorMessage}
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {multipleChoiceOptions.length > 0 ? (
                 multipleChoiceOptions.map((track) => (
                   <div
@@ -302,6 +362,7 @@ export function GuessPhase({
                     className="relative"
                   >
                     <iframe
+                      title={`Spotify player for ${track.name || 'track'}`}
                       src={`https://open.spotify.com/embed/track/${getSpotifyId(track)}?utm_source=generator`}
                       width="100%"
                       height="152"
@@ -324,7 +385,7 @@ export function GuessPhase({
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-zinc-500 col-span-3">
+                <div className="text-center py-8 text-zinc-500">
                   Loading options...
                 </div>
               )}
@@ -340,16 +401,89 @@ export function GuessPhase({
             )}
           </div>
 
-          {/* 6. What We Know So Far */}
+          {/* 3. Track Attributes */}
+          {seed && (
+            <TrackAttributes
+              track={seed}
+              revealedAttributes={revealedAttributes}
+              onAttributeClick={handleAttributeReveal}
+              clickableAttributes={pendingHintUse}
+              pulseUnrevealed={pendingHintUse}
+            />
+          )}
+
+          {/* 4. Reveal Attributes (formerly Hints) - Compact Layout */}
+          <div className="bg-zinc-900 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <h3 className="text-white font-bold text-base">Reveal Attributes</h3>
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2].map((idx) => {
+                    const isUsed = idx < hintsUsed;
+                    const isCurrent = idx === hintsUsed && pendingHintUse;
+                    const isAvailable = hintsUsed === idx;
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={handleHintClick}
+                        disabled={isUsed || !isAvailable}
+                        className={`transition ${
+                          isUsed
+                            ? 'text-zinc-700 cursor-not-allowed'
+                            : isCurrent
+                            ? 'text-green-400 animate-pulse'
+                            : isAvailable
+                            ? 'text-green-500 hover:text-green-400 cursor-pointer'
+                            : 'text-zinc-600 cursor-not-allowed'
+                        }`}
+                        title={
+                          isUsed
+                            ? 'Reveal used'
+                            : isAvailable
+                            ? 'Click to use reveal, then select an attribute'
+                            : 'Previous reveals must be used first'
+                        }
+                      >
+                        <Search className="w-5 h-5" />
+                      </button>
+                    );
+                  })}
+                  <span className="text-zinc-400 text-sm ml-1">
+                    x{maxHints - hintsUsed}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-zinc-300 text-sm font-semibold">Unused Reveals Bonus</p>
+                <p className="text-green-400 text-lg font-bold">+{(maxHints - hintsUsed) * HINT_POINTS}pts</p>
+              </div>
+            </div>
+            <p className="text-zinc-400 text-xs">
+              {pendingHintUse
+                ? '👆 Click an attribute above to reveal it!'
+                : 'Click a magnifying glass, then click an attribute to reveal'}
+            </p>
+          </div>
+
+          {/* 5. What We Know So Far */}
           <div className="bg-zinc-900 rounded-lg p-3">
             <h3 className="text-white font-bold mb-1 text-base">What We Know So Far</h3>
             <p className="text-zinc-400 text-sm mb-2">
-              Clues discovered from your guesses
+              Clues from attribute reveals and your guesses
             </p>
-            {clues.length > 0 ? (
+            {(revealClues.length > 0 || clues.length > 0) ? (
               <ul className="space-y-1.5 text-zinc-300 text-sm">
+                {/* Reveal clues first */}
+                {revealClues.map((clue, idx) => (
+                  <li key={`reveal-${idx}`} className="flex items-start">
+                    <span className="text-green-400 mr-2">•</span>
+                    <span>{clue}</span>
+                  </li>
+                ))}
+                {/* Guess-based clues second */}
                 {clues.map((clue, idx) => (
-                  <li key={idx} className="flex items-start">
+                  <li key={`guess-${idx}`} className="flex items-start">
                     <span className="text-green-400 mr-2">•</span>
                     <span>{clue}</span>
                   </li>
@@ -357,7 +491,7 @@ export function GuessPhase({
               </ul>
             ) : (
               <p className="text-zinc-400 text-base italic">
-                Make a guess to discover clues about the playlist
+                Make a guess or reveal an attribute to discover clues
               </p>
             )}
           </div>
@@ -373,8 +507,8 @@ export function GuessPhase({
             Fill challenge slots with correct guesses that match the criteria
           </p>
 
-          {/* Challenge Slots (Top 3) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          {/* Challenge Slots (2 challenges) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             {challenges.map((challenge, idx) => {
               const isActive = isChallengeActive(idx);
               const placedGuessId = challengePlacements[idx];
@@ -410,14 +544,7 @@ export function GuessPhase({
                       <p className="text-zinc-400 text-sm">{placedGuess.artist}</p>
                     </div>
                   )}
-                  {!isActive && (
-                    <button
-                      onClick={() => onGetHint(idx)}
-                      className="mt-2 text-sm text-zinc-500 hover:text-zinc-300 transition"
-                    >
-                      See examples →
-                    </button>
-                  )}
+                  {/* TODO: Add "See examples" functionality - show sample tracks that meet this challenge */}
                 </div>
               ) : (
                 <div key={idx} className="rounded-lg p-4 bg-zinc-800 border-2 border-zinc-700">

@@ -2,11 +2,11 @@ import { useReducer } from 'react';
 
 const initialState = {
   seed: null,
-  challenges: [null, null, null],
+  challenges: [null, null],
   radioPlaylist: [],
   guesses: [],
   guessedTracks: new Set(),
-  challengePlacements: [null, null, null],
+  challengePlacements: [null, null],
   multipleChoiceOptions: [],
   seedHints: [],
   revealedHints: [false, false, false],
