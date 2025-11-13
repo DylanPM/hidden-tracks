@@ -63,12 +63,10 @@ export function ScorePhase({
   const getSpotifyId = (track) => {
     if (!track || !track.id) return '';
     const id = track.id;
-    // Ensure id is a string
-    const idString = typeof id === 'string' ? id : String(id);
-    if (idString.startsWith('spotify:track:')) {
-      return idString.split(':')[2];
+    if (id.startsWith('spotify:track:')) {
+      return id.split(':')[2];
     }
-    return idString;
+    return id;
   };
 
   const getArtistString = (track) => {
@@ -164,7 +162,7 @@ export function ScorePhase({
             {correctGuesses.map((guess) => (
               <div key={guess.id}>
                 <iframe
-                  src={`https://open.spotify.com/embed/track/${getSpotifyId({ id: guess.id })}?utm_source=generator`}
+                  src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                   width="100%"
                   height="152"
                   frameBorder="0"

@@ -59,14 +59,12 @@ export function GuessPhase({
   const getSpotifyId = (track) => {
     if (!track || !track.id) return '';
     const id = track.id;
-    // Ensure id is a string
-    const idString = typeof id === 'string' ? id : String(id);
     // If it's a URI (spotify:track:abc123), extract the ID
-    if (idString.startsWith('spotify:track:')) {
-      return idString.split(':')[2];
+    if (id.startsWith('spotify:track:')) {
+      return id.split(':')[2];
     }
     // If it's already just the ID (abc123), return as-is
-    return idString;
+    return id;
   };
 
   const getArtistString = (track) => {
@@ -455,7 +453,7 @@ export function GuessPhase({
                             {/* Spotify Embed */}
                             <div className="relative">
                               <iframe
-                                src={`https://open.spotify.com/embed/track/${getSpotifyId({ id: guess.id })}?utm_source=generator`}
+                                src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                                 width="100%"
                                 height="152"
                                 frameBorder="0"
@@ -492,7 +490,7 @@ export function GuessPhase({
                           {/* Spotify Embed */}
                           <div className="relative opacity-60">
                             <iframe
-                              src={`https://open.spotify.com/embed/track/${getSpotifyId({ id: guess.id })}?utm_source=generator`}
+                              src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                               width="100%"
                               height="152"
                               frameBorder="0"
