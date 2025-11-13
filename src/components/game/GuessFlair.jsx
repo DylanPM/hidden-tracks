@@ -219,21 +219,41 @@ export function GuessFlair({
                     key={attr}
                     className={`rounded-lg p-2 border-2 ${getBgColor()}`}
                   >
-                    <p className="text-white font-semibold capitalize text-sm mb-1">
+                    <p className="text-white font-semibold capitalize text-sm mb-2">
                       {attr}
                     </p>
-                    <div className="flex justify-between items-center text-xs mb-1">
-                      <span className={position === 'low' ? 'text-white font-bold' : 'text-zinc-500'}>
-                        {labels.lowLabel}
-                      </span>
-                      <span className={position === 'high' ? 'text-white font-bold' : 'text-zinc-500'}>
-                        {labels.highLabel}
-                      </span>
-                    </div>
-                    <div className="text-center">
-                      <span className="text-white font-bold text-lg">
-                        {displayValue}
-                      </span>
+
+                    {/* Binary gamut visualization - same as TrackAttributes */}
+                    <div className="space-y-1">
+                      {/* Labels */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={position === 'low' ? 'text-white font-bold' : 'text-zinc-500'}>
+                          {labels.lowLabel}
+                        </span>
+                        <span className={position === 'high' ? 'text-white font-bold' : 'text-zinc-500'}>
+                          {labels.highLabel}
+                        </span>
+                      </div>
+
+                      {/* Line with positioned circle */}
+                      <div className="relative h-8 flex items-center">
+                        {/* Background line */}
+                        <div className="absolute w-full h-0.5 bg-zinc-700" />
+
+                        {/* Positioned circle with value */}
+                        {displayValue !== '?' && (
+                          <div
+                            className="absolute flex items-center justify-center"
+                            style={{ left: `${displayValue}%`, transform: 'translateX(-50%)' }}
+                          >
+                            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                              <span className="text-black text-xs font-bold">
+                                {displayValue}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
