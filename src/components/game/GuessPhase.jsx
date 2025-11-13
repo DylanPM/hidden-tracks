@@ -495,9 +495,12 @@ export function GuessPhase({
             {multipleChoiceOptions.length > 0 && (
               <button
                 onClick={onRefreshCandidates}
-                className="w-full mt-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded transition text-sm"
+                className="w-full mt-3 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition-all text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                ↻ Refresh Options
+                <span className="flex items-center justify-center gap-2">
+                  <span className="text-xl">↻</span>
+                  <span>Refresh Options</span>
+                </span>
               </button>
             )}
           </div>
@@ -566,8 +569,8 @@ export function GuessPhase({
           <div
             ref={whatWeKnowRef}
             className={`bg-gradient-to-br from-zinc-900 to-zinc-900/50 rounded-xl p-5 border border-zinc-800 transition-all ${
-              highlightClues ? 'ring-4 ring-green-500 ring-opacity-75 scale-105 border-green-500/50' : ''
-            }`}
+              highlightClues ? 'ring-4 ring-green-500 ring-opacity-75 scale-102 border-green-500/50' : ''
+            } mx-1`}
           >
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
@@ -828,6 +831,58 @@ export function GuessPhase({
                 className="w-full px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-bold rounded transition"
               >
                 Got it!
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Debug Controls for Animation Timing */}
+        <button
+          onClick={() => setShowDebugControls(!showDebugControls)}
+          className="fixed bottom-4 right-4 z-40 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs rounded border border-zinc-600 transition"
+        >
+          {showDebugControls ? '✕' : '⚙️'} Animation Debug
+        </button>
+
+        {showDebugControls && (
+          <div className="fixed bottom-16 right-4 z-40 bg-zinc-900 border-2 border-zinc-700 rounded-lg p-4 shadow-xl w-64">
+            <h3 className="text-white font-bold mb-3 text-sm">Animation Timing (ms)</h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-zinc-400 text-xs block mb-1">Guess Dwell Time:</label>
+                <input
+                  type="number"
+                  value={guessDwellTime}
+                  onChange={(e) => setGuessDwellTime(Number(e.target.value))}
+                  className="w-full bg-zinc-800 text-white px-2 py-1 rounded text-sm border border-zinc-700"
+                  step="500"
+                  min="0"
+                  max="10000"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 text-xs block mb-1">Intel Dwell Time:</label>
+                <input
+                  type="number"
+                  value={intelDwellTime}
+                  onChange={(e) => setIntelDwellTime(Number(e.target.value))}
+                  className="w-full bg-zinc-800 text-white px-2 py-1 rounded text-sm border border-zinc-700"
+                  step="500"
+                  min="0"
+                  max="10000"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  setGuessDwellTime(2500);
+                  setIntelDwellTime(2500);
+                }}
+                className="w-full px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded transition"
+              >
+                Reset to Default
               </button>
             </div>
           </div>
