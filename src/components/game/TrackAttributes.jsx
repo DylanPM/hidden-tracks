@@ -135,50 +135,52 @@ export function TrackAttributes({
                 <Icon className="w-6 h-6" style={{ color: config.color }} />
                 <span className="text-white text-lg font-semibold">{config.label}</span>
               </div>
-              <p className="text-zinc-300 text-base mb-4">{config.description}</p>
+              <p className="text-zinc-300 text-sm mb-3 truncate">{config.description}</p>
 
-              {/* Number line visualization with circles */}
-              <div className="flex items-center justify-between gap-1">
-                {/* Low label circle */}
-                <div className={`flex-shrink-0 w-16 h-16 rounded-full border-2 flex items-center justify-center text-center transition ${
-                  isRevealed && position === 'low'
-                    ? `border-[${config.color}] text-white font-bold`
-                    : 'border-zinc-600 text-zinc-400'
-                }`}
-                style={{
-                  backgroundColor: isRevealed && position === 'low' ? config.color : 'transparent'
-                }}>
-                  <span className="text-xs leading-tight px-1">{config.lowLabel}</span>
+              {/* Number line visualization with positioned circle */}
+              <div className="relative">
+                {/* Label row */}
+                <div className="flex justify-between items-center mb-2 px-1">
+                  <span className={`text-xs transition ${
+                    isRevealed && position === 'low'
+                      ? 'font-bold'
+                      : ''
+                  }`}
+                  style={{
+                    color: isRevealed && position === 'low' ? config.color : '#a1a1aa'
+                  }}>
+                    {config.lowLabel}
+                  </span>
+                  <span className={`text-xs transition ${
+                    isRevealed && position === 'high'
+                      ? 'font-bold'
+                      : ''
+                  }`}
+                  style={{
+                    color: isRevealed && position === 'high' ? config.color : '#a1a1aa'
+                  }}>
+                    {config.highLabel}
+                  </span>
                 </div>
 
-                {/* Connecting line (left half) */}
-                <div className="flex-1 h-0.5 bg-zinc-600" />
+                {/* Line with positioned circle */}
+                <div className="relative h-12 flex items-center px-1">
+                  {/* Background line */}
+                  <div className="absolute left-1 right-1 h-0.5 bg-zinc-600" />
 
-                {/* Center number circle */}
-                <div className={`flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition ${
-                  isRevealed
-                    ? `border-[${config.color}] text-white font-bold text-lg`
-                    : 'border-zinc-600 text-zinc-600 text-lg'
-                }`}
-                style={{
-                  backgroundColor: isRevealed ? config.color : 'transparent'
-                }}>
-                  {isRevealed && normalizedValue !== null ? normalizedValue : '???'}
-                </div>
-
-                {/* Connecting line (right half) */}
-                <div className="flex-1 h-0.5 bg-zinc-600" />
-
-                {/* High label circle */}
-                <div className={`flex-shrink-0 w-16 h-16 rounded-full border-2 flex items-center justify-center text-center transition ${
-                  isRevealed && position === 'high'
-                    ? `border-[${config.color}] text-white font-bold`
-                    : 'border-zinc-600 text-zinc-400'
-                }`}
-                style={{
-                  backgroundColor: isRevealed && position === 'high' ? config.color : 'transparent'
-                }}>
-                  <span className="text-xs leading-tight px-1">{config.highLabel}</span>
+                  {/* Number circle - positioned based on value */}
+                  <div
+                    className="absolute flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition text-sm font-semibold"
+                    style={{
+                      left: `calc(0.25rem + ${isRevealed && normalizedValue !== null ? clampPosition(normalizedValue) : 50}% - 0.25rem)`,
+                      transform: 'translateX(-50%)',
+                      backgroundColor: isRevealed ? config.color : '#27272a',
+                      border: isRevealed ? 'none' : '2px solid #52525b',
+                      color: isRevealed ? 'white' : '#71717a'
+                    }}
+                  >
+                    {isRevealed && normalizedValue !== null ? normalizedValue : '???'}
+                  </div>
                 </div>
               </div>
             </div>

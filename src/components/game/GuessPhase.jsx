@@ -146,13 +146,34 @@ export function GuessPhase({
   const correctGuessesRef = useRef(null);
   const incorrectGuessesRef = useRef(null);
   const whatWeKnowRef = useRef(null);
+  const guessOptionsRef = useRef(null);
   const [highlightClues, setHighlightClues] = useState(false);
   const [isAnimatingScroll, setIsAnimatingScroll] = useState(false);
+  const scrollCancelRef = useRef(false);
 
   // Debug: Animation timing controls
   const [guessDwellTime, setGuessDwellTime] = useState(2500); // milliseconds
   const [intelDwellTime, setIntelDwellTime] = useState(2500); // milliseconds
   const [showDebugControls, setShowDebugControls] = useState(false);
+
+  // Manual scroll cancellation - detect user scrolling during animation
+  useEffect(() => {
+    const handleManualScroll = () => {
+      if (isAnimatingScroll) {
+        scrollCancelRef.current = true;
+        setIsAnimatingScroll(false);
+        setHighlightClues(false);
+      }
+    };
+
+    window.addEventListener('wheel', handleManualScroll, { passive: true });
+    window.addEventListener('touchmove', handleManualScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('wheel', handleManualScroll);
+      window.removeEventListener('touchmove', handleManualScroll);
+    };
+  }, [isAnimatingScroll]);
 
   // Scroll animation sequence after a guess
   useEffect(() => {
@@ -163,35 +184,45 @@ export function GuessPhase({
 
     const runScrollSequence = async () => {
       setIsAnimatingScroll(true);
+      scrollCancelRef.current = false;
 
       // Step 1: Scroll to where the guess landed and dwell
       const targetRef = isCorrect ? correctGuessesRef : incorrectGuessesRef;
-      if (targetRef.current) {
+      if (targetRef.current && !scrollCancelRef.current) {
         targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         await new Promise(resolve => setTimeout(resolve, 600)); // Scroll animation time
+        if (scrollCancelRef.current) return;
         await new Promise(resolve => setTimeout(resolve, guessDwellTime)); // Dwell on guess
       }
+      if (scrollCancelRef.current) return;
 
-      // Step 2: Scroll to "What We Know So Far"
-      if (whatWeKnowRef.current) {
+      // Step 2: Scroll to "What We Know So Far" (Intel)
+      if (whatWeKnowRef.current && !scrollCancelRef.current) {
         whatWeKnowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         await new Promise(resolve => setTimeout(resolve, 600)); // Scroll animation time
       }
+      if (scrollCancelRef.current) return;
 
       // Step 3: Highlight section and linger
       setHighlightClues(true);
       await new Promise(resolve => setTimeout(resolve, intelDwellTime)); // Dwell on intel
+      if (scrollCancelRef.current) {
+        setHighlightClues(false);
+        return;
+      }
       setHighlightClues(false);
 
       // Step 4: Peek up slightly (scroll up 150px to see bottom of guess options)
-      window.scrollBy({ top: -150, behavior: 'smooth' });
+      if (!scrollCancelRef.current) {
+        window.scrollBy({ top: -150, behavior: 'smooth' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
 
-      await new Promise(resolve => setTimeout(resolve, 300));
       setIsAnimatingScroll(false);
     };
 
     runScrollSequence();
-  }, [guesses.length]);
+  }, [guesses.length, guessDwellTime, intelDwellTime]);
 
   const handleHintClick = () => {
     if (hintsUsed >= maxHints) return;
@@ -205,9 +236,27 @@ export function GuessPhase({
   const handleAttributeReveal = (attribute) => {
     if (!pendingHintUse || hintsUsed >= maxHints || !seed) return;
 
+    // Debug logging for tempo
+    if (attribute === 'tempo') {
+      console.log('Tempo reveal attempt:', {
+        seed,
+        tempo: seed.tempo,
+        tempo_norm: seed.tempo_norm,
+        hasTempo: 'tempo' in seed,
+        hasTempoNorm: 'tempo_norm' in seed
+      });
+    }
+
     // Get attribute value from seed
     const value = seed[attribute === 'tempo' ? 'tempo_norm' : attribute];
-    if (value === undefined || value === null || isNaN(value)) return;
+    if (value === undefined || value === null) {
+      console.error(`Attribute ${attribute} is undefined or null`, { value, seed });
+      return;
+    }
+    if (typeof value === 'number' && isNaN(value)) {
+      console.error(`Attribute ${attribute} is NaN`, { value });
+      return;
+    }
 
     // Determine range (low < 0.35, high > 0.65, else mid)
     let range;
@@ -217,7 +266,10 @@ export function GuessPhase({
 
     // Get description
     const description = ATTRIBUTE_DESCRIPTIONS[attribute];
-    if (!description) return;
+    if (!description) {
+      console.error(`No description for attribute: ${attribute}`);
+      return;
+    }
 
     const { adjective, guidance } = description[range];
 
@@ -405,47 +457,51 @@ export function GuessPhase({
           )}
 
           {/* 2. Make Your Guess + Guess Options */}
-          <div>
+          <div ref={guessOptionsRef}>
             <div className={`bg-zinc-900 rounded-lg p-4 mb-2 transition-all ${
               flashGuessCounter ? 'ring-4 ring-green-500 ring-opacity-75 scale-105' : ''
             }`}>
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h3 className="text-white font-bold text-2xl">What's on the Playlist?</h3>
-                  <p className="text-zinc-400 text-base">Pick one of 3 songs, or refresh for new choices</p>
-                </div>
+              {/* Heading and subheading */}
+              <div className="mb-4">
+                <h1 className="text-2xl font-bold text-white tracking-tight mb-1">What's on the playlist?</h1>
+                <p className="text-sm font-normal text-[#b3b3b3]">Pick one of 3 songs, or refresh for different choices. 6 picks per round.</p>
               </div>
 
-              {/* Guesses Remaining - Number line with connecting line */}
-              <div>
-                <p className="text-zinc-400 text-sm font-semibold mb-2 text-center">
-                  Guesses<br />Remaining
-                </p>
-                <div className="relative flex items-center justify-between px-4">
-                  {/* Background connecting line */}
-                  <div className="absolute left-0 right-0 h-0.5 bg-zinc-600" style={{ top: '50%', transform: 'translateY(-50%)' }} />
+              {/* Guesses Remaining - Number line (6 to 1, left to right) */}
+              <div className="relative flex items-center justify-between">
+                {[...Array(maxGuesses || 6)].map((_, idx) => {
+                  // Start at 6, count down to 1 (left to right)
+                  const guessNum = (maxGuesses || 6) - idx;
+                  const guessesRemaining = (maxGuesses || 6) - guesses.length;
+                  const isCurrent = guessesRemaining === guessNum;
+                  const isPast = guessesRemaining < guessNum;
+                  const isFirst = idx === 0;
+                  const isLast = idx === (maxGuesses || 6) - 1;
 
-                  {/* Number circles - counting down from 6 to 1 */}
-                  {[...Array(maxGuesses || 6)].map((_, idx) => {
-                    const guessNum = (maxGuesses || 6) - idx;
-                    const isCurrent = guesses.length === guessNum;
-                    const isPast = guesses.length > guessNum;
+                  return (
+                    <React.Fragment key={idx}>
+                      {/* Connecting line before (except for first) */}
+                      {!isFirst && (
+                        <div className="flex-1 h-0.5 bg-zinc-600" />
+                      )}
 
-                    return (
-                      <div key={idx} className="relative flex items-center justify-center">
-                        <div className={`w-14 h-14 rounded-full flex items-center justify-center border-3 transition-all z-10 ${
+                      {/* Number circle */}
+                      <div className="relative flex items-center justify-center">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all z-10 ${
                           isCurrent
-                            ? 'bg-green-500 border-green-400 text-black scale-110 shadow-lg'
+                            ? 'bg-green-500 border-green-400 text-white scale-110 shadow-lg'
                             : isPast
-                            ? 'bg-zinc-700 border-zinc-600 text-zinc-500'
-                            : 'bg-zinc-800 border-zinc-600 text-zinc-400'
+                            ? 'bg-zinc-800 border-zinc-600 text-zinc-400'
+                            : 'bg-zinc-700 border-zinc-600 text-zinc-500'
                         } ${flashGuessCounter && isCurrent ? 'ring-4 ring-green-400' : ''}`}>
                           <span className="text-2xl font-bold">{guessNum}</span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* No line after last */}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
 
@@ -518,51 +574,49 @@ export function GuessPhase({
             </div>
           )}
 
-          {/* 4. Reveal Starting Track Attributes - Split into 2 colored boxes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Left box: How to use - Click anywhere to activate or cancel */}
-            <div
-              onClick={() => {
-                if (hintsUsed >= maxHints) return;
-                if (pendingHintUse) {
-                  handleCancelReveal();
-                } else {
-                  handleHintClick();
-                }
-              }}
-              className={`bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 ${
-                hintsUsed < maxHints ? 'cursor-pointer hover:bg-blue-900/30 transition' : ''
-              }`}
-            >
-              <h3 className="text-white font-bold text-xl mb-4">Reveal Starting Track Attributes</h3>
-              <div className="flex items-center justify-center gap-4 mb-4">
-                {[0, 1, 2].map((idx) => {
-                  const isUsed = idx < hintsUsed;
+          {/* 4. Reveal Starting Track Attributes - Full-width consolidated box */}
+          <div
+            onClick={() => {
+              if (hintsUsed >= maxHints) return;
+              if (pendingHintUse) {
+                handleCancelReveal();
+              } else {
+                handleHintClick();
+              }
+            }}
+            className={`bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 ${
+              hintsUsed < maxHints ? 'cursor-pointer hover:bg-blue-900/30 transition' : ''
+            }`}
+          >
+            <h1 className="text-2xl font-bold text-white tracking-tight mb-1">
+              Reveal starting track's attributes
+            </h1>
+            {hintsUsed < maxHints && (
+              <p className="text-sm font-normal text-[#b3b3b3] mb-4">
+                {pendingHintUse
+                  ? 'Select an attribute above to reveal it!'
+                  : 'Select here, then pick an attribute to reveal'}
+              </p>
+            )}
 
-                  return (
-                    <Search
-                      key={idx}
-                      className={`w-12 h-12 transition ${
-                        isUsed ? 'text-zinc-700' : 'text-green-500'
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-              {hintsUsed < maxHints && (
-                <p className="text-zinc-300 text-base text-center">
-                  {pendingHintUse
-                    ? '👆 Click an attribute above to reveal it!'
-                    : 'Click here, then click an attribute to reveal'}
-                </p>
-              )}
+            <div className="flex items-center justify-center gap-4 my-4">
+              {[0, 1, 2].map((idx) => {
+                const isUsed = idx < hintsUsed;
+
+                return (
+                  <Search
+                    key={idx}
+                    className={`w-12 h-12 transition ${
+                      isUsed ? 'text-zinc-700' : 'text-green-500'
+                    }`}
+                  />
+                );
+              })}
             </div>
 
-            {/* Right box: Score impact */}
-            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 flex flex-col justify-center items-center">
-              <p className="text-zinc-300 text-sm font-semibold mb-2">Unused Reveals Bonus</p>
-              <p className="text-green-400 text-3xl font-bold">+{(maxHints - hintsUsed) * HINT_POINTS}pts</p>
-            </div>
+            <p className="text-base font-normal text-white leading-relaxed text-center">
+              Unused reveals bonus: <span className="text-green-400 font-bold">+{(maxHints - hintsUsed) * HINT_POINTS} pts</span>
+            </p>
           </div>
 
           {/* 5. What We Know So Far - Spotify-style Discovery Feed */}
@@ -845,10 +899,10 @@ export function GuessPhase({
         </button>
 
         {showDebugControls && (
-          <div className="fixed bottom-16 right-4 z-40 bg-zinc-900 border-2 border-zinc-700 rounded-lg p-4 shadow-xl w-64">
+          <div className="fixed bottom-16 right-4 z-40 bg-zinc-900 border-2 border-zinc-700 rounded-lg p-4 shadow-xl w-64 max-h-[80vh] overflow-y-auto">
             <h3 className="text-white font-bold mb-3 text-sm">Animation Timing (ms)</h3>
 
-            <div className="space-y-3">
+            <div className="space-y-3 mb-4">
               <div>
                 <label className="text-zinc-400 text-xs block mb-1">Guess Dwell Time:</label>
                 <input
@@ -884,6 +938,47 @@ export function GuessPhase({
               >
                 Reset to Default
               </button>
+            </div>
+
+            <div className="border-t border-zinc-700 pt-3">
+              <h3 className="text-white font-bold mb-2 text-sm">Manual Scroll</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    const latestGuess = guesses[guesses.length - 1];
+                    const targetRef = latestGuess?.incorrect ? incorrectGuessesRef : correctGuessesRef;
+                    targetRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className="w-full px-2 py-1.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
+                  disabled={guesses.length === 0}
+                >
+                  <span>📍</span> Guess location
+                </button>
+                <button
+                  onClick={() => {
+                    whatWeKnowRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className="w-full px-2 py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
+                >
+                  <span>🧠</span> Intel
+                </button>
+                <button
+                  onClick={() => {
+                    window.scrollBy({ top: -150, behavior: 'smooth' });
+                  }}
+                  className="w-full px-2 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
+                >
+                  <span>👀</span> Peek upwards
+                </button>
+                <button
+                  onClick={() => {
+                    guessOptionsRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="w-full px-2 py-1.5 bg-orange-700 hover:bg-orange-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
+                >
+                  <span>🔙</span> Back to guess
+                </button>
+              </div>
             </div>
           </div>
         )}

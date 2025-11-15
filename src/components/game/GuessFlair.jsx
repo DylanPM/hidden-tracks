@@ -184,8 +184,8 @@ export function GuessFlair({
       {/* 1. Attribute Feedback (2 half-width boxes with connectors from embed) */}
       {showAttributeFeedback && guess.trackData && (
         <>
-          {/* Connector lines from embed to attributes */}
-          <div className="flex justify-center gap-2 h-3">
+          {/* Connector lines from embed to attributes - extend upward to touch embed */}
+          <div className="flex justify-center gap-2 h-6 -mt-3">
             <div className="w-1/2 flex justify-center">
               <div className="w-0.5 h-full bg-zinc-600" />
             </div>
@@ -225,42 +225,45 @@ export function GuessFlair({
                       {attr}
                     </p>
 
-                    {/* Number line visualization with circles - matching TrackAttributes */}
-                    <div className="flex items-center justify-between gap-1">
-                      {/* Low label circle */}
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-center transition text-[10px]`}
+                    {/* Number line visualization with positioned circle */}
+                    <div className="relative">
+                      {/* Label row */}
+                      <div className="flex justify-between items-center mb-1 px-1">
+                        <span className={`text-[10px] transition ${
+                          position === 'low' ? 'font-bold' : ''
+                        }`}
                         style={{
-                          borderColor: position === 'low' ? config.color : '#52525b',
-                          backgroundColor: position === 'low' ? config.color : 'transparent',
-                          color: position === 'low' ? 'white' : '#a1a1aa'
+                          color: position === 'low' ? config.color : '#a1a1aa'
                         }}>
-                        <span className="leading-tight px-0.5">{config.lowLabel}</span>
+                          {config.lowLabel}
+                        </span>
+                        <span className={`text-[10px] transition ${
+                          position === 'high' ? 'font-bold' : ''
+                        }`}
+                        style={{
+                          color: position === 'high' ? config.color : '#a1a1aa'
+                        }}>
+                          {config.highLabel}
+                        </span>
                       </div>
 
-                      {/* Connecting line (left half) */}
-                      <div className="flex-1 h-0.5 bg-zinc-600" />
+                      {/* Line with positioned circle */}
+                      <div className="relative h-10 flex items-center px-1">
+                        {/* Background line */}
+                        <div className="absolute left-1 right-1 h-0.5 bg-zinc-600" />
 
-                      {/* Center number circle */}
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition text-sm font-bold`}
-                        style={{
-                          borderColor: config.color,
-                          backgroundColor: config.color,
-                          color: 'white'
-                        }}>
-                        {displayValue}
-                      </div>
-
-                      {/* Connecting line (right half) */}
-                      <div className="flex-1 h-0.5 bg-zinc-600" />
-
-                      {/* High label circle */}
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-center transition text-[10px]`}
-                        style={{
-                          borderColor: position === 'high' ? config.color : '#52525b',
-                          backgroundColor: position === 'high' ? config.color : 'transparent',
-                          color: position === 'high' ? 'white' : '#a1a1aa'
-                        }}>
-                        <span className="leading-tight px-0.5">{config.highLabel}</span>
+                        {/* Number circle - positioned based on value */}
+                        <div
+                          className="absolute flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition text-xs font-semibold"
+                          style={{
+                            left: `calc(0.25rem + ${clampPosition(displayValue)}% - 0.25rem)`,
+                            transform: 'translateX(-50%)',
+                            backgroundColor: config.color,
+                            color: 'white'
+                          }}
+                        >
+                          {displayValue}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -325,7 +328,10 @@ export function GuessFlair({
             }`}
             style={{ transitionDelay: `${animationDelay + (challenge ? 200 : showAttributeFeedback ? 100 : 0)}ms` }}
           >
-            <div className="flex justify-center items-center gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-green-400 font-bold text-base">
+                On the playlist!
+              </span>
               <span className="text-green-400 font-bold text-xl">
                 +{guess.basePoints} points
               </span>
