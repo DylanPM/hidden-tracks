@@ -480,7 +480,7 @@ export function GuessPhase({
               <div className="relative">
                 <iframe
                   title={`Spotify player for ${seed.name}`}
-                  src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator&theme=0`}
+                  src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
                   width="100%"
                   height="152"
                   frameBorder="0"
@@ -556,7 +556,7 @@ export function GuessPhase({
                   >
                     <iframe
                       title={`Spotify player for ${track.name || 'track'}`}
-                      src={`https://open.spotify.com/embed/track/${getSpotifyId(track)}?utm_source=generator&theme=0`}
+                      src={`https://open.spotify.com/embed/track/${getSpotifyId(track)}?utm_source=generator`}
                       width="100%"
                       height="152"
                       frameBorder="0"
@@ -831,7 +831,7 @@ export function GuessPhase({
                             <div className="relative">
                               <iframe
                                 title={`Spotify player for ${guess.trackData?.name || 'track'}`}
-                                src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator&theme=0`}
+                                src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                                 width="100%"
                                 height="152"
                                 frameBorder="0"
@@ -870,7 +870,7 @@ export function GuessPhase({
                           <div className="relative opacity-60">
                             <iframe
                               title={`Spotify player for ${guess.trackData?.name || 'track'}`}
-                              src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator&theme=0`}
+                              src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                               width="100%"
                               height="152"
                               frameBorder="0"
