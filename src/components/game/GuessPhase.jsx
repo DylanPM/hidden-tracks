@@ -363,44 +363,51 @@ export function GuessPhase({
       let clue = '';
       
       if (guess.incorrect) {
-        // Wrong guess - tell what playlist prefers instead
-        if (attr === 'genre' && guessTrack.genres?.length > 0) {
-          clue = `Playlist doesn't typically feature ${guessTrack.genres[0]}`;
-        } else if (attr === 'year' && guessTrack.year) {
-          if (guessTrack.year < seed.year) {
-            clue = `Playlist prefers songs released after ${guessTrack.year}`;
-          } else {
-            clue = `Playlist prefers songs released before ${guessTrack.year}`;
-          }
+        // Wrong guess - describe what the playlist IS (based on seed track)
+        if (attr === 'genre' && seed.genres?.length > 0) {
+          clue = `Playlist leans toward ${seed.genres[0]} vibes`;
+        } else if (attr === 'year' && seed.year) {
+          const decade = Math.floor(seed.year / 10) * 10;
+          clue = `Playlist draws from the ${decade}s era`;
         } else if (attr === 'popularity') {
-          if (guessTrack.popularity < 30) {
-            clue = `Playlist prefers more well-known tracks`;
-          } else if (guessTrack.popularity > 70) {
-            clue = `Playlist prefers less mainstream tracks`;
+          if (seed.popularity < 30) {
+            clue = `Playlist favors underground and niche selections`;
+          } else if (seed.popularity > 70) {
+            clue = `Playlist features well-known, popular hits`;
+          } else {
+            clue = `Playlist balances mainstream and indie tracks`;
           }
         } else if (attr === 'valence') {
-          if (guessTrack.valence < 0.4) {
-            clue = `Playlist prefers more upbeat, positive vibes`;
-          } else if (guessTrack.valence > 0.6) {
-            clue = `Playlist prefers more melancholy, introspective tracks`;
+          if (seed.valence < 0.4) {
+            clue = `Playlist embraces darker, introspective moods`;
+          } else if (seed.valence > 0.6) {
+            clue = `Playlist brings upbeat, feel-good energy`;
+          } else {
+            clue = `Playlist walks the line between light and shadow`;
           }
         } else if (attr === 'danceability') {
-          if (guessTrack.danceability < 0.4) {
-            clue = `Playlist prefers more danceable rhythms`;
-          } else if (guessTrack.danceability > 0.7) {
-            clue = `Playlist prefers less dance-oriented tracks`;
+          if (seed.danceability < 0.4) {
+            clue = `Playlist prioritizes musical depth over groove`;
+          } else if (seed.danceability > 0.7) {
+            clue = `Playlist is built for movement and rhythm`;
+          } else {
+            clue = `Playlist has a moderate, groovy feel`;
           }
         } else if (attr === 'energy') {
-          if (guessTrack.energy < 0.4) {
-            clue = `Playlist prefers higher energy tracks`;
-          } else if (guessTrack.energy > 0.7) {
-            clue = `Playlist prefers more laid-back energy`;
+          if (seed.energy < 0.4) {
+            clue = `Playlist maintains a calm, relaxed vibe`;
+          } else if (seed.energy > 0.7) {
+            clue = `Playlist delivers high-octane intensity`;
+          } else {
+            clue = `Playlist keeps a steady, moderate energy`;
           }
         } else if (attr === 'acousticness') {
-          if (guessTrack.acousticness > 0.6) {
-            clue = `Playlist prefers more electronic/produced sound`;
+          if (seed.acousticness > 0.6) {
+            clue = `Playlist highlights organic, acoustic sounds`;
+          } else if (seed.acousticness < 0.3) {
+            clue = `Playlist leans into electronic production`;
           } else {
-            clue = `Playlist prefers more acoustic instrumentation`;
+            clue = `Playlist blends acoustic and electronic elements`;
           }
         }
       } else {
@@ -473,7 +480,7 @@ export function GuessPhase({
               <div className="relative">
                 <iframe
                   title={`Spotify player for ${seed.name}`}
-                  src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
+                  src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator&theme=0`}
                   width="100%"
                   height="152"
                   frameBorder="0"
@@ -549,7 +556,7 @@ export function GuessPhase({
                   >
                     <iframe
                       title={`Spotify player for ${track.name || 'track'}`}
-                      src={`https://open.spotify.com/embed/track/${getSpotifyId(track)}?utm_source=generator`}
+                      src={`https://open.spotify.com/embed/track/${getSpotifyId(track)}?utm_source=generator&theme=0`}
                       width="100%"
                       height="152"
                       frameBorder="0"
@@ -820,7 +827,7 @@ export function GuessPhase({
                             <div className="relative">
                               <iframe
                                 title={`Spotify player for ${guess.trackData?.name || 'track'}`}
-                                src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
+                                src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator&theme=0`}
                                 width="100%"
                                 height="152"
                                 frameBorder="0"
@@ -859,7 +866,7 @@ export function GuessPhase({
                           <div className="relative opacity-60">
                             <iframe
                               title={`Spotify player for ${guess.trackData?.name || 'track'}`}
-                              src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
+                              src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator&theme=0`}
                               width="100%"
                               height="152"
                               frameBorder="0"
