@@ -702,7 +702,7 @@ export function GenreConstellationSelect({ onLaunch }) {
     } // End skipSecondPass check
 
     // FINAL CLAMPING: Ensure collision detection didn't push nodes outside boundary
-    const MAX_DISTANCE = 190; // Same as used in position clamping above
+    const MAX_DISTANCE = 185; // Same as used in position clamping above
     items.forEach(item => {
       const distance = Math.sqrt(item.x * item.x + item.y * item.y);
       if (distance > MAX_DISTANCE) {
@@ -1038,7 +1038,7 @@ export function GenreConstellationSelect({ onLaunch }) {
         const weightData = allWeights.find(w => w.feature === feature);
         weights[feature] = weightData.percentile;
       } else {
-        weights[feature] = 0.5; // Neutral = not shown on disco floor
+        weights[feature] = 0.5; //5 Neutral = not shown on disco floor
       }
     });
 
