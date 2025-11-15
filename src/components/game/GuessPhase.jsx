@@ -485,7 +485,7 @@ export function GuessPhase({
                   height="152"
                   frameBorder="0"
                   allowtransparency="true"
-                  allow="encrypted-media"
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                   className="rounded-lg"
                 />
               </div>
@@ -561,7 +561,7 @@ export function GuessPhase({
                       height="152"
                       frameBorder="0"
                       allowtransparency="true"
-                      allow="encrypted-media"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                       className="rounded-lg"
                     />
                     <div
@@ -836,7 +836,7 @@ export function GuessPhase({
                                 height="152"
                                 frameBorder="0"
                                 allowtransparency="true"
-                                allow="encrypted-media"
+                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                                 className="rounded-lg"
                               />
                             </div>
@@ -875,7 +875,7 @@ export function GuessPhase({
                               height="152"
                               frameBorder="0"
                               allowtransparency="true"
-                              allow="encrypted-media"
+                              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                               className="rounded-lg"
                             />
                           </div>
