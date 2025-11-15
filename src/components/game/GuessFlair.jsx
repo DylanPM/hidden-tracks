@@ -83,7 +83,7 @@ export function GuessFlair({
     // Now we just randomly pick 2 attributes from the 6 available.
 
     // Use guess ID as seed for deterministic randomness (same guess = same attributes)
-    const seedValue = guess.id ? guess.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : Math.random();
+    const seedValue = guess.id ? String(guess.id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : Math.random();
     const shuffled = [...allAttributes].sort(() => {
       // Deterministic shuffle based on guess ID
       return (seedValue % 2 === 0) ? -1 : 1;
@@ -217,7 +217,7 @@ export function GuessFlair({
                 // Color based on correct/incorrect
                 const getBgColor = () => {
                   if (isCorrect) {
-                    return 'bg-green-900/30 border-green-600';
+                    return 'bg-green-900/24 border-green-700';
                   } else {
                     return 'bg-zinc-800 border-zinc-700';
                   }
@@ -330,16 +330,16 @@ export function GuessFlair({
           </div>
 
           <div
-            className={`bg-green-900/30 border-2 border-green-500 rounded-lg p-3 transform transition-all duration-300 ${
+            className={`bg-green-900/24 border-2 border-green-600 rounded-lg p-3 transform transition-all duration-300 ${
               dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
             }`}
             style={{ transitionDelay: `${animationDelay + (challenge ? 200 : showAttributeFeedback ? 100 : 0)}ms` }}
           >
             <div className="flex flex-col items-center gap-1">
-              <span className="text-green-400 font-bold text-base">
+              <span className="text-green-500 font-bold text-base">
                 On the playlist!
               </span>
-              <span className="text-green-400 font-bold text-xl">
+              <span className="text-green-500 font-bold text-xl">
                 +{guess.basePoints} points
               </span>
             </div>
@@ -358,13 +358,13 @@ export function GuessFlair({
           </div>
 
           <div
-            className={`bg-red-900/30 border-2 border-red-500 rounded-lg p-3 transform transition-all duration-300 ${
+            className={`bg-red-900/24 border-2 border-red-600 rounded-lg p-3 transform transition-all duration-300 ${
               dropped ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
             }`}
             style={{ transitionDelay: `${animationDelay + (showAttributeFeedback ? 100 : 0)}ms` }}
           >
             <div className="text-center">
-              <span className="text-red-400 font-bold text-lg block mb-2">
+              <span className="text-red-500 font-bold text-lg block mb-2">
                 Not on playlist
               </span>
               {guess.feedback && guess.feedback.length > 0 && (
