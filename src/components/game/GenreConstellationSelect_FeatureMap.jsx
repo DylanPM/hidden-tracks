@@ -1399,6 +1399,17 @@ export function GenreConstellationSelect({ onLaunch }) {
                     `}
                   />
                 </defs>
+                {/* Background rect behind title text for readability */}
+                <rect
+                  fill="#18181b"
+                  fillOpacity="0.7"
+                  x={CENTER_X + Math.cos((startAngle + endAngle) / 2) * textRadius - 50}
+                  y={CENTER_Y + Math.sin((startAngle + endAngle) / 2) * textRadius - 12}
+                  width="100"
+                  height="24"
+                  rx="4"
+                  style={{ pointerEvents: 'none' }}
+                />
                 {/* Title text */}
                 <text
                   fill="white"
@@ -1520,7 +1531,7 @@ export function GenreConstellationSelect({ onLaunch }) {
                   onClick={item.onClick}
                 />
 
-                {/* Node label - show circular text around edge with background */}
+                {/* Node label - show circular text around edge */}
                 <defs>
                   <path
                     id={`nodePath-${item.key}`}
@@ -1532,26 +1543,6 @@ export function GenreConstellationSelect({ onLaunch }) {
                     `}
                   />
                 </defs>
-                {/* Background stroke for text - gives it a dark background for readability */}
-                <text
-                  fill="none"
-                  stroke="#18181b"
-                  strokeWidth="6"
-                  strokeOpacity={isSelected || isHovered ? 1.0 : 0.8}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  fontSize={isHovered ? FONT_STYLES.medium.fontSize + 3 : FONT_STYLES.medium.fontSize}
-                  fontWeight={FONT_STYLES.medium.fontWeight}
-                  style={{
-                    pointerEvents: 'none',
-                    transition: 'font-size 0.4s cubic-bezier(0.23, 1, 0.32, 1), stroke-opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1)'
-                  }}
-                >
-                  <textPath href={`#nodePath-${item.key}`} startOffset="0%">
-                    {item.label.length > 20 ? item.label.toLowerCase().slice(0, 20) + '…' : item.label.toLowerCase()}
-                  </textPath>
-                </text>
-                {/* Foreground text */}
                 <text
                   fill="white"
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
