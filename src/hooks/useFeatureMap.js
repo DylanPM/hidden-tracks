@@ -460,11 +460,11 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         else return;
       }
       if (node && node.features && node.seeds) {
-        console.log(`\n🔍 ${path} MANIFEST FEATURES (used for positioning):`);
-        console.log(`  energy: ${node.features.energy?.toFixed(3)}`);
-        console.log(`  valence: ${node.features.valence?.toFixed(3)}`);
-        console.log(`  danceability: ${node.features.danceability?.toFixed(3)}`);
-        console.log(`  Seeds count: ${node.seeds?.length || 0}`);
+        // console.log(`\n🔍 ${path} MANIFEST FEATURES (used for positioning):`);
+        // console.log(`  energy: ${node.features.energy?.toFixed(3)}`);
+        // console.log(`  valence: ${node.features.valence?.toFixed(3)}`);
+        // console.log(`  danceability: ${node.features.danceability?.toFixed(3)}`);
+        // console.log(`  Seeds count: ${node.seeds?.length || 0}`);
         try {
           const profiles = await Promise.all(
             node.seeds.map(async (seed) => {
@@ -504,18 +504,18 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
               tempo_norm: validProfiles.reduce((sum, p) => sum + p.tempo_norm, 0) / validProfiles.length,
               popularity: validProfiles.reduce((sum, p) => sum + p.popularity, 0) / validProfiles.length
             };
-            console.log(`\n📊 ${path} ACTUAL SEED AVERAGES (${validProfiles.length} seeds loaded):`);
-            console.log(`  energy: ${avg.energy.toFixed(3)} (manifest: ${node.features.energy?.toFixed(3)}, diff: ${(avg.energy - node.features.energy).toFixed(3)})`);
-            console.log(`  valence: ${avg.valence.toFixed(3)} (manifest: ${node.features.valence?.toFixed(3)}, diff: ${(avg.valence - node.features.valence).toFixed(3)})`);
-            console.log(`  danceability: ${avg.danceability.toFixed(3)} (manifest: ${node.features.danceability?.toFixed(3)}, diff: ${(avg.danceability - node.features.danceability).toFixed(3)})`);
+            // console.log(`\n📊 ${path} ACTUAL SEED AVERAGES (${validProfiles.length} seeds loaded):`);
+            // console.log(`  energy: ${avg.energy.toFixed(3)} (manifest: ${node.features.energy?.toFixed(3)}, diff: ${(avg.energy - node.features.energy).toFixed(3)})`);
+            // console.log(`  valence: ${avg.valence.toFixed(3)} (manifest: ${node.features.valence?.toFixed(3)}, diff: ${(avg.valence - node.features.valence).toFixed(3)})`);
+            // console.log(`  danceability: ${avg.danceability.toFixed(3)} (manifest: ${node.features.danceability?.toFixed(3)}, diff: ${(avg.danceability - node.features.danceability).toFixed(3)})`);
             const energyDiff = Math.abs(avg.energy - node.features.energy);
             const valenceDiff = Math.abs(avg.valence - node.features.valence);
             const danceDiff = Math.abs(avg.danceability - node.features.danceability);
             if (energyDiff > 0.05 || valenceDiff > 0.05 || danceDiff > 0.05) {
-              console.log(`\n⚠️  SIGNIFICANT MISMATCH DETECTED! Manifest features don't match actual seeds.`);
-              if (energyDiff > 0.05) console.log(`  - Energy off by ${energyDiff.toFixed(3)}`);
-              if (valenceDiff > 0.05) console.log(`  - Valence off by ${valenceDiff.toFixed(3)}`);
-              if (danceDiff > 0.05) console.log(`  - Danceability off by ${danceDiff.toFixed(3)}`);
+              // console.log(`\n⚠️  SIGNIFICANT MISMATCH DETECTED! Manifest features don't match actual seeds.`);
+              // if (energyDiff > 0.05) console.log(`  - Energy off by ${energyDiff.toFixed(3)}`);
+              // if (valenceDiff > 0.05) console.log(`  - Valence off by ${valenceDiff.toFixed(3)}`);
+              // if (danceDiff > 0.05) console.log(`  - Danceability off by ${danceDiff.toFixed(3)}`);
             }
           }
         } catch (e) {
