@@ -581,13 +581,13 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       // DEBUG: Rock subgenre positioning (after scaling)
       const rockSubgenres = ['rock.Heavy.punk', 'rock.Heavy.metal', 'rock.Heavy.hard rock'];
       if (rockSubgenres.includes(key)) {
-        const angle = Math.atan2(y * scale, x * scale) * 180 / Math.PI;
-        const normalizedAngle = (angle + 360) % 360;
-        console.log(`\n🎸 ${key.toUpperCase()} SCALED POSITION:`);
-        console.log(`  Raw position: (${rawResult[key].x.toFixed(3)}, ${rawResult[key].y.toFixed(3)})`);
-        console.log(`  After scaling: (${(x * scale).toFixed(3)}, ${(y * scale).toFixed(3)})`);
-        console.log(`  Angle: ${normalizedAngle.toFixed(1)}°`);
-        console.log(`  Expected: near energy-high (205.7°) for rock music`);
+        // const angle = Math.atan2(y * scale, x * scale) * 180 / Math.PI;
+        // const normalizedAngle = (angle + 360) % 360;
+        // console.log(`\n🎸 ${key.toUpperCase()} SCALED POSITION:`);
+        // console.log(`  Raw position: (${rawResult[key].x.toFixed(3)}, ${rawResult[key].y.toFixed(3)})`);
+        // console.log(`  After scaling: (${(x * scale).toFixed(3)}, ${(y * scale).toFixed(3)})`);
+        // console.log(`  Angle: ${normalizedAngle.toFixed(1)}°`);
+        // console.log(`  Expected: near energy-high (205.7°) for rock music`);
       }
 
 
