@@ -236,19 +236,32 @@ export function GuessPhase({
   const handleAttributeReveal = (attribute) => {
     if (!pendingHintUse || hintsUsed >= maxHints || !seed) return;
 
-    // Debug logging for tempo
+    // Get attribute value from seed
+    let value;
     if (attribute === 'tempo') {
-      console.log('Tempo reveal attempt:', {
-        seed,
-        tempo: seed.tempo,
-        tempo_norm: seed.tempo_norm,
-        hasTempo: 'tempo' in seed,
-        hasTempoNorm: 'tempo_norm' in seed
-      });
+      // Try tempo_norm first, fallback to tempo and normalize it
+      if (seed.tempo_norm !== undefined && seed.tempo_norm !== null) {
+        value = seed.tempo_norm;
+      } else if (seed.tempo !== undefined && seed.tempo !== null) {
+        // Normalize raw tempo (assume range 0-200 BPM)
+        value = Math.min(Math.max(seed.tempo / 200, 0), 1);
+      } else {
+        console.error('Tempo is undefined or null', { seed });
+        return;
+      }
+    } else if (attribute === 'popularity') {
+      // Popularity is 0-100, normalize to 0-1
+      if (seed.popularity !== undefined && seed.popularity !== null) {
+        value = seed.popularity / 100;
+      } else {
+        console.error('Popularity is undefined or null', { seed });
+        return;
+      }
+    } else {
+      // Other attributes are already 0-1
+      value = seed[attribute];
     }
 
-    // Get attribute value from seed
-    const value = seed[attribute === 'tempo' ? 'tempo_norm' : attribute];
     if (value === undefined || value === null) {
       console.error(`Attribute ${attribute} is undefined or null`, { value, seed });
       return;
@@ -273,11 +286,13 @@ export function GuessPhase({
 
     const { adjective, guidance } = description[range];
 
-    // Format the value for display
+    // Format the value for display (all values are now 0-1 scale)
     let displayValue;
     if (attribute === 'tempo' || attribute === 'popularity') {
-      displayValue = Math.round(value * (attribute === 'tempo' ? 100 : 1));
+      // Tempo and popularity display as 0-100
+      displayValue = Math.round(value * 100);
     } else {
+      // Other attributes also display as 0-100
       displayValue = Math.round(value * 100);
     }
 

@@ -311,6 +311,13 @@ export function GenreConstellationSelect({ onLaunch }) {
   const [showColorModal, setShowColorModal] = useState(false);
   const activeColorScheme = COLOR_SCHEMES[colorScheme];
 
+  // Collision algorithm tuning parameters
+  const [nodeRadius, setNodeRadius] = useState(27); // Collision detection radius
+  const [overlapThreshold, setOverlapThreshold] = useState(0.2); // 0.2 = 20% overlap triggers push
+  const [pushStrength, setPushStrength] = useState(2.0); // Push force multiplier
+  const [maxIterations, setMaxIterations] = useState(6); // Collision resolution iterations
+  const [showCollisionDebug, setShowCollisionDebug] = useState(false);
+
   // Filter out instrumentalness and speechiness from feature_angles for display
   // Speechiness removed because 95% of music normalizes to ~0.5 (neutral), adding noise without useful differentiation
   const displayFeatures = useMemo(() => {
@@ -540,10 +547,11 @@ export function GenreConstellationSelect({ onLaunch }) {
 
   // Helper: Resolve collisions between nodes with feature-aware push direction
   const resolveCollisions = (items) => {
-    const nodeRadius = 27; // Max radius for collision detection
-    const overlapThreshold = 0.2; // 20% overlap triggers push (more sensitive)
-    const pushStrength = 2.0; // Stronger push (increased from 1.5)
-    const maxIterations = 6; // More iterations (doubled from 3)
+    // Use tunable parameters from state (can be adjusted via debug panel)
+    // nodeRadius: collision detection radius
+    // overlapThreshold: 0-1 scale, what % overlap triggers push (lower = more sensitive)
+    // pushStrength: force multiplier for pushing nodes apart
+    // maxIterations: how many collision resolution passes to run
 
     // Helper: Find which feature axis a given angle points toward
     const findNearestFeatureAxis = (angle) => {
@@ -1825,6 +1833,99 @@ export function GenreConstellationSelect({ onLaunch }) {
           animation: fadeIn 0.2s ease-in;
         }
       `}</style>
+
+      {/* Collision Algorithm Debug Controls */}
+      <button
+        onClick={() => setShowCollisionDebug(!showCollisionDebug)}
+        className="fixed bottom-4 left-4 z-50 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs rounded border border-zinc-600 transition"
+      >
+        {showCollisionDebug ? '✕' : '⚙️'} Collision Tuning
+      </button>
+
+      {showCollisionDebug && (
+        <div className="fixed bottom-16 left-4 z-50 bg-zinc-900 border-2 border-zinc-700 rounded-lg p-4 shadow-xl w-80">
+          <h3 className="text-white font-bold mb-3 text-sm">Collision Algorithm Parameters</h3>
+          <p className="text-zinc-400 text-xs mb-3">Adjust these values to fine-tune node spacing in the constellation view.</p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-zinc-400 text-xs block mb-1">
+                Node Radius: <span className="text-white font-semibold">{nodeRadius}px</span>
+              </label>
+              <input
+                type="range"
+                value={nodeRadius}
+                onChange={(e) => setNodeRadius(Number(e.target.value))}
+                className="w-full"
+                min="20"
+                max="40"
+                step="1"
+              />
+              <p className="text-zinc-500 text-[10px] mt-0.5">Collision detection radius</p>
+            </div>
+
+            <div>
+              <label className="text-zinc-400 text-xs block mb-1">
+                Overlap Threshold: <span className="text-white font-semibold">{(overlapThreshold * 100).toFixed(0)}%</span>
+              </label>
+              <input
+                type="range"
+                value={overlapThreshold}
+                onChange={(e) => setOverlapThreshold(Number(e.target.value))}
+                className="w-full"
+                min="0"
+                max="0.5"
+                step="0.05"
+              />
+              <p className="text-zinc-500 text-[10px] mt-0.5">Lower = more sensitive (triggers push sooner)</p>
+            </div>
+
+            <div>
+              <label className="text-zinc-400 text-xs block mb-1">
+                Push Strength: <span className="text-white font-semibold">{pushStrength.toFixed(1)}x</span>
+              </label>
+              <input
+                type="range"
+                value={pushStrength}
+                onChange={(e) => setPushStrength(Number(e.target.value))}
+                className="w-full"
+                min="0.5"
+                max="5.0"
+                step="0.1"
+              />
+              <p className="text-zinc-500 text-[10px] mt-0.5">Force multiplier for pushing nodes apart</p>
+            </div>
+
+            <div>
+              <label className="text-zinc-400 text-xs block mb-1">
+                Max Iterations: <span className="text-white font-semibold">{maxIterations}</span>
+              </label>
+              <input
+                type="range"
+                value={maxIterations}
+                onChange={(e) => setMaxIterations(Number(e.target.value))}
+                className="w-full"
+                min="1"
+                max="15"
+                step="1"
+              />
+              <p className="text-zinc-500 text-[10px] mt-0.5">Number of collision resolution passes</p>
+            </div>
+
+            <button
+              onClick={() => {
+                setNodeRadius(27);
+                setOverlapThreshold(0.2);
+                setPushStrength(2.0);
+                setMaxIterations(6);
+              }}
+              className="w-full px-2 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded transition mt-2"
+            >
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
