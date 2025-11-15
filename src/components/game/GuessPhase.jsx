@@ -479,6 +479,7 @@ export function GuessPhase({
               </div>
               <div className="relative">
                 <iframe
+                  key={`seed-${getSpotifyId(seed)}`}
                   title={`Spotify player for ${seed.name}`}
                   src={`https://open.spotify.com/embed/track/${getSpotifyId(seed)}?utm_source=generator`}
                   width="100%"
@@ -555,6 +556,7 @@ export function GuessPhase({
                     className="relative"
                   >
                     <iframe
+                      key={`option-${getSpotifyId(track)}`}
                       title={`Spotify player for ${track.name || 'track'}`}
                       src={`https://open.spotify.com/embed/track/${getSpotifyId(track)}?utm_source=generator`}
                       width="100%"
@@ -830,6 +832,7 @@ export function GuessPhase({
                             {/* Spotify Embed */}
                             <div className="relative">
                               <iframe
+                                key={`correct-${guess.id}-${getSpotifyId(guess.trackData)}`}
                                 title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                                 src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                                 width="100%"
@@ -869,6 +872,7 @@ export function GuessPhase({
                           {/* Spotify Embed */}
                           <div className="relative opacity-60">
                             <iframe
+                              key={`incorrect-${guess.id}-${getSpotifyId(guess.trackData)}`}
                               title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                               src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                               width="100%"
