@@ -1407,17 +1407,6 @@ export function GenreConstellationSelect({ onLaunch }) {
                     `}
                   />
                 </defs>
-                {/* Background rect behind title text for readability */}
-                <rect
-                  fill="#18181b"
-                  fillOpacity="0.7"
-                  x={CENTER_X + Math.cos((startAngle + endAngle) / 2) * textRadius - 50}
-                  y={CENTER_Y + Math.sin((startAngle + endAngle) / 2) * textRadius - 12}
-                  width="100"
-                  height="24"
-                  rx="4"
-                  style={{ pointerEvents: 'none' }}
-                />
                 {/* Title text */}
                 <text
                   fill="white"
@@ -1551,6 +1540,22 @@ export function GenreConstellationSelect({ onLaunch }) {
                     `}
                   />
                 </defs>
+
+                {/* Semi-opaque background ring behind circular text */}
+                <circle
+                  cx="0"
+                  cy="0"
+                  r={nodeRadius}
+                  fill="none"
+                  stroke="#18181b"
+                  strokeOpacity={isSelected || isHovered ? 0.8 : 0.6}
+                  strokeWidth="10"
+                  style={{
+                    pointerEvents: 'none',
+                    transition: 'stroke-opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1)'
+                  }}
+                />
+
                 <text
                   fill="white"
                   fillOpacity={isSelected || isHovered ? 1.0 : 0.6}
