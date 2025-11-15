@@ -77,22 +77,25 @@ export function GuessFlair({
       }
     }
 
-    // Priority 2: Player-revealed attributes
-    const revealedAttrs = Object.keys(revealedSeedAttributes).filter(
-      attr => revealedSeedAttributes[attr]
-    );
-    if (revealedAttrs.length >= 2) {
-      return revealedAttrs.slice(0, 2);
-    } else if (revealedAttrs.length === 1) {
-      // Use the revealed one + most similar/different
-      const remaining = allAttributes.filter(a => !revealedAttrs.includes(a));
-      const sorted = sortAttributesBySimilarity(remaining, guess.trackData, seed, isCorrect);
-      return [revealedAttrs[0], sorted[0]];
+    // Priority 2: Random selection from all 6 attributes
+    // NOTE: Previously this used player-revealed attributes (Priority 2) and
+    // most similar/different attributes (Priority 3), but that wasn't working well.
+    // Now we just randomly pick 2 attributes from the 6 available.
+
+    // Use guess ID as seed for deterministic randomness (same guess = same attributes)
+    const seedValue = guess.id ? guess.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : Math.random();
+    const shuffled = [...allAttributes].sort(() => {
+      // Deterministic shuffle based on guess ID
+      return (seedValue % 2 === 0) ? -1 : 1;
+    });
+
+    // Simple Fisher-Yates shuffle with deterministic seed
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(((seedValue + i) * 9301 + 49297) % 233280 / 233280 * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
 
-    // Priority 3: Most similar (correct) or most different (incorrect)
-    const sorted = sortAttributesBySimilarity(allAttributes, guess.trackData, seed, isCorrect);
-    return sorted.slice(0, 2);
+    return shuffled.slice(0, 2);
   };
 
   // Sort attributes by similarity to seed

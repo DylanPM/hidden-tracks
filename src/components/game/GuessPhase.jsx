@@ -154,6 +154,7 @@ export function GuessPhase({
   // Debug: Animation timing controls
   const [guessDwellTime, setGuessDwellTime] = useState(2500); // milliseconds
   const [intelDwellTime, setIntelDwellTime] = useState(2500); // milliseconds
+  const [returnSpeed, setReturnSpeed] = useState(1200); // milliseconds for return to guess options
   const [showDebugControls, setShowDebugControls] = useState(false);
 
   // Manual scroll cancellation - detect user scrolling during animation
@@ -186,36 +187,46 @@ export function GuessPhase({
       setIsAnimatingScroll(true);
       scrollCancelRef.current = false;
 
-      // Step 1: Scroll to where the guess landed and dwell
+      // Step 1: Scroll to where the guess landed - embed at top, all flair visible
       const targetRef = isCorrect ? correctGuessesRef : incorrectGuessesRef;
       if (targetRef.current && !scrollCancelRef.current) {
-        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         await new Promise(resolve => setTimeout(resolve, 600)); // Scroll animation time
-        if (scrollCancelRef.current) return;
+        if (scrollCancelRef.current) {
+          setIsAnimatingScroll(false);
+          return;
+        }
         await new Promise(resolve => setTimeout(resolve, guessDwellTime)); // Dwell on guess
       }
-      if (scrollCancelRef.current) return;
+      if (scrollCancelRef.current) {
+        setIsAnimatingScroll(false);
+        return;
+      }
 
       // Step 2: Scroll to "What We Know So Far" (Intel)
       if (whatWeKnowRef.current && !scrollCancelRef.current) {
         whatWeKnowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         await new Promise(resolve => setTimeout(resolve, 600)); // Scroll animation time
       }
-      if (scrollCancelRef.current) return;
+      if (scrollCancelRef.current) {
+        setIsAnimatingScroll(false);
+        return;
+      }
 
-      // Step 3: Highlight section and linger
+      // Step 3: Highlight intel section and linger
       setHighlightClues(true);
       await new Promise(resolve => setTimeout(resolve, intelDwellTime)); // Dwell on intel
       if (scrollCancelRef.current) {
         setHighlightClues(false);
+        setIsAnimatingScroll(false);
         return;
       }
       setHighlightClues(false);
 
-      // Step 4: Peek up slightly (scroll up 150px to see bottom of guess options)
-      if (!scrollCancelRef.current) {
-        window.scrollBy({ top: -150, behavior: 'smooth' });
-        await new Promise(resolve => setTimeout(resolve, 300));
+      // Step 4: Slowly scroll back to guess options (half speed = 2x time)
+      if (guessOptionsRef.current && !scrollCancelRef.current) {
+        guessOptionsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        await new Promise(resolve => setTimeout(resolve, returnSpeed));
       }
 
       setIsAnimatingScroll(false);
@@ -947,10 +958,25 @@ export function GuessPhase({
                 />
               </div>
 
+              <div>
+                <label className="text-zinc-400 text-xs block mb-1">Return to Guess Speed:</label>
+                <input
+                  type="number"
+                  value={returnSpeed}
+                  onChange={(e) => setReturnSpeed(Number(e.target.value))}
+                  className="w-full bg-zinc-800 text-white px-2 py-1 rounded text-sm border border-zinc-700"
+                  step="100"
+                  min="0"
+                  max="5000"
+                />
+                <p className="text-zinc-500 text-[10px] mt-0.5">Higher = slower scroll back</p>
+              </div>
+
               <button
                 onClick={() => {
                   setGuessDwellTime(2500);
                   setIntelDwellTime(2500);
+                  setReturnSpeed(1200);
                 }}
                 className="w-full px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded transition"
               >
