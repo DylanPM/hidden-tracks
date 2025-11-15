@@ -11,7 +11,7 @@ const ATTRIBUTE_CONFIG = {
   danceability: {
     icon: Music,
     label: 'Danceability',
-    description: 'Does it make you want to move?',
+    description: 'Makes you want to move?',
     lowLabel: 'Laid-back',
     highLabel: 'Danceable',
     color: '#9333EA',
@@ -80,9 +80,11 @@ export function TrackAttributes({
   const normalizeValue = (attr, value) => {
     if (value === null || value === undefined) return null;
 
-    // Tempo is already normalized (tempo_norm), others need to be scaled to 0-100
+    // Tempo: if tempo_norm (0-1), multiply by 200 to get BPM, otherwise use raw tempo
     if (attr === 'tempo') {
-      return Math.round(value * 100);
+      // If value is < 10, it's likely tempo_norm (0-1 scale), convert to BPM
+      // Otherwise it's raw BPM, just round it
+      return value < 10 ? Math.round(value * 200) : Math.round(value);
     }
 
     // Popularity is already 0-100

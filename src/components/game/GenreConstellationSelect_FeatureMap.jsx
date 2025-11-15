@@ -1652,6 +1652,17 @@ export function GenreConstellationSelect({ onLaunch }) {
                 pointerEvents: 'none'
               }}
             >
+              {/* Background stroke for text readability */}
+              <circle
+                cx={CENTER_X + (hoveredItem?.x || selectedNodePos.x)}
+                cy={CENTER_Y + (hoveredItem?.y || selectedNodePos.y)}
+                r="75"
+                fill="none"
+                stroke="#18181b"
+                strokeWidth="12"
+                strokeOpacity="0.8"
+              />
+
               <text fontSize={FONT_STYLES.large.fontSize} fill={hoveredItem?.isSongOfTheDay || selectedNode?.isSongOfTheDay ? activeColorScheme.text : activeColorScheme.textSecondary} fontWeight={FONT_STYLES.large.fontWeight} letterSpacing={FONT_STYLES.large.letterSpacing}>
                 <textPath href="#descPath" startOffset="0%">
                   {hoveredItem

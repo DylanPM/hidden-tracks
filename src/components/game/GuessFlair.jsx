@@ -156,8 +156,12 @@ export function GuessFlair({
   const formatAttributeValue = (attr, value) => {
     if (value === null) return '?';
 
-    if (attr === 'tempo' || attr === 'popularity') {
-      return Math.round(value * (attr === 'tempo' ? 100 : 100));
+    if (attr === 'tempo') {
+      // Tempo: if < 10 it's normalized (0-1), convert to BPM; otherwise use as-is
+      return value < 10 ? Math.round(value * 200) : Math.round(value);
+    }
+    if (attr === 'popularity') {
+      return Math.round(value * 100);
     }
     return Math.round(value * 100);
   };

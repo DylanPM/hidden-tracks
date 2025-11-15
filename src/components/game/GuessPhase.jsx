@@ -286,13 +286,16 @@ export function GuessPhase({
 
     const { adjective, guidance } = description[range];
 
-    // Format the value for display (all values are now 0-1 scale)
+    // Format the value for display
     let displayValue;
-    if (attribute === 'tempo' || attribute === 'popularity') {
-      // Tempo and popularity display as 0-100
+    if (attribute === 'tempo') {
+      // Tempo: value is 0-1 normalized, convert to BPM (multiply by 200)
+      displayValue = Math.round(value * 200);
+    } else if (attribute === 'popularity') {
+      // Popularity: value is 0-1 normalized, convert to 0-100
       displayValue = Math.round(value * 100);
     } else {
-      // Other attributes also display as 0-100
+      // Other attributes: 0-1 scale, convert to 0-100
       displayValue = Math.round(value * 100);
     }
 
