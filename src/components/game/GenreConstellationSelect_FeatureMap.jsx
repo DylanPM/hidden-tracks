@@ -312,10 +312,10 @@ export function GenreConstellationSelect({ onLaunch }) {
   const activeColorScheme = COLOR_SCHEMES[colorScheme];
 
   // Collision algorithm tuning parameters
-  const [nodeRadius, setNodeRadius] = useState(27); // Collision detection radius
-  const [overlapThreshold, setOverlapThreshold] = useState(0.2); // 0.2 = 20% overlap triggers push
-  const [pushStrength, setPushStrength] = useState(2.0); // Push force multiplier
-  const [maxIterations, setMaxIterations] = useState(6); // Collision resolution iterations
+  const [nodeRadius, setNodeRadius] = useState(30); // Collision detection radius (increased for more spacing)
+  const [overlapThreshold, setOverlapThreshold] = useState(0.15); // Lower = more sensitive (triggers push earlier)
+  const [pushStrength, setPushStrength] = useState(2.5); // Push force multiplier (stronger push)
+  const [maxIterations, setMaxIterations] = useState(8); // Collision resolution iterations (more passes)
   const [showCollisionDebug, setShowCollisionDebug] = useState(false);
 
   // Filter out instrumentalness and speechiness from feature_angles for display
@@ -1930,10 +1930,10 @@ export function GenreConstellationSelect({ onLaunch }) {
 
             <button
               onClick={() => {
-                setNodeRadius(27);
-                setOverlapThreshold(0.2);
-                setPushStrength(2.0);
-                setMaxIterations(6);
+                setNodeRadius(30);
+                setOverlapThreshold(0.15);
+                setPushStrength(2.5);
+                setMaxIterations(8);
               }}
               className="w-full px-2 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded transition mt-2"
             >

@@ -5,7 +5,7 @@ import { TrackAttributes } from './TrackAttributes';
 import { GuessFlair } from './GuessFlair';
 
 // Version tracking
-console.log('🎮 GuessPhase v2.7 - Typography polish and bigger clues');
+// GuessPhase v3.0 - Random attributes, improved scroll, intel fixes, challenge updates
 
 // Grammar system for attribute reveal clues
 const ATTRIBUTE_DESCRIPTIONS = {
@@ -745,11 +745,15 @@ export function GuessPhase({
                   'high-energy': '#DC2626',      // energy - red
                   'chill-vibes': '#DC2626',      // energy - red
                   'dance-floor': '#9333EA',      // danceability - purple
+                  'anti-dance': '#9333EA',       // danceability - purple
                   'feel-good': '#2563EB',        // valence - blue
                   'melancholy': '#2563EB',       // valence - blue
                   'unplugged': '#16A34A',        // acousticness - green
+                  'electronic': '#16A34A',       // acousticness - green
                   'fast-and-furious': '#EAB308', // tempo - yellow/gold
                   'slow-burn': '#EAB308',        // tempo - yellow/gold
+                  'time-traveler': '#F59E0B',    // era variant - orange
+                  'genre-bender': '#8B5CF6',     // genre variant - violet
                 };
                 return colorMap[challenge?.id] || '#3B82F6';
               };
