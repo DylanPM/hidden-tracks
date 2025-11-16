@@ -143,9 +143,13 @@ function RadioPuzzleGame() {
   }, [phase]);
   
   // Automatically go to score when no guesses remain
+  // Add delay to let user see their last guess before transitioning
   useEffect(() => {
     if (phase === 'guess' && guessesLeft <= 0) {
-      setPhase('score');
+      const timer = setTimeout(() => {
+        setPhase('score');
+      }, 5000); // Wait 5 seconds to show last guess intel
+      return () => clearTimeout(timer);
     }
   }, [phase, guessesLeft]);
 
@@ -682,17 +686,9 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
     }
 
     generateMultipleChoice();
-    
-    // Scroll to playlist to show result, then back to top
-    setTimeout(() => {
-      const playlistSection = document.querySelector('[data-playlist-section]');
-      if (playlistSection) {
-        playlistSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        setTimeout(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 2000);
-      }
-    }, 100);
+
+    // REMOVED - scroll animation is now handled entirely by GuessPhase component
+    // This was conflicting with GuessPhase's scroll sequence
   };
 
   const autoAssignChallenges = (currentGuesses) => {
