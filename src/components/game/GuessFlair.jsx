@@ -302,13 +302,13 @@ export function GuessFlair({
           >
             {/* Left box: Challenge name and description */}
             <div className="bg-blue-900/50 border-2 border-blue-500 rounded-lg p-3">
-              <p className="text-blue-300 font-bold text-base mb-1">{challenge.name}</p>
-              <p className="text-zinc-300 text-sm">{challenge.description}</p>
+              <p className="text-blue-100 font-bold text-base mb-1">{challenge.name}</p>
+              <p className="text-white text-sm">"{guess.song}" met the challenge</p>
             </div>
 
             {/* Right box: Points - Spotify treatment */}
             <div className="bg-blue-900/50 border-2 border-blue-500 rounded-lg p-3 flex items-center justify-center">
-              <span className="text-blue-300 text-3xl font-bold">
+              <span className="text-blue-100 text-3xl font-bold">
                 +{CHALLENGE_POINTS}
               </span>
             </div>
