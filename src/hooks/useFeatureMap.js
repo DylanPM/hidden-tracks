@@ -678,10 +678,10 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
     // COLLISION AVOIDANCE: Push overlapping nodes using radial separation
     // Relationship-aware minimum distances provide better separation for related nodes
-    const MIN_DISTANCE_SIBLING = 95; // Increased another 10px from 85
-    const MIN_DISTANCE_PARENT_CHILD = 125; // Increased another 10px from 115
-    const MIN_DISTANCE_ROOT = 155; // Increased another 10px from 145
-    const MIN_DISTANCE_DEFAULT = 75; // Increased another 10px from 65
+    const MIN_DISTANCE_SIBLING = 110; // Increased 15px from 95 to fix swing/bebop overlap
+    const MIN_DISTANCE_PARENT_CHILD = 140; // Increased 15px from 125
+    const MIN_DISTANCE_ROOT = 170; // Increased 15px from 155 to fix country/jazz/rock overlap
+    const MIN_DISTANCE_DEFAULT = 90; // Increased 15px from 75
     const PUSH_STRENGTH = 0.35; // Gentler push to preserve semantic positioning
     const MAX_ITERATIONS = 6; // Fewer iterations to reduce cumulative drift
     const DAMPING = 0.85; // Faster damping to limit total movement
