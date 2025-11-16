@@ -356,7 +356,7 @@ export function GuessPhase({
     const getValue = (attr) => {
       if (attr === 'tempo') {
         return trackData.tempo_norm !== undefined ? trackData.tempo_norm :
-               trackData.tempo !== undefined ? Math.min(Math.max(trackData.tempo / 200, 0), 1) : null;
+               trackData.tempo !== undefined ? Math.min(Math.max((trackData.tempo - 70) / 70, 0), 1) : null;
       }
       if (attr === 'popularity') return trackData[attr] !== undefined ? trackData[attr] / 100 : null;
       return trackData[attr];
@@ -874,7 +874,7 @@ export function GuessPhase({
                         return (
                           <div key={guess.id} className="space-y-2">
                             {/* Spotify Embed */}
-                            <div className="relative">
+                            <div className="relative z-10">
                               <iframe
                                 title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                                 src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
@@ -913,7 +913,7 @@ export function GuessPhase({
                       {incorrectGuesses.slice().reverse().map((guess, idx) => (
                         <div key={guess.id} className="space-y-2">
                           {/* Spotify Embed */}
-                          <div className="relative opacity-60">
+                          <div className="relative opacity-60 z-10">
                             <iframe
                               title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                               src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}

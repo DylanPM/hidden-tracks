@@ -192,7 +192,7 @@ export function GuessFlair({
       {showAttributeFeedback && guess.trackData && (
         <>
           {/* Connector lines from embed to attributes - extend upward to touch embed */}
-          <div className="flex justify-center gap-2 h-6 -mt-3">
+          <div className="flex justify-center gap-2 h-6 -mt-3 relative z-0">
             <div className="w-1/2 flex justify-center">
               <div className="w-0.5 h-full bg-zinc-600" />
             </div>
