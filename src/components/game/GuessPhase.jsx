@@ -462,6 +462,9 @@ export function GuessPhase({
             clue = `Playlist blends acoustic and electronic elements`;
           }
         }
+
+        // Push the clue for incorrect guesses
+        if (clue) clues.push(clue);
       } else {
         // Correct guess - generate attribute intel for displayed attributes
         const displayedAttrs = getDisplayedAttributes(guess);
@@ -469,10 +472,7 @@ export function GuessPhase({
           const intel = generateAttributeIntel(attr, guessTrack);
           if (intel) clues.push(intel);
         });
-        return; // Skip the clue.push below since we already added intel
       }
-
-      if (clue) clues.push(clue);
     });
     
     return clues;
