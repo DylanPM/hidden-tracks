@@ -14,7 +14,7 @@ const FONT_STYLES = {
   },
   large: {
     // Focus ring text, outer ring labels, rectangle labels
-    fontSize: 18, // Increased from 16 to 18 (+2 more)
+    fontSize: 17, // Reduced from 18 to prevent text clipping
     fontWeight: 700, // Increased from 600 to 700 for thicker text
     letterSpacing: '0.5px'
   },
@@ -430,8 +430,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setHoveredItem(null); // Reset hover to prevent ghosting
     // Set LAUNCH overlay on parent node (which will appear in new view)
     setSelectedNodeKey(`parent-${key}`);
-    // Progressive zoom: 20% more for each level from 0.85 base
-    setZoomLevel(0.85 + (newStack.length * 0.2));
+    // Progressive zoom: 18% more for each level from 0.85 base (reduced from 20% to prevent excessive zoom)
+    setZoomLevel(0.85 + (newStack.length * 0.18));
   };
 
   const handleTrackClick = async (track) => {
@@ -453,8 +453,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setShowBackHint(false); // Hide hint when going back
     if (backHintTimeout) clearTimeout(backHintTimeout);
 
-    // Progressive zoom: reduce by 20% for each level back from 0.85 base
-    setZoomLevel(0.85 + (newStack.length * 0.2));
+    // Progressive zoom: reduce by 18% for each level back from 0.85 base
+    setZoomLevel(0.85 + (newStack.length * 0.18));
 
     // Clear LAUNCH overlay when going back to root
     if (newStack.length === 0) {
