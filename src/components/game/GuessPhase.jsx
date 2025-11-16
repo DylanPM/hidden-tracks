@@ -348,7 +348,58 @@ export function GuessPhase({
   const unusedHintCount = revealedHints.filter(r => !r).length;
   const hintPointsAvailable = unusedHintCount * HINT_POINTS;
 
-  // Generate clues from guesses (1 clue per guess)
+  // Helper: Generate attribute intel using ATTRIBUTE_DESCRIPTIONS pattern
+  const generateAttributeIntel = (attributeName, trackData) => {
+    if (!trackData) return null;
+
+    // Get value and determine tier (low/mid/high)
+    const getValue = (attr) => {
+      if (attr === 'tempo') {
+        return trackData.tempo_norm !== undefined ? trackData.tempo_norm :
+               trackData.tempo !== undefined ? Math.min(Math.max(trackData.tempo / 200, 0), 1) : null;
+      }
+      if (attr === 'popularity') return trackData[attr] !== undefined ? trackData[attr] / 100 : null;
+      return trackData[attr];
+    };
+
+    const value = getValue(attributeName);
+    if (value === null) return null;
+
+    const tier = value < 0.33 ? 'low' : value > 0.66 ? 'high' : 'mid';
+    const desc = ATTRIBUTE_DESCRIPTIONS[attributeName];
+    if (!desc || !desc[tier]) return null;
+
+    // Format display value
+    let displayValue;
+    if (attributeName === 'tempo') {
+      displayValue = Math.round(value * 200);
+    } else if (attributeName === 'popularity') {
+      displayValue = Math.round(value * 100);
+    } else {
+      displayValue = Math.round(value * 100);
+    }
+
+    return `Playlist features a track with ${attributeName} ${displayValue}. Look for songs that ${desc[tier].guidance}`;
+  };
+
+  // Helper: Select which attributes are displayed for a guess (matches GuessFlair logic)
+  const getDisplayedAttributes = (guess) => {
+    const allAttributes = ['danceability', 'energy', 'acousticness', 'valence', 'tempo', 'popularity'];
+
+    // Use same deterministic randomness as GuessFlair
+    const seedValue = guess.id ? String(guess.id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : Math.random();
+    const shuffled = [...allAttributes];
+
+    // Fisher-Yates shuffle with deterministic seed
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(((seedValue + i) * 9301 + 49297) % 233280 / 233280 * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled.slice(0, 2);
+  };
+
+  // Generate clues from guesses
   const generateClues = () => {
     if (!seed || guesses.length === 0) return [];
 
@@ -361,11 +412,10 @@ export function GuessPhase({
 
       const guessTrack = guess.trackData;
 
-      // Pick deterministic attribute based on guess index (stable across renders)
-      const attr = attributes[guessIndex % attributes.length];
-      let clue = '';
-      
       if (guess.incorrect) {
+        // Wrong guess - describe what the playlist IS (based on seed track)
+        const attr = attributes[guessIndex % attributes.length];
+        let clue = '';
         // Wrong guess - describe what the playlist IS (based on seed track)
         if (attr === 'genre' && seed.genres?.length > 0) {
           clue = `Playlist leans toward ${seed.genres[0]} vibes`;
@@ -414,41 +464,15 @@ export function GuessPhase({
           }
         }
       } else {
-        // Correct guess - confirm what playlist includes
-        if (attr === 'genre' && guessTrack.genres?.length > 0) {
-          clue = `Playlist includes ${guessTrack.genres[0]} tracks`;
-        } else if (attr === 'year' && guessTrack.year) {
-          const decade = Math.floor(guessTrack.year / 10) * 10;
-          clue = `Playlist features music from the ${decade}s`;
-        } else if (attr === 'popularity') {
-          if (guessTrack.popularity < 30) {
-            clue = `Playlist welcomes deep cuts and lesser-known tracks`;
-          } else if (guessTrack.popularity > 70) {
-            clue = `Playlist includes popular, well-known songs`;
-          } else {
-            clue = `Playlist includes moderately popular tracks`;
-          }
-        } else if (attr === 'valence') {
-          if (guessTrack.valence < 0.4) {
-            clue = `Playlist embraces melancholy and introspective moods`;
-          } else if (guessTrack.valence > 0.6) {
-            clue = `Playlist features upbeat, feel-good vibes`;
-          }
-        } else if (attr === 'danceability') {
-          if (guessTrack.danceability > 0.6) {
-            clue = `Playlist loves groove and rhythm`;
-          } else {
-            clue = `Playlist values musical complexity over danceability`;
-          }
-        } else if (attr === 'energy') {
-          if (guessTrack.energy > 0.6) {
-            clue = `Playlist brings high energy and intensity`;
-          } else {
-            clue = `Playlist maintains a relaxed, chill energy`;
-          }
-        }
+        // Correct guess - generate attribute intel for displayed attributes
+        const displayedAttrs = getDisplayedAttributes(guess);
+        displayedAttrs.forEach(attr => {
+          const intel = generateAttributeIntel(attr, guessTrack);
+          if (intel) clues.push(intel);
+        });
+        return; // Skip the clue.push below since we already added intel
       }
-      
+
       if (clue) clues.push(clue);
     });
     

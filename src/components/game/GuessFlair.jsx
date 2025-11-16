@@ -367,6 +367,7 @@ export function GuessFlair({
               <span className="text-red-500 font-bold text-lg block mb-2">
                 Not on playlist
               </span>
+              {/* REMOVED - Feedback is now in intel section
               {guess.feedback && guess.feedback.length > 0 && (
                 <div className="text-sm text-red-300 space-y-1">
                   {guess.feedback.map((fb, i) => (
@@ -374,6 +375,7 @@ export function GuessFlair({
                   ))}
                 </div>
               )}
+              */}
             </div>
           </div>
         </>
