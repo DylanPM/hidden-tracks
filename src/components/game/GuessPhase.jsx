@@ -767,7 +767,7 @@ export function GuessPhase({
           </div>
 
           <p className="text-zinc-400 text-base mb-3">
-            For extra points, pick songs that are on the playlist and have these qualities
+            For extra points, pick songs with these qualities
           </p>
 
           {/* Challenge Slots (2 challenges) - Color coded by attribute, displayed side by side */}

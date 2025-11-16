@@ -17,8 +17,8 @@ export const CHALLENGES = [
   {
     id: 'deep-cut',
     name: 'Deep Cut',
-    description: 'Track must have popularity score below 25 (obscure gem)',
-    check: (song, seed) => song.popularity < 25
+    description: 'Track must have popularity score below 61 (obscure gem)',
+    check: (song, seed) => song.popularity < 61
   },
   {
     id: 'cult-classic',

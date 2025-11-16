@@ -92,14 +92,13 @@ export function ScorePhase({
         {/* Header */}
         <div className="text-center">
           <Sparkles className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Listen up!</h1>
           {seed && (
-            <p className="text-base font-normal text-white leading-relaxed">
+            <h1 className="text-2xl font-bold text-white tracking-tight mb-4">
               Here's your playlist for{' '}
               <span className="text-green-400 font-semibold">
                 {seed.name} by {getArtistString(seed)}
               </span>
-            </p>
+            </h1>
           )}
         </div>
 
