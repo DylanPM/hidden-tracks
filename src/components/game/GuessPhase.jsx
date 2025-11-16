@@ -404,7 +404,8 @@ export function GuessPhase({
     if (!seed || guesses.length === 0) return [];
 
     const clues = [];
-    const attributes = ['genre', 'year', 'valence', 'popularity', 'danceability',
+    // Removed 'genre' to avoid redundant "playlist includes [genre]" intel when player already selected that genre
+    const attributes = ['year', 'valence', 'popularity', 'danceability',
                         'energy', 'acousticness', 'instrumentalness', 'speechiness'];
 
     guesses.forEach((guess, guessIndex) => {
@@ -417,9 +418,7 @@ export function GuessPhase({
         const attr = attributes[guessIndex % attributes.length];
         let clue = '';
         // Wrong guess - describe what the playlist IS (based on seed track)
-        if (attr === 'genre' && seed.genres?.length > 0) {
-          clue = `Playlist leans toward ${seed.genres[0]} vibes`;
-        } else if (attr === 'year' && seed.year) {
+        if (attr === 'year' && seed.year) {
           const decade = Math.floor(seed.year / 10) * 10;
           clue = `Playlist draws from the ${decade}s era`;
         } else if (attr === 'popularity') {
