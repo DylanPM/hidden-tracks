@@ -255,7 +255,7 @@ export function GuessFlair({
                       </div>
 
                       {/* Line with positioned circle */}
-                      <div className="relative h-10 flex items-center px-1">
+                      <div className="relative h-8 flex items-center px-1">
                         {/* Background line */}
                         <div className="absolute left-1 right-1 h-0.5 bg-zinc-600" />
 
