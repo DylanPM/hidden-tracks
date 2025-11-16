@@ -203,9 +203,12 @@ export function GuessPhase({
         return;
       }
 
-      // Step 2: Scroll to "What We Know So Far" (Intel)
+      // Step 2: Scroll to "Playlist Intel" heading (1/3 from top of viewport)
       if (whatWeKnowRef.current && !scrollCancelRef.current) {
-        whatWeKnowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const elementRect = whatWeKnowRef.current.getBoundingClientRect();
+        const absoluteElementTop = elementRect.top + window.pageYOffset;
+        const targetPosition = absoluteElementTop - (window.innerHeight / 3);
+        window.scrollTo({ top: targetPosition, behavior: 'smooth' });
         await new Promise(resolve => setTimeout(resolve, 600)); // Scroll animation time
       }
       if (scrollCancelRef.current) {
@@ -223,11 +226,11 @@ export function GuessPhase({
       }
       setHighlightClues(false);
 
-      // Step 4: Slowly scroll back to guess options (half speed = 2x time)
-      if (guessOptionsRef.current && !scrollCancelRef.current) {
-        guessOptionsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        await new Promise(resolve => setTimeout(resolve, returnSpeed));
-      }
+      // Step 4: COMMENTED OUT - let players scroll back up themselves
+      // if (guessOptionsRef.current && !scrollCancelRef.current) {
+      //   guessOptionsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      //   await new Promise(resolve => setTimeout(resolve, returnSpeed));
+      // }
 
       setIsAnimatingScroll(false);
     };
@@ -500,7 +503,7 @@ export function GuessPhase({
               {/* Heading and subheading */}
               <div className="mb-4">
                 <h1 className="text-2xl font-bold text-white tracking-tight mb-1">What's on the playlist?</h1>
-                <p className="text-sm font-normal text-[#b3b3b3]">Pick one of 3 songs, or refresh for different choices. 6 picks per round.</p>
+                <p className="text-sm font-normal text-[#b3b3b3]">Pick 1 of 3 songs, or refresh for new choices. 6 picks per round.</p>
               </div>
 
               {/* Guesses Remaining - Number line (6 to 1, left to right) */}
@@ -597,8 +600,8 @@ export function GuessPhase({
             )}
           </div>
 
-          {/* 3. Track Attributes */}
-          {seed && (
+          {/* 3. Track Attributes - COMMENTED OUT (keeping code for potential future use) */}
+          {/* {seed && (
             <div onClick={(e) => e.stopPropagation()}>
               <TrackAttributes
                 track={seed}
@@ -608,10 +611,10 @@ export function GuessPhase({
                 pulseUnrevealed={pendingHintUse}
               />
             </div>
-          )}
+          )} */}
 
-          {/* 4. Reveal Starting Track Attributes - Full-width consolidated box */}
-          <div
+          {/* 4. Reveal Starting Track Attributes - COMMENTED OUT (keeping code for potential future use) */}
+          {/* <div
             onClick={() => {
               if (hintsUsed >= maxHints) return;
               if (pendingHintUse) {
@@ -653,7 +656,7 @@ export function GuessPhase({
             <p className="text-base font-normal text-white leading-relaxed text-center">
               Unused reveals bonus: <span className="text-green-400 font-bold">+{(maxHints - hintsUsed) * HINT_POINTS} pts</span>
             </p>
-          </div>
+          </div> */}
 
           {/* 5. What We Know So Far - Spotify-style Discovery Feed */}
           <div
@@ -675,8 +678,8 @@ export function GuessPhase({
             </div>
             {(revealClues.length > 0 || clues.length > 0) ? (
               <div className="space-y-3">
-                {/* Reveal clues - styled as insight cards */}
-                {revealClues.map((clue, idx) => (
+                {/* Reveal clues - styled as insight cards (newest first) */}
+                {revealClues.slice().reverse().map((clue, idx) => (
                   <div
                     key={`reveal-${idx}`}
                     className="bg-green-900/20 border border-green-700/40 rounded-lg p-3 flex items-start gap-3 hover:bg-green-900/30 transition"
@@ -689,8 +692,8 @@ export function GuessPhase({
                     </p>
                   </div>
                 ))}
-                {/* Guess-based clues - styled as insight cards */}
-                {clues.map((clue, idx) => (
+                {/* Guess-based clues - styled as insight cards (newest first) */}
+                {clues.slice().reverse().map((clue, idx) => (
                   <div
                     key={`guess-${idx}`}
                     className="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3 flex items-start gap-3 hover:bg-blue-900/30 transition"
@@ -818,7 +821,7 @@ export function GuessPhase({
                       <span>✓</span> Correct Guesses ({correctGuesses.length})
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {correctGuesses.map((guess, idx) => {
+                      {correctGuesses.slice().reverse().map((guess, idx) => {
                         // Find if this guess has a challenge
                         const challengeIdx = challengePlacements.findIndex(
                           placement => placement === guess.id
@@ -864,7 +867,7 @@ export function GuessPhase({
                       <span>✗</span> Not on Playlist ({incorrectGuesses.length})
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {incorrectGuesses.map((guess, idx) => (
+                      {incorrectGuesses.slice().reverse().map((guess, idx) => (
                         <div key={guess.id} className="space-y-2">
                           {/* Spotify Embed */}
                           <div className="relative opacity-60">
