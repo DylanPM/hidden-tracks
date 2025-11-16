@@ -1850,8 +1850,8 @@ export function GenreConstellationSelect({ onLaunch }) {
         }
       `}</style>
 
-      {/* Collision Algorithm Debug Controls */}
-      <button
+      {/* Collision Algorithm Debug Controls - COMMENTED OUT */}
+      {/* <button
         onClick={() => setShowCollisionDebug(!showCollisionDebug)}
         className="fixed bottom-4 left-4 z-50 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs rounded border border-zinc-600 transition"
       >
@@ -1941,7 +1941,7 @@ export function GenreConstellationSelect({ onLaunch }) {
             </button>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

@@ -23,21 +23,21 @@ export const CHALLENGES = [
   {
     id: 'cult-classic',
     name: 'Cult Classic',
-    description: 'Track must have popularity between 25-50 (niche favorite)',
-    check: (song, seed) => song.popularity >= 25 && song.popularity <= 50
+    description: 'Track must have popularity between 25-60 (niche favorite)',
+    check: (song, seed) => song.popularity >= 25 && song.popularity <= 60
   },
 
   // Energy challenges
   {
     id: 'high-energy',
     name: 'High Energy',
-    description: 'Track must feel intense and energetic (energy above 70%)',
+    description: 'Track must feel intense and energetic (energy above 70)',
     check: (song, seed) => song.energy > 0.7
   },
   {
     id: 'chill-vibes',
     name: 'Chill Vibes',
-    description: 'Track must feel relaxed and mellow (energy below 30%)',
+    description: 'Track must feel relaxed and mellow (energy below 30)',
     check: (song, seed) => song.energy < 0.3
   },
 
@@ -45,13 +45,13 @@ export const CHALLENGES = [
   {
     id: 'dance-floor',
     name: 'Dance Floor',
-    description: 'Track must be highly danceable (danceability above 70%)',
+    description: 'Track must be highly danceable (danceability above 70)',
     check: (song, seed) => song.danceability > 0.7
   },
   {
     id: 'anti-dance',
     name: 'Anti-Dance',
-    description: 'Track must be laid-back and not for dancing (danceability below 30%)',
+    description: 'Track must be laid-back and not for dancing (danceability below 30)',
     check: (song, seed) => song.danceability < 0.3
   },
 
@@ -59,13 +59,13 @@ export const CHALLENGES = [
   {
     id: 'feel-good',
     name: 'Feel Good',
-    description: 'Track must sound positive and upbeat (happiness above 70%)',
+    description: 'Track must sound positive and upbeat (happiness above 70)',
     check: (song, seed) => song.valence > 0.7
   },
   {
     id: 'melancholy',
     name: 'Melancholy',
-    description: 'Track must sound sad or introspective (happiness below 30%)',
+    description: 'Track must sound sad or introspective (happiness below 30)',
     check: (song, seed) => song.valence < 0.3
   },
 
@@ -73,13 +73,13 @@ export const CHALLENGES = [
   {
     id: 'unplugged',
     name: 'Unplugged',
-    description: 'Track must feature acoustic instruments (acoustic above 60%)',
+    description: 'Track must feature acoustic instruments (acoustic above 60)',
     check: (song, seed) => song.acousticness > 0.6
   },
   {
     id: 'electronic',
     name: 'Electronic',
-    description: 'Track must be heavily produced/electronic (acoustic below 20%)',
+    description: 'Track must be heavily produced/electronic (acoustic below 20)',
     check: (song, seed) => song.acousticness < 0.2
   },
 
