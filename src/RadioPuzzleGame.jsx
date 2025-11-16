@@ -866,6 +866,12 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
             localStorage.removeItem('seedIsLocked');
             setPhase('constellation');
           }}
+          onReplaySeed={(seed) => {
+            // Reset only guesses and challenge state, keep the same seed
+            gameState.resetGuesses();
+            gameState.setMultipleChoice([]);
+            setPhase('guess');
+          }}
         />
         <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
       </>

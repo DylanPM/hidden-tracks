@@ -67,7 +67,19 @@ const gameReducer = (state, action) => {
     case 'RESET_GAME':
       //return initialState;
       return { ...initialState, guessedTracks: new Set() };
-    
+
+    case 'RESET_GUESSES':
+      // Keep seed but reset guesses, challenges, and hints for replay
+      return {
+        ...state,
+        guesses: [],
+        guessedTracks: new Set(),
+        challengePlacements: [null, null],
+        multipleChoiceOptions: [],
+        revealedHints: [false, false, false],
+        usedHints: [false, false, false]
+      };
+
     default:
       return state;
   }
@@ -91,5 +103,6 @@ export const useGameState = () => {
     setMultipleChoice: (options) => dispatch({ type: 'SET_MULTIPLE_CHOICE', payload: options }),
     setChallengePlacements: (placements) => dispatch({ type: 'SET_CHALLENGE_PLACEMENTS', payload: placements }),
     resetGame: () => dispatch({ type: 'RESET_GAME' }),
+    resetGuesses: () => dispatch({ type: 'RESET_GUESSES' }),
   };
 };

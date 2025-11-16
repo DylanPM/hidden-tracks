@@ -9,9 +9,11 @@ export function ScorePhase({
   challenges,
   hintsUsed = 0,
   maxHints = 3,
-  onPlayAgain
+  onPlayAgain,
+  onReplaySeed
 }) {
   const correctGuesses = guesses.filter(g => !g.incorrect);
+  const scoreRef = useRef(null);
 
   // Calculate score breakdown
   let guessPoints = 0;
@@ -20,15 +22,17 @@ export function ScorePhase({
   correctGuesses.forEach(guess => {
     guessPoints += guess.basePoints;
     challengePlacements.forEach((placedGuessId, challengeIdx) => {
-      if (placedGuessId === guess.id && guess.challengeScores[challengeIdx]) {
-        challengePoints += Math.round(guess.challengeScores[challengeIdx]);
+      if (placedGuessId === guess.id) {
+        // 10 points per achieved challenge
+        challengePoints += 10;
       }
     });
   });
 
-  const unusedHints = maxHints - hintsUsed;
-  const hintPoints = unusedHints * HINT_POINTS;
-  const totalScore = guessPoints + hintPoints + challengePoints;
+  // COMMENTED OUT - unused hints bonus
+  // const unusedHints = maxHints - hintsUsed;
+  // const hintPoints = unusedHints * HINT_POINTS;
+  const totalScore = guessPoints + challengePoints;
 
   // Check for new record (using localStorage)
   const highScoreKey = 'hiddenTracks_highScore';
@@ -59,6 +63,13 @@ export function ScorePhase({
     })();
   }, []);
 
+  // Scroll to score box on mount
+  useEffect(() => {
+    if (scoreRef.current) {
+      scoreRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
   // Extract Spotify track ID
   const getSpotifyId = (track) => {
     if (!track || !track.id) return '';
@@ -81,9 +92,9 @@ export function ScorePhase({
         {/* Header */}
         <div className="text-center">
           <Sparkles className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold text-white mb-2">Listen up!</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Listen up!</h1>
           {seed && (
-            <p className="text-xl text-zinc-300">
+            <p className="text-base font-normal text-white leading-relaxed">
               Here's your playlist for{' '}
               <span className="text-green-400 font-semibold">
                 {seed.name} by {getArtistString(seed)}
@@ -93,30 +104,32 @@ export function ScorePhase({
         </div>
 
         {/* Score Breakdown */}
-        <div className="bg-zinc-900 rounded-lg p-6 border-2 border-green-500">
-          <h2 className="text-2xl font-bold text-white mb-4 text-center">Your Score</h2>
+        <div ref={scoreRef} className="bg-zinc-900 rounded-lg p-6 border-2 border-green-500">
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-4 text-center">Your score</h1>
 
           <div className="space-y-3 mb-4">
-            <div className="flex justify-between items-center text-lg">
-              <span className="text-zinc-300">
+            <div className="flex justify-between items-center">
+              <span className="text-base font-normal text-white leading-relaxed">
                 {correctGuesses.length} correct guess{correctGuesses.length !== 1 ? 'es' : ''}
               </span>
-              <span className="text-green-400 font-bold">+{guessPoints} points</span>
+              <span className="text-green-400 font-semibold text-base">+{guessPoints} points</span>
             </div>
 
+            {/* COMMENTED OUT - Unused hints bonus
             {unusedHints > 0 && (
-              <div className="flex justify-between items-center text-lg">
-                <span className="text-zinc-300">
+              <div className="flex justify-between items-center">
+                <span className="text-base font-normal text-white leading-relaxed">
                   {unusedHints} unused hint{unusedHints !== 1 ? 's' : ''}
                 </span>
-                <span className="text-green-400 font-bold">+{hintPoints} points</span>
+                <span className="text-green-400 font-semibold text-base">+{hintPoints} points</span>
               </div>
             )}
+            */}
 
             {challengePoints > 0 && (
-              <div className="flex justify-between items-center text-lg">
-                <span className="text-zinc-300">Challenge bonuses</span>
-                <span className="text-green-400 font-bold">+{challengePoints} points</span>
+              <div className="flex justify-between items-center">
+                <span className="text-base font-normal text-white leading-relaxed">Challenge bonuses</span>
+                <span className="text-green-400 font-semibold text-base">+{challengePoints} points</span>
               </div>
             )}
           </div>
@@ -139,7 +152,7 @@ export function ScorePhase({
 
         {/* Playlist: Seed + Correct Guesses */}
         <div className="bg-zinc-900 rounded-lg p-6">
-          <h2 className="text-2xl font-bold text-white mb-4">Your Playlist</h2>
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-4">Your playlist</h1>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Seed Track - Visually Distinguished */}
@@ -189,13 +202,23 @@ export function ScorePhase({
         </div>
         */}
 
-        {/* Return to Map */}
-        <button
-          onClick={onPlayAgain}
-          className="w-full bg-green-500 text-black px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-400 transition"
-        >
-          Click here to return to the map and pick a new song
-        </button>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {onReplaySeed && seed && (
+            <button
+              onClick={() => onReplaySeed(seed)}
+              className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white px-8 py-4 rounded-lg font-bold text-lg transition"
+            >
+              Try this song again
+            </button>
+          )}
+          <button
+            onClick={onPlayAgain}
+            className="flex-1 bg-green-500 text-black px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-400 transition"
+          >
+            Return to map
+          </button>
+        </div>
       </div>
     </div>
   );
