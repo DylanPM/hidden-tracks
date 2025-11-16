@@ -725,9 +725,9 @@ export function GuessPhase({
                 {revealClues.slice().reverse().map((clue, idx) => (
                   <div
                     key={`reveal-${idx}`}
-                    className="bg-green-900/20 border border-green-700/40 rounded-lg p-3 flex items-start gap-3 hover:bg-green-900/30 transition"
+                    className="bg-green-900/20 border border-green-700/40 rounded-lg p-3 flex items-center gap-3 hover:bg-green-900/30 transition"
                   >
-                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
                       <span className="text-green-400 font-bold text-sm">{idx + 1}</span>
                     </div>
                     <p className="text-zinc-200 text-base leading-relaxed flex-1">
@@ -739,9 +739,9 @@ export function GuessPhase({
                 {clues.slice().reverse().map((clue, idx) => (
                   <div
                     key={`guess-${idx}`}
-                    className="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3 flex items-start gap-3 hover:bg-blue-900/30 transition"
+                    className="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3 flex items-center gap-3 hover:bg-blue-900/30 transition"
                   >
-                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                       <span className="text-blue-400 font-bold text-sm">{revealClues.length + idx + 1}</span>
                     </div>
                     <p className="text-zinc-200 text-base leading-relaxed flex-1">

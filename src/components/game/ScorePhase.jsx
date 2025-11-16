@@ -54,12 +54,38 @@ export function ScorePhase({
 
     (async () => {
       const { default: confetti } = await import('canvas-confetti');
-      // First burst
-      confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-      // Follow-up puff
+
+      // Attribute colors (matching the game's color scheme)
+      const attributeColors = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'];
+
+      // Multiple bursts with attribute colors
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: attributeColors,
+        scalar: 1.2
+      });
+
       setTimeout(() => {
-        confetti({ particleCount: 60, startVelocity: 45, scalar: 0.9, origin: { y: 0.6 } });
-      }, 300);
+        confetti({
+          particleCount: 100,
+          startVelocity: 50,
+          scalar: 1,
+          origin: { y: 0.6, x: 0.3 },
+          colors: attributeColors
+        });
+      }, 200);
+
+      setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          startVelocity: 50,
+          scalar: 1,
+          origin: { y: 0.6, x: 0.7 },
+          colors: attributeColors
+        });
+      }, 400);
     })();
   }, []);
 
