@@ -476,10 +476,10 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
   const shuffledPicks = fyShuffle(picks);
   gameState.setMultipleChoice(shuffledPicks);
 
-  // Track algorithm stats for debugging
-  if (DEBUG_ALGORITHM) {
-    trackAlgorithmStats(shuffledPicks);
-  }
+  // REMOVED - Algorithm stats tracking
+  // if (DEBUG_ALGORITHM) {
+  //   trackAlgorithmStats(shuffledPicks);
+  // }
 
   console.log('[MCQ]', {
   difficulty: currentDifficulty,
@@ -752,7 +752,9 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
     return (
       <>
         <GenreConstellationSelect onLaunch={handleConstellationLaunch} />
+        {/* REMOVED - Algorithm stats popup
         <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+        */}
       </>
     );
   }
@@ -836,7 +838,9 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
           onTextInput={() => {}}
           onSeeScore={() => setPhase('score')}
         />
+        {/* REMOVED - Algorithm stats popup
         <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+        */}
       </>
     );
   }
@@ -873,7 +877,9 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
             setPhase('guess');
           }}
         />
+        {/* REMOVED - Algorithm stats popup
         <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+        */}
       </>
     );
   }
@@ -883,8 +889,9 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
       <div className="min-h-screen bg-black p-8 flex items-center justify-center text-white">
         Loading...
       </div>
-      {/* Algorithm Debug Modal (global overlay) */}
+      {/* REMOVED - Algorithm stats popup
       <AlgorithmDebugModal enabled={DEBUG_ALGORITHM} />
+      */}
     </>
   );
 }
