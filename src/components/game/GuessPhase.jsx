@@ -303,8 +303,8 @@ export function GuessPhase({
     // Format the value for display
     let displayValue;
     if (attribute === 'tempo') {
-      // Tempo: value is 0-1 normalized, convert to BPM (multiply by 200)
-      displayValue = Math.round(value * 200);
+      // Tempo: map 0-1 range to 70-140 BPM
+      displayValue = Math.round(70 + (value * 70));
     } else if (attribute === 'popularity') {
       // Popularity: value is 0-1 normalized, convert to 0-100
       displayValue = Math.round(value * 100);
@@ -372,7 +372,7 @@ export function GuessPhase({
     // Format display value
     let displayValue;
     if (attributeName === 'tempo') {
-      displayValue = Math.round(value * 200);
+      displayValue = Math.round(70 + (value * 70));
     } else if (attributeName === 'popularity') {
       displayValue = Math.round(value * 100);
     } else {

@@ -80,11 +80,11 @@ export function TrackAttributes({
   const normalizeValue = (attr, value) => {
     if (value === null || value === undefined) return null;
 
-    // Tempo: if tempo_norm (0-1), multiply by 200 to get BPM, otherwise use raw tempo
+    // Tempo: map 0-1 range to 70-140 BPM
     if (attr === 'tempo') {
-      // If value is < 10, it's likely tempo_norm (0-1 scale), convert to BPM
+      // If value is < 10, it's normalized (0-1 scale), map to 70-140 BPM
       // Otherwise it's raw BPM, just round it
-      return value < 10 ? Math.round(value * 200) : Math.round(value);
+      return value < 10 ? Math.round(70 + (value * 70)) : Math.round(value);
     }
 
     // Popularity is already 0-100

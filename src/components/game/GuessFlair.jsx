@@ -160,8 +160,8 @@ export function GuessFlair({
     if (value === null) return '?';
 
     if (attr === 'tempo') {
-      // Tempo: if < 10 it's normalized (0-1), convert to BPM; otherwise use as-is
-      return value < 10 ? Math.round(value * 200) : Math.round(value);
+      // Tempo: map 0-1 range to 70-140 BPM
+      return value < 10 ? Math.round(70 + (value * 70)) : Math.round(value);
     }
     if (attr === 'popularity') {
       return Math.round(value * 100);
