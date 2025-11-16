@@ -193,7 +193,7 @@ function RadioPuzzleGame() {
     const randomSeed = convertedTracks[Math.floor(Math.random() * convertedTracks.length)];
     const randomChallenges = [...CHALLENGES]
       .sort(() => Math.random() - 0.5)
-      .slice(0, 3);
+      .slice(0, 2);
 
     gameState.setSeed(randomSeed);
     randomChallenges.forEach((challenge, idx) => {
@@ -299,7 +299,7 @@ function RadioPuzzleGame() {
 
   const generateChoice = () => {
     const needsSeed = !gameState.state.seed;
-    const needsChallenges = gameState.state.challenges.filter(c => c !== null).length < 3;
+    const needsChallenges = gameState.state.challenges.filter(c => c !== null).length < 2;
 
     if (!needsSeed && !needsChallenges) {
       loadProfileForSeed(gameState.state.seed);
@@ -696,7 +696,7 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
   };
 
   const autoAssignChallenges = (currentGuesses) => {
-    const newPlacements = [null, null, null];
+    const newPlacements = [null, null];
     const assignedGuesses = new Set();
     
     const candidatePairs = [];

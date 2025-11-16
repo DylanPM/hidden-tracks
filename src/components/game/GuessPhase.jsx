@@ -413,65 +413,85 @@ export function GuessPhase({
 
       const guessTrack = guess.trackData;
 
+      // Generate all possible clues for this guess
+      const possibleClues = [];
+
       if (guess.incorrect) {
         // Wrong guess - describe what the playlist IS (based on seed track)
-        const attr = attributes[guessIndex % attributes.length];
-        let clue = '';
-        // Wrong guess - describe what the playlist IS (based on seed track)
-        if (attr === 'year' && seed.year) {
-          const decade = Math.floor(seed.year / 10) * 10;
-          clue = `Playlist draws from the ${decade}s era`;
-        } else if (attr === 'popularity') {
-          if (seed.popularity < 30) {
-            clue = `Playlist favors underground and niche selections`;
-          } else if (seed.popularity > 70) {
-            clue = `Playlist features well-known, popular hits`;
-          } else {
-            clue = `Playlist balances mainstream and indie tracks`;
+        // Generate clues for all attributes and pick one randomly
+        attributes.forEach(attr => {
+          let clue = '';
+          if (attr === 'year' && seed.year) {
+            const decade = Math.floor(seed.year / 10) * 10;
+            clue = `Playlist draws from the ${decade}s era`;
+          } else if (attr === 'popularity') {
+            if (seed.popularity < 30) {
+              clue = `Playlist favors underground and niche selections`;
+            } else if (seed.popularity > 70) {
+              clue = `Playlist features well-known, popular hits`;
+            } else {
+              clue = `Playlist balances mainstream and indie tracks`;
+            }
+          } else if (attr === 'valence') {
+            if (seed.valence < 0.4) {
+              clue = `Playlist embraces darker, introspective moods`;
+            } else if (seed.valence > 0.6) {
+              clue = `Playlist brings upbeat, feel-good energy`;
+            } else {
+              clue = `Playlist walks the line between light and shadow`;
+            }
+          } else if (attr === 'danceability') {
+            if (seed.danceability < 0.4) {
+              clue = `Playlist prioritizes musical depth over groove`;
+            } else if (seed.danceability > 0.7) {
+              clue = `Playlist is built for movement and rhythm`;
+            } else {
+              clue = `Playlist has a moderate, groovy feel`;
+            }
+          } else if (attr === 'energy') {
+            if (seed.energy < 0.4) {
+              clue = `Playlist maintains a calm, relaxed vibe`;
+            } else if (seed.energy > 0.7) {
+              clue = `Playlist delivers high-octane intensity`;
+            } else {
+              clue = `Playlist keeps a steady, moderate energy`;
+            }
+          } else if (attr === 'acousticness') {
+            if (seed.acousticness > 0.6) {
+              clue = `Playlist highlights organic, acoustic sounds`;
+            } else if (seed.acousticness < 0.3) {
+              clue = `Playlist leans into electronic production`;
+            } else {
+              clue = `Playlist blends acoustic and electronic elements`;
+            }
+          } else if (attr === 'instrumentalness') {
+            if (seed.instrumentalness > 0.5) {
+              clue = `Playlist leans toward instrumental tracks`;
+            } else {
+              clue = `Playlist features vocal-driven tracks`;
+            }
+          } else if (attr === 'speechiness') {
+            if (seed.speechiness > 0.33) {
+              clue = `Playlist includes spoken word or rap elements`;
+            } else {
+              clue = `Playlist focuses on melodic, sung vocals`;
+            }
           }
-        } else if (attr === 'valence') {
-          if (seed.valence < 0.4) {
-            clue = `Playlist embraces darker, introspective moods`;
-          } else if (seed.valence > 0.6) {
-            clue = `Playlist brings upbeat, feel-good energy`;
-          } else {
-            clue = `Playlist walks the line between light and shadow`;
-          }
-        } else if (attr === 'danceability') {
-          if (seed.danceability < 0.4) {
-            clue = `Playlist prioritizes musical depth over groove`;
-          } else if (seed.danceability > 0.7) {
-            clue = `Playlist is built for movement and rhythm`;
-          } else {
-            clue = `Playlist has a moderate, groovy feel`;
-          }
-        } else if (attr === 'energy') {
-          if (seed.energy < 0.4) {
-            clue = `Playlist maintains a calm, relaxed vibe`;
-          } else if (seed.energy > 0.7) {
-            clue = `Playlist delivers high-octane intensity`;
-          } else {
-            clue = `Playlist keeps a steady, moderate energy`;
-          }
-        } else if (attr === 'acousticness') {
-          if (seed.acousticness > 0.6) {
-            clue = `Playlist highlights organic, acoustic sounds`;
-          } else if (seed.acousticness < 0.3) {
-            clue = `Playlist leans into electronic production`;
-          } else {
-            clue = `Playlist blends acoustic and electronic elements`;
-          }
-        }
-
-        // Push the clue for incorrect guesses
-        if (clue) clues.push(clue);
+          if (clue) possibleClues.push(clue);
+        });
       } else {
         // Correct guess - generate attribute intel for displayed attributes
         const displayedAttrs = getDisplayedAttributes(guess);
         displayedAttrs.forEach(attr => {
           const intel = generateAttributeIntel(attr, guessTrack);
-          if (intel) clues.push(intel);
+          if (intel) possibleClues.push(intel);
         });
+      }
+
+      // Pick one random clue from all possibilities
+      if (possibleClues.length > 0) {
+        const randomClue = possibleClues[Math.floor(Math.random() * possibleClues.length)];
+        clues.push(randomClue);
       }
     });
     
@@ -956,7 +976,7 @@ export function GuessPhase({
           </div>
         )}
 
-        {/* Debug Controls for Animation Timing */}
+        {/* REMOVED - Animation debug controls
         <button
           onClick={() => setShowDebugControls(!showDebugControls)}
           className="fixed bottom-4 right-4 z-40 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs rounded border border-zinc-600 transition"
@@ -966,103 +986,10 @@ export function GuessPhase({
 
         {showDebugControls && (
           <div className="fixed bottom-16 right-4 z-40 bg-zinc-900 border-2 border-zinc-700 rounded-lg p-4 shadow-xl w-64 max-h-[80vh] overflow-y-auto">
-            <h3 className="text-white font-bold mb-3 text-sm">Animation Timing (ms)</h3>
-
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="text-zinc-400 text-xs block mb-1">Guess Dwell Time:</label>
-                <input
-                  type="number"
-                  value={guessDwellTime}
-                  onChange={(e) => setGuessDwellTime(Number(e.target.value))}
-                  className="w-full bg-zinc-800 text-white px-2 py-1 rounded text-sm border border-zinc-700"
-                  step="500"
-                  min="0"
-                  max="10000"
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-400 text-xs block mb-1">Intel Dwell Time:</label>
-                <input
-                  type="number"
-                  value={intelDwellTime}
-                  onChange={(e) => setIntelDwellTime(Number(e.target.value))}
-                  className="w-full bg-zinc-800 text-white px-2 py-1 rounded text-sm border border-zinc-700"
-                  step="500"
-                  min="0"
-                  max="10000"
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-400 text-xs block mb-1">Return to Guess Speed:</label>
-                <input
-                  type="number"
-                  value={returnSpeed}
-                  onChange={(e) => setReturnSpeed(Number(e.target.value))}
-                  className="w-full bg-zinc-800 text-white px-2 py-1 rounded text-sm border border-zinc-700"
-                  step="100"
-                  min="0"
-                  max="5000"
-                />
-                <p className="text-zinc-500 text-[10px] mt-0.5">Higher = slower scroll back</p>
-              </div>
-
-              <button
-                onClick={() => {
-                  setGuessDwellTime(2500);
-                  setIntelDwellTime(2500);
-                  setReturnSpeed(1200);
-                }}
-                className="w-full px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded transition"
-              >
-                Reset to Default
-              </button>
-            </div>
-
-            <div className="border-t border-zinc-700 pt-3">
-              <h3 className="text-white font-bold mb-2 text-sm">Manual Scroll</h3>
-              <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    const latestGuess = guesses[guesses.length - 1];
-                    const targetRef = latestGuess?.incorrect ? incorrectGuessesRef : correctGuessesRef;
-                    targetRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }}
-                  className="w-full px-2 py-1.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
-                  disabled={guesses.length === 0}
-                >
-                  <span>📍</span> Guess location
-                </button>
-                <button
-                  onClick={() => {
-                    whatWeKnowRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }}
-                  className="w-full px-2 py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
-                >
-                  <span>🧠</span> Intel
-                </button>
-                <button
-                  onClick={() => {
-                    window.scrollBy({ top: -150, behavior: 'smooth' });
-                  }}
-                  className="w-full px-2 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
-                >
-                  <span>👀</span> Peek upwards
-                </button>
-                <button
-                  onClick={() => {
-                    guessOptionsRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className="w-full px-2 py-1.5 bg-orange-700 hover:bg-orange-600 text-white text-xs rounded transition flex items-center justify-center gap-1"
-                >
-                  <span>🔙</span> Back to guess
-                </button>
-              </div>
-            </div>
+            ...debug panel content...
           </div>
         )}
+        */}
       </div>
     </div>
   );
