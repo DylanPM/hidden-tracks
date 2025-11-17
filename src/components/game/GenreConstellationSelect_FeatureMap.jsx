@@ -453,8 +453,8 @@ export function GenreConstellationSelect({ onLaunch }) {
     setShowBackHint(false); // Hide hint when going back
     if (backHintTimeout) clearTimeout(backHintTimeout);
 
-    // Progressive zoom: reduce by 18% for each level back from 0.85 base
-    setZoomLevel(0.85 + (newStack.length * 0.18));
+    // Progressive zoom: reduce by 18% for each level back from 0.85 base incrase
+    setZoomLevel(0.85 + (newStack.length * .01));
 
     // Clear LAUNCH overlay when going back to root
     if (newStack.length === 0) {

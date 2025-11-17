@@ -37,13 +37,13 @@ export function GenreConstellationSelect({ onLaunch }) {
   function getGenreDescription(genreName) {
   const map = {
   // Roots
-    rock: 'Guitars forward, live drum feel, verse–chorus lift. Expect riffs, backbeat, and amp grit.',
-    electronic: 'Synths, drum machines, and grid-tight rhythm. Texture and pulse drive the form.',
-    'hip hop': 'Drum patterns and vocal rhythm lead. Kicks, snares, and flow sit in the pocket.',
-    'r&b': 'Smooth vocals over pocketed drums and warm chords. Melody glides and bass sings.',
+    rock: 'Guitars forward, live drum feel, verse–chorus lift.',
+    electronic: 'Synths, drum machines, and grid-tight rhythm.',
+    'hip hop': 'Drum patterns and vocal rhythm lead.',
+    'r&b': 'Smooth vocals over pocketed drums and warm chords.',
     soul: 'Powerful vocals, rich harmony, and groove-led rhythm sections.',
     funk: 'Syncopated bass, clipped guitars, tight drums. The pocket is the hook.',
-    jazz: 'Improvisation, extended harmony, acoustic or electric ensembles, swing or straight.',
+    jazz: 'Improvisation, extended harmony, acoustic or electric ensembles',
     country: 'Story-first songs, steady backbeat, twang color. Choruses land clean.',
     folk: 'Acoustic instruments, intimate vocals, lyric focus, simple harmonic movement.',
     latin: 'Percussive rhythm languages, clave patterns, dance forms, bright hooks.',

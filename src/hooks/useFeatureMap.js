@@ -107,8 +107,38 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
       return percentile;
     };
 
+    // Directly project a node's features when the auction fails to give it a slot
+    const calculateSemanticPosition = (features = null, depth = 0) => {
+      if (!features) return { x: 0, y: 0 };
+
+      let x = 0;
+      let y = 0;
+      const depthExaggeration = depth === 0 ? 1.2 : (depth === 1 ? 1.2 : 1.1);
+      const featureCountExaggeration = 1.0;
+      const effectiveExaggeration = exaggeration * depthExaggeration * featureCountExaggeration;
+
+      feature_angles.forEach(featureName => {
+        if (activeFeatures[featureName] === false) return;
+
+        const rawValue = features[featureName];
+        let percentile = normalizeFeature(rawValue, featureName);
+        percentile = applyContrastCurve(percentile, featureName);
+
+        const weight = (percentile - 0.5) * 2 * effectiveExaggeration;
+        const angle = featureAngles[featureName];
+
+        x += weight * Math.cos(angle);
+        y += weight * Math.sin(angle);
+      });
+
+      return {
+        x: x * projection_scale,
+        y: y * projection_scale
+      };
+    };
+
     // Run auction for a group of siblings with two-pass optimization
-    const runTriangleAuction = (siblings, depth) => {
+    const runTriangleAuction = (siblings, depth, assignmentMetadata = null) => {
       // PASS 1: Greedy assignment by triangle preference (not overall extremeness)
       // Assign triangles in order of how much each genre wants them
       const triangleAssignments = {}; // triangleIndex -> sibling
@@ -250,16 +280,23 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         x *= effectiveExaggeration;
         y *= effectiveExaggeration;
 
-        assignments[siblingKey] = {
+        const assignmentPosition = {
           x: x * projection_scale,
           y: y * projection_scale
         };
+        assignments[siblingKey] = assignmentPosition;
+
+        if (assignmentMetadata) {
+          assignmentMetadata[siblingKey] = {
+            preference
+          };
+        }
       });
 
-      // Handle any unassigned siblings (shouldn't happen but safety check)
+      // Handle any unassigned siblings: fall back to semantic projection
       siblings.forEach(sibling => {
         if (!assignments[sibling.key]) {
-          assignments[sibling.key] = { x: 0, y: 0 };
+          assignments[sibling.key] = calculateSemanticPosition(sibling.features, depth);
         }
       });
 
@@ -270,9 +307,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
     const rawResult = {};
     const hardCodedKeys = new Set();
 
-    // STEP 1: Collect all root-level parent genres for auction
-    // Song of the Day stays at center, rest compete for triangles
-    const rootGenres = [];
+    // STEP 1: Position root-level parent genres using the same triangle auction as subgenres
+    const parentAnchors = {};
+    const rootSiblings = [];
+    const PARENT_MIN_RADIUS = 105;
+    const PARENT_MAX_RADIUS = 205;
+    const mapParentStrengthToRadius = (strength) => {
+      const clamped = Math.max(0, Math.min(0.5, strength));
+      const normalized = clamped / 0.5;
+      return PARENT_MIN_RADIUS + normalized * (PARENT_MAX_RADIUS - PARENT_MIN_RADIUS);
+    };
     Object.keys(manifest).forEach(genreKey => {
       if (genreKey === 'global' || genreKey === 'build') return;
 
@@ -286,27 +330,57 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         return;
       }
 
-      // Use averaged features for parent genres
-      const features = averagedParentFeatures[genreKey] || genre.features;
+      const features = genre.features || averagedParentFeatures[genreKey];
+      if (!features) return;
 
-      // Calculate triangle preferences
       const trianglePreferences = [];
       const numTriangles = feature_angles.length * 2;
       const triangleAngleStep = (Math.PI * 2) / numTriangles;
+
+      const createPreference = (featureName, isHigh, minExtremeness = null) => {
+        const featureIndex = feature_angles.indexOf(featureName);
+        if (featureIndex === -1) return null;
+        if (activeFeatures[featureName] === false) return null;
+
+        const rawValue = features[featureName];
+        if (rawValue == null || isNaN(rawValue)) return null;
+
+        let percentile = normalizeFeature(rawValue, featureName);
+        percentile = applyContrastCurve(percentile, featureName);
+
+        const rawExtremeness = Math.abs(percentile - 0.5);
+        let extremeness = rawExtremeness;
+        if (minExtremeness != null) {
+          extremeness = Math.max(extremeness, minExtremeness);
+        }
+        if (extremeness <= 0) return null;
+
+        const triangleIndex = isHigh ? featureIndex : featureIndex + feature_angles.length;
+
+        return {
+          triangleIndex,
+          featureName,
+          extremeness,
+          rawExtremeness,
+          percentile,
+          angle: triangleIndex * triangleAngleStep,
+          isHigh
+        };
+      };
 
       feature_angles.forEach((featureName, featureIndex) => {
         if (activeFeatures[featureName] === false) return;
 
         const rawValue = features[featureName];
+        if (rawValue == null || isNaN(rawValue)) return;
+
         let percentile = normalizeFeature(rawValue, featureName);
         percentile = applyContrastCurve(percentile, featureName);
 
-        const extremeness = Math.abs(percentile - 0.5);
+        const rawExtremeness = Math.abs(percentile - 0.5);
+        const extremenessThreshold = 0.08;
 
-        // Root genres need higher extremeness threshold to spread better
-        const extremenessThreshold = 0.2; // Increased from 0.15 to be more selective
-
-        if (extremeness > extremenessThreshold) {
+        if (rawExtremeness > extremenessThreshold) {
           const highTriangleIndex = featureIndex;
           const lowTriangleIndex = featureIndex + feature_angles.length;
 
@@ -314,7 +388,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             trianglePreferences.push({
               triangleIndex: highTriangleIndex,
               featureName,
-              extremeness,
+              extremeness: rawExtremeness,
+              rawExtremeness,
               percentile,
               angle: highTriangleIndex * triangleAngleStep,
               isHigh: true
@@ -323,7 +398,8 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
             trianglePreferences.push({
               triangleIndex: lowTriangleIndex,
               featureName,
-              extremeness,
+              extremeness: rawExtremeness,
+              rawExtremeness,
               percentile,
               angle: lowTriangleIndex * triangleAngleStep,
               isHigh: false
@@ -332,26 +408,90 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         }
       });
 
-      // Sort by extremeness, with a boost for the MOST extreme feature
-      // This ensures each genre claims its strongest attribute first
-      trianglePreferences.sort((a, b) => {
-        // Apply 2x boost to the single most extreme feature
-        const maxExtremeness = Math.max(...trianglePreferences.map(p => p.extremeness));
-        const aScore = a.extremeness === maxExtremeness ? a.extremeness * 2 : a.extremeness;
-        const bScore = b.extremeness === maxExtremeness ? b.extremeness * 2 : b.extremeness;
-        return bScore - aScore;
-      });
+      if (genreKey === 'pop') {
+        const forcedPopPref = createPreference('popularity', true, 0.65);
+        if (forcedPopPref) {
+          for (let i = trianglePreferences.length - 1; i >= 0; i--) {
+            if (trianglePreferences[i].featureName === 'popularity' && trianglePreferences[i].isHigh) {
+              trianglePreferences.splice(i, 1);
+            }
+          }
+          trianglePreferences.push(forcedPopPref);
+        }
+      }
 
-      rootGenres.push({
+      if (genreKey === 'r&b / soul / funk') {
+        const forcedNichePref = createPreference('popularity', false, 0.6);
+        if (forcedNichePref) {
+          for (let i = trianglePreferences.length - 1; i >= 0; i--) {
+            if (trianglePreferences[i].featureName === 'popularity' && !trianglePreferences[i].isHigh) {
+              trianglePreferences.splice(i, 1);
+            }
+          }
+          trianglePreferences.push(forcedNichePref);
+        }
+      }
+
+      if (genreKey === 'country') {
+        const forcedLaidBackPref = createPreference('danceability', false, 0.6);
+        if (forcedLaidBackPref) {
+          for (let i = trianglePreferences.length - 1; i >= 0; i--) {
+            if (trianglePreferences[i].featureName === 'danceability' && !trianglePreferences[i].isHigh) {
+              trianglePreferences.splice(i, 1);
+            }
+          }
+          trianglePreferences.push(forcedLaidBackPref);
+        }
+      }
+
+      if (genreKey === 'hip hop') {
+        const forcedDanceablePref = createPreference('danceability', true, 0.6);
+        if (forcedDanceablePref) {
+          for (let i = trianglePreferences.length - 1; i >= 0; i--) {
+            if (trianglePreferences[i].featureName === 'danceability' && trianglePreferences[i].isHigh) {
+              trianglePreferences.splice(i, 1);
+            }
+          }
+          trianglePreferences.push(forcedDanceablePref);
+        }
+      }
+
+      trianglePreferences.sort((a, b) => b.extremeness - a.extremeness);
+
+      rootSiblings.push({
         key: genreKey,
         preferences: trianglePreferences,
         features
       });
     });
 
-    // Run auction for root genres
-    const rootAssignments = runTriangleAuction(rootGenres, 0);
-    Object.assign(rawResult, rootAssignments);
+    if (rootSiblings.length > 0) {
+      const parentAssignmentInfo = {};
+      const parentAssignments = runTriangleAuction(rootSiblings, 0, parentAssignmentInfo);
+      Object.entries(parentAssignments).forEach(([key, pos]) => {
+        const info = parentAssignmentInfo[key];
+        const assignedPref = info?.preference;
+        let strength = assignedPref?.rawExtremeness ?? assignedPref?.extremeness ?? 0.15;
+        if (key === 'hip hop') {
+          strength = Math.max(strength, 0.3);
+        }
+        const angle = Math.atan2(pos.y, pos.x);
+        const radius = mapParentStrengthToRadius(strength);
+        const adjusted = {
+          x: Math.cos(angle) * radius,
+          y: Math.sin(angle) * radius
+        };
+        rawResult[key] = adjusted;
+        parentAnchors[key] = { x: adjusted.x, y: adjusted.y };
+      });
+    }
+
+    rootSiblings.forEach(parent => {
+      if (parentAnchors[parent.key]) return;
+      const fallback = calculateSemanticPosition(parent.features, 0);
+      rawResult[parent.key] = fallback;
+      parentAnchors[parent.key] = fallback;
+    });
 
     // STEP 2: Process subgenres for each root genre
     const processNode = (node, path = []) => {
@@ -605,14 +745,14 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         if (node[part]) node = node[part];
         else if (node.subgenres?.[part]) node = node.subgenres[part];
       }
-      if (node?.features) {
-        // For root-level parent genres, use averaged features for collision resolution
-        const isRootGenre = pathParts.length === 1;
-        const genreKey = pathParts[0];
-        const features = (isRootGenre && averagedParentFeatures[genreKey])
-          ? averagedParentFeatures[genreKey]
-          : node.features;
+      // For root-level parent genres prefer their curated feature profile,
+      // but fall back to averaged subgenre data if needed.
+      const isRootGenre = pathParts.length === 1;
+      const genreKey = pathParts[0];
+      const nodeFeatures = node?.features;
+      const features = nodeFeatures || (isRootGenre ? averagedParentFeatures[genreKey] : null);
 
+      if (features) {
         scaledResult[key].features = features;
       }
     });
@@ -795,10 +935,6 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
           const isRoot2 = !key2.includes('.');
           const bothRoot = isRoot1 && isRoot2;
 
-          // Note: Hardcoded assignments removed - all genres use auction now
-          const isHardCoded1 = false;
-          const isHardCoded2 = false;
-
           // SKIP collision avoidance for subgenres from different parents
           // They are never visible at the same time, so they shouldn't interact
           // Only allow collisions between: siblings, parent-child, or root parents
@@ -837,6 +973,9 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
 
             // Only push non-hard-coded nodes
             // If one is hard-coded, push the other away with double strength
+            const isHardCoded1 = hardCodedKeys.has(key1);
+            const isHardCoded2 = hardCodedKeys.has(key2);
+
             if (!isHardCoded1) {
               const multiplier = isHardCoded2 ? 2 : 1; // Double push if colliding with hard-coded
               node1.x += push1X * multiplier;
@@ -885,6 +1024,16 @@ export function useFeatureMap(manifest, exaggeration = 1.2, activeFeatures = {},
         const scale = TARGET_RADIUS / dist;
         node.x *= scale;
         node.y *= scale;
+      }
+    });
+
+    // Reapply auction anchors for parent genres to keep them from drifting
+    Object.entries(parentAnchors).forEach(([key, anchor]) => {
+      if (!scaledResult[key]) {
+        scaledResult[key] = { x: anchor.x, y: anchor.y, features: null };
+      } else {
+        scaledResult[key].x = anchor.x;
+        scaledResult[key].y = anchor.y;
       }
     });
 
