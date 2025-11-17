@@ -874,7 +874,7 @@ export function GuessPhase({
                         return (
                           <div key={guess.id} className="space-y-2">
                             {/* Spotify Embed */}
-                            <div className="relative z-10">
+                            <div className="relative">
                               <iframe
                                 title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                                 src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
@@ -913,7 +913,7 @@ export function GuessPhase({
                       {incorrectGuesses.slice().reverse().map((guess, idx) => (
                         <div key={guess.id} className="space-y-2">
                           {/* Spotify Embed */}
-                          <div className="relative opacity-60 z-10">
+                          <div className="relative opacity-60">
                             <iframe
                               title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                               src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
