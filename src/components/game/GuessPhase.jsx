@@ -131,6 +131,7 @@ export function GuessPhase({
   const [hintsUsed, setHintsUsed] = useState(0);
   const [pendingHintUse, setPendingHintUse] = useState(false);
   const maxHints = 3;
+  const outOfGuesses = guessesLeft <= 0;
 
   // Flash animation for guess counter
   const [flashGuessCounter, setFlashGuessCounter] = useState(false);
@@ -530,8 +531,8 @@ export function GuessPhase({
                   width="100%"
                   height="152"
                   frameBorder="0"
-                  allowtransparency="true"
                   allow="encrypted-media"
+                  // allowFullScreen
                   className="rounded-lg"
                 />
               </div>
@@ -606,15 +607,21 @@ export function GuessPhase({
                       width="100%"
                       height="152"
                       frameBorder="0"
-                      allowtransparency="true"
                       allow="encrypted-media"
+                      // allowFullScreen
                       className="rounded-lg"
                     />
                     <div
-                      onClick={() => onGuess(track)}
-                      className="absolute top-0 left-0 right-0 cursor-pointer rounded-t-lg"
-                      style={{ height: '70%' }}
-                      title="Click to select this track"
+                      onClick={() => !outOfGuesses && onGuess(track)}
+                      className={`absolute left-0 right-0 rounded-t-lg ${
+                        outOfGuesses ? 'cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                      style={{
+                        top: '15%',
+                        height: '60%',
+                        pointerEvents: outOfGuesses ? 'none' : 'auto'
+                      }}
+                      title={outOfGuesses ? 'No guesses left' : 'Click to select this track'}
                     />
                     {debugMode && track.correct && (
                       <div className="absolute top-2 right-2 bg-green-500 text-black px-2 py-1 rounded text-xs font-bold z-20 pointer-events-none">
@@ -630,10 +637,19 @@ export function GuessPhase({
               )}
             </div>
 
+            {outOfGuesses && (
+              <div className="mt-3 text-center text-yellow-400 font-semibold text-sm">
+                You’ve used all your picks — wrapping up this round.
+              </div>
+            )}
+
             {multipleChoiceOptions.length > 0 && (
               <button
                 onClick={onRefreshCandidates}
-                className="w-full mt-3 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition-all text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                disabled={outOfGuesses}
+                className={`w-full mt-3 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition-all text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] ${
+                  outOfGuesses ? 'opacity-40 cursor-not-allowed' : ''
+                }`}
               >
                 <span className="flex items-center justify-center gap-2">
                   <span className="text-xl">↻</span>
@@ -881,8 +897,8 @@ export function GuessPhase({
                                 width="100%"
                                 height="152"
                                 frameBorder="0"
-                                allowtransparency="true"
                                 allow="encrypted-media"
+                                // allowFullScreen
                                 className="rounded-lg"
                               />
                             </div>
@@ -913,15 +929,15 @@ export function GuessPhase({
                       {incorrectGuesses.slice().reverse().map((guess, idx) => (
                         <div key={guess.id} className="space-y-2">
                           {/* Spotify Embed */}
-                          <div className="relative opacity-60">
+                          <div className="relative">
                             <iframe
                               title={`Spotify player for ${guess.trackData?.name || 'track'}`}
                               src={`https://open.spotify.com/embed/track/${getSpotifyId(guess.trackData)}?utm_source=generator`}
                               width="100%"
                               height="152"
                               frameBorder="0"
-                              allowtransparency="true"
                               allow="encrypted-media"
+                              // allowFullScreen
                               className="rounded-lg"
                             />
                           </div>

@@ -145,10 +145,16 @@ function RadioPuzzleGame() {
   // Automatically go to score when no guesses remain
   // Add delay to let user see their last guess before transitioning
   useEffect(() => {
-    if (phase === 'guess' && guessesLeft <= 0) {
+    if (phase !== 'guess') {
+      setGameOver(false);
+      return;
+    }
+
+    if (guessesLeft <= 0) {
+      setGameOver(true);
       const timer = setTimeout(() => {
         setPhase('score');
-      }, 5000); // Wait 5 seconds to show last guess intel
+      }, 4000); // brief pause so the final clue lands before scoring
       return () => clearTimeout(timer);
     }
   }, [phase, guessesLeft]);
@@ -624,6 +630,12 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
   };
 
   const handleGuess = (song) => {
+    if (gameOver || guessesLeft <= 0) {
+      setErrorMessage('You are out of guesses! Check your score.');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+
     if (!song?.artists || !song?.name) {
       setErrorMessage('Invalid song data');
       setTimeout(() => setErrorMessage(''), 3000);
@@ -653,6 +665,9 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
     }
 
     const isCorrect = song.correct === true;
+
+    const currentGuessCount = gameState.state.guesses.length;
+    const isFinalGuess = currentGuessCount + 1 >= maxGuesses;
 
     if (!isCorrect) {
       const feedback = generateFeedback(song, seed);
@@ -685,7 +700,11 @@ const currentDifficulty = gameState.state.difficultyTier || "medium";
       autoAssignChallenges([...gameState.state.guesses, newGuess]);
     }
 
-    generateMultipleChoice();
+    if (isFinalGuess) {
+      setGameOver(true);
+    } else {
+      generateMultipleChoice();
+    }
 
     // REMOVED - scroll animation is now handled entirely by GuessPhase component
     // This was conflicting with GuessPhase's scroll sequence

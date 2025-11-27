@@ -192,8 +192,8 @@ export function ScorePhase({
                   width="100%"
                   height="152"
                   frameBorder="0"
-                  allowtransparency="true"
                   allow="encrypted-media"
+                  // allowFullScreen
                   className="rounded-lg"
                 />
               </div>
@@ -208,8 +208,8 @@ export function ScorePhase({
                   width="100%"
                   height="152"
                   frameBorder="0"
-                  allowtransparency="true"
                   allow="encrypted-media"
+                  // allowFullScreen
                   className="rounded-lg"
                 />
               </div>
